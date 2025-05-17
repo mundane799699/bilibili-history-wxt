@@ -1,9 +1,22 @@
-import { IS_SYNCING, HAS_FULL_SYNC } from "./utils/constants";
-import { openDB, getItem } from "./utils/db";
-import { getStorageValue, setStorageValue } from "./utils/storage";
+import { IS_SYNCING, HAS_FULL_SYNC } from "../utils/constants";
+import { openDB, getItem } from "../utils/db";
+import { getStorageValue, setStorageValue } from "../utils/storage";
 
 export default defineBackground(() => {
   console.log("Hello background!", { id: browser.runtime.id });
+
+  // 初始化定时任务
+  browser.runtime.onInstalled.addListener((details) => {
+    // 设置每分钟同步一次
+    browser.alarms.create("syncHistory", {
+      periodInMinutes: 1,
+    });
+
+    // 只在首次安装时打开 about 页面
+    if (details.reason === "install") {
+      browser.tabs.create({ url: "/about.html" });
+    }
+  });
 
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "syncHistory") {

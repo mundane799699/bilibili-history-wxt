@@ -4,6 +4,8 @@ import { defineConfig } from "wxt";
 export default defineConfig({
   modules: ["@wxt-dev/module-react"],
   manifest: {
+    name: "bilibili无限历史记录",
+    description: "不限制数量的保存你的bilibili历史记录",
     permissions: ["storage", "tabs", "cookies", "alarms"],
     host_permissions: ["*://*.bilibili.com/*"],
   },
