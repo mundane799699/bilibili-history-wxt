@@ -40,7 +40,7 @@ function App() {
           className="w-full px-2 py-2 text-white bg-[#00a1d6] rounded hover:bg-[#0091c2] disabled:bg-gray-300 disabled:cursor-not-allowed"
           onClick={() => {
             browser.tabs.create({
-              url: "/history.html",
+              url: "/my-history.html",
             });
           }}
           disabled={isSyncing}
