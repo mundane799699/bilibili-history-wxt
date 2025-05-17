@@ -19,13 +19,22 @@ export const About: React.FC = () => {
         <section>
           <h2 className="text-xl font-semibold mb-3">简介</h2>
           <div className="text-gray-600 text-base space-y-4">
-            <p>Bilibili 无限历史记录是一个浏览器扩展。</p>
             <p>
               由于b站本身的历史记录有存储上限，而我个人希望可以查看更久远的历史记录，所以开发了这个扩展。
             </p>
           </div>
         </section>
 
+        <section>
+          <h2 className="text-xl font-semibold mb-3">官网</h2>
+          <a
+            href="https://bilibilihistory.com"
+            target="_blank"
+            className="text-pink-400 font-semibold text-lg transition-all duration-200 hover:text-pink-500"
+          >
+            bilibilihistory.com
+          </a>
+        </section>
         <section>
           <h2 className="text-xl font-semibold mb-3">功能特点</h2>
           <ul className="list-disc list-inside text-gray-600 space-y-2 text-base">
@@ -56,17 +65,6 @@ export const About: React.FC = () => {
             观看历史，所有数据都存储在本地，不会上传到任何服务器。
             我们不会收集任何个人信息或浏览数据。
           </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-semibold mb-3">建议反馈</h2>
-          <a
-            className="text-blue-500 hover:underline text-base"
-            href="https://c1p0xw7om7n.feishu.cn/share/base/form/shrcneS0t8RdC3byY9xC5ftQgub"
-            target="_blank"
-          >
-            点击这里反馈建议
-          </a>
         </section>
 
         <section>

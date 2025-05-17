@@ -109,7 +109,13 @@ export const History: React.FC = () => {
   return (
     <div className="max-w-[1200px] mx-auto">
       <div className="flex justify-between items-center mb-5 sticky top-0 bg-white py-4 z-10 border-b border-gray-200">
-        <h1 className="text-2xl font-bold">Bilibili 无限历史记录</h1>
+        <a
+          href="https://bilibilihistory.com"
+          target="_blank"
+          className="text-2xl font-bold text-pink-400 hover:text-pink-500"
+        >
+          Bilibili 无限历史记录
+        </a>
         <div className="flex items-center">
           <div className="relative mr-2">
             <input

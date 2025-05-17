@@ -27,6 +27,26 @@ export const Sidebar = () => {
           关于
         </Link>
         <Link
+          to="/feedback"
+          className={`block w-full px-4 py-2 text-left rounded transition-colors text-lg ${
+            location.pathname === "/feedback"
+              ? "bg-pink-400 text-white"
+              : "text-gray-700 hover:bg-gray-200"
+          }`}
+        >
+          反馈
+        </Link>
+        <Link
+          to="/update-history"
+          className={`block w-full px-4 py-2 text-left rounded transition-colors text-lg ${
+            location.pathname === "/update-history"
+              ? "bg-pink-400 text-white"
+              : "text-gray-700 hover:bg-gray-200"
+          }`}
+        >
+          更新日志
+        </Link>
+        <Link
           to="/settings"
           className={`block w-full px-4 py-2 text-left rounded transition-colors text-lg ${
             location.pathname === "/settings"

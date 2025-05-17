@@ -18,6 +18,10 @@ const getTypeTag = (business: string): string => {
     case "article":
     case "article-list":
       return "专栏";
+    case "cheese":
+      return "课堂";
+    case "pgc":
+      return "番剧";
     default:
       return "";
   }

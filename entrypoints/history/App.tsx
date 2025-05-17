@@ -6,6 +6,8 @@ import Settings from "../../pages/Settings";
 import ScrollToTopButton from "../../components/ScrollToTopButton";
 import { useRef } from "react";
 import { Toaster } from "react-hot-toast";
+import Feedback from "../../pages/Feedback";
+import UpdateHistory from "../../pages/UpdateHistory";
 
 const App = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -22,6 +24,8 @@ const App = () => {
               <Route path="/" element={<History />} />
               <Route path="/about" element={<About />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/feedback" element={<Feedback />} />
+              <Route path="/update-history" element={<UpdateHistory />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>

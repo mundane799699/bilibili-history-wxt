@@ -26,12 +26,14 @@ export const getContentUrl = (item: HistoryItem): string => {
   switch (item.business) {
     case "archive":
     case "pgc":
-      return `https://www.bilibili.com/video/${item.bvid}`;
+      return item.uri || "";
     case "article":
     case "article-list":
       return `https://www.bilibili.com/read/cv${item.id}`;
     case "live":
       return `https://live.bilibili.com/${item.id}`;
+    case "cheese":
+      return item.uri || "";
     default:
       return `https://www.bilibili.com/video/${item.bvid}`;
   }

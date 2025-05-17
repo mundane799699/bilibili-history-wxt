@@ -2,11 +2,12 @@ export interface HistoryItem {
   bvid: string;
   title: string;
   cover: string;
-  business: "archive" | "pgc" | "article" | "article-list" | "live";
+  business: "archive" | "pgc" | "article" | "article-list" | "live" | "cheese";
   viewTime: number;
   id: string;
   author_name: string;
   author_mid: number;
+  uri?: string;
 }
 
 export interface DBConfig {
