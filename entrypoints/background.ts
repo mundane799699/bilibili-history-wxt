@@ -18,6 +18,34 @@ export default defineBackground(() => {
     }
   });
 
+  // 监听定时任务
+  browser.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === "syncHistory") {
+      // 使用立即执行的异步函数处理定时任务
+      (async () => {
+        try {
+          // 检查是否正在同步
+          const isSyncing = await getStorageValue(IS_SYNCING);
+          if (isSyncing) {
+            console.log("同步正在进行中，跳过本次定时同步");
+            return;
+          }
+
+          // 设置同步状态为进行中
+          await setStorageValue(IS_SYNCING, true);
+
+          // 执行增量同步
+          await syncHistory(false);
+        } catch (error) {
+          console.error("定时同步失败:", error);
+        } finally {
+          // 无论成功还是失败，都重置同步状态
+          await setStorageValue(IS_SYNCING, false);
+        }
+      })();
+    }
+  });
+
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "syncHistory") {
       // 使用立即执行的异步函数处理消息
@@ -88,8 +116,8 @@ export default defineBackground(() => {
       let hasMore = true;
       let max = 0;
       let view_at = 0;
-      let type = "all";
-      let ps = 30;
+      const type = "all";
+      const ps = 30;
 
       // 循环获取所有历史记录
       while (hasMore) {
@@ -144,6 +172,7 @@ export default defineBackground(() => {
               business: item.history.business,
               bvid: item.history.bvid,
               title: item.title,
+              tag_name: item.tag_name,
               cover: item.cover || (item.covers && item.covers[0]),
               viewTime: item.view_at,
               author_name: item.author_name || "",
