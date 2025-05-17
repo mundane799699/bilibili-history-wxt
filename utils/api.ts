@@ -25,6 +25,7 @@ export const fetchHistory = async (
 export const getContentUrl = (item: HistoryItem): string => {
   switch (item.business) {
     case "archive":
+      return `https://www.bilibili.com/video/${item.bvid}`;
     case "pgc":
       return item.uri || "";
     case "article":
