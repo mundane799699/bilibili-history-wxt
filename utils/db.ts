@@ -38,15 +38,47 @@ export const saveHistory = async (history: HistoryItem[]): Promise<void> => {
   const store = tx.objectStore("history");
 
   return new Promise((resolve, reject) => {
-    const clearRequest = store.clear();
-    clearRequest.onsuccess = () => {
-      history.forEach((item) => {
-        store.add(item);
-      });
+    let operationsCompleted = 0;
+    let operationsFailed = false;
+
+    if (history.length === 0) {
+      resolve();
+      return;
+    }
+
+    history.forEach((item) => {
+      if (operationsFailed) return;
+
+      const request = store.put(item);
+      request.onsuccess = () => {
+        operationsCompleted++;
+      };
+      request.onerror = () => {
+        if (!operationsFailed) {
+          operationsFailed = true;
+          console.error(
+            "向 IndexedDB 中 put 项目失败:",
+            request.error,
+            "项目:",
+            item
+          );
+        }
+      };
+    });
+
+    tx.oncomplete = () => {
+      if (!operationsFailed) {
+        console.log("所有历史记录已成功保存/更新。");
+        resolve();
+      } else {
+        reject(new Error("部分或全部历史记录项保存失败，但事务意外完成。"));
+      }
     };
 
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
+    tx.onerror = () => {
+      console.error("保存/更新历史记录事务失败:", tx.error);
+      reject(tx.error);
+    };
   });
 };
 

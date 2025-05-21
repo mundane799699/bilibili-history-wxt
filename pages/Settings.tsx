@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { clearHistory } from "../utils/db";
+import { clearHistory, saveHistory } from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
 import { IS_SYNC_DELETE } from "../utils/constants";
-import { exportHistoryToCSV } from "../utils/export";
+import { exportHistoryToCSV, exportHistoryToJSON } from "../utils/export";
 import toast from "react-hot-toast";
+import { HistoryItem } from "../utils/types";
 
 const Settings = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -15,6 +16,8 @@ const Settings = () => {
   const [resetStatus, setResetStatus] = useState("");
 
   const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [exportFormat, setExportFormat] = useState<"csv" | "json">("json");
 
   useEffect(() => {
     // 加载同步删除设置
@@ -53,23 +56,86 @@ const Settings = () => {
     }
   };
 
-  const handleExport = async () => {
+  const handleExport = async (formatToExport: "csv" | "json") => {
     try {
       setIsExporting(true);
-      await exportHistoryToCSV();
-      toast.success("导出成功！");
+      if (formatToExport === "csv") {
+        await exportHistoryToCSV();
+        toast.success("CSV导出成功！");
+      } else if (formatToExport === "json") {
+        await exportHistoryToJSON();
+        toast.success("JSON导出成功！");
+      }
     } catch (error) {
-      console.error("导出失败:", error);
-      toast.error("导出失败，请重试！");
+      console.error(`导出 ${formatToExport.toUpperCase()} 失败:`, error);
+      toast.error(`导出 ${formatToExport.toUpperCase()} 失败，请重试！`);
     } finally {
       setIsExporting(false);
     }
   };
 
+  const handleImport = async () => {
+    try {
+      setIsImporting(true);
+      const fileInput = document.createElement("input");
+      fileInput.type = "file";
+      fileInput.accept = ".json";
+
+      fileInput.onchange = async (event) => {
+        const file = (event.target as HTMLInputElement).files?.[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            try {
+              const jsonContent = e.target?.result as string;
+              const items = JSON.parse(jsonContent) as HistoryItem[];
+              if (
+                !Array.isArray(items) ||
+                items.some(
+                  (item) =>
+                    typeof item.id === "undefined" ||
+                    typeof item.viewTime === "undefined"
+                )
+              ) {
+                toast.error(
+                  "文件内容格式不正确，请确保导入的是正确的历史记录文件。"
+                );
+                setIsImporting(false);
+                return;
+              }
+              await saveHistory(items);
+              toast.success("历史记录导入成功！");
+            } catch (parseError) {
+              console.error("解析JSON文件失败:", parseError);
+              toast.error("导入失败，文件格式错误或内容不正确。");
+            } finally {
+              setIsImporting(false);
+            }
+          };
+          reader.onerror = () => {
+            console.error("读取文件失败");
+            toast.error("导入失败，无法读取文件。");
+            setIsImporting(false);
+          };
+          reader.readAsText(file);
+        } else {
+          setIsImporting(false);
+        }
+      };
+
+      fileInput.click();
+    } catch (error) {
+      console.error(`导入失败:`, error);
+      toast.error("导入失败，请重试。");
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   return (
     <div className="p-4 flex flex-col container mx-auto items-center">
-      <div className="w-full max-w-md mb-8">
-        <div className="flex items-center justify-between p-4 bg-white rounded-lg shadow">
+      <div className="w-full max-w-md mb-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-300 ease-in-out">
+        <div className="flex items-center justify-between p-4 ">
           <div>
             <h3 className="text-lg font-medium text-red-600">恢复出厂设置</h3>
             <p className="text-sm text-gray-500">
@@ -86,8 +152,8 @@ const Settings = () => {
         </div>
       </div>
 
-      <div className="w-full max-w-md mb-8">
-        <div className="flex items-center justify-between p-4 bg-white rounded-lg shadow">
+      <div className="w-full max-w-md mb-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-300 ease-in-out">
+        <div className="flex items-center justify-between p-4">
           <div>
             <h3 className="text-lg font-medium">同步删除设置</h3>
             <p className="text-sm text-gray-500">
@@ -121,21 +187,53 @@ const Settings = () => {
         </div>
       </div>
 
-      <div className="w-full max-w-md mb-8">
-        <div className="flex items-center justify-between p-4 bg-white rounded-lg shadow">
+      <div className="w-full max-w-md mb-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-300 ease-in-out">
+        <div className="flex items-center justify-between p-4">
           <div>
             <h3 className="text-lg font-medium text-blue-600">导出历史记录</h3>
             <p className="text-sm text-gray-500">
-              将所有历史记录导出为CSV文件，方便备份和查看
+              将所有历史记录导出，方便备份和查看
             </p>
           </div>
-          <button
-            onClick={handleExport}
-            className="px-4 py-2 text-sm text-white bg-blue-500 rounded hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isExporting}
-          >
-            {isExporting ? "导出中..." : "导出CSV"}
-          </button>
+          <div className="flex items-center space-x-2">
+            <select
+              value={exportFormat}
+              onChange={(e) =>
+                setExportFormat(e.target.value as "csv" | "json")
+              }
+              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <option value="json">JSON</option>
+              <option value="csv">CSV</option>
+            </select>
+            <button
+              onClick={() => handleExport(exportFormat)}
+              className="px-4 py-2 text-sm text-white bg-blue-500 rounded hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isExporting}
+            >
+              {isExporting ? "导出中..." : "导出"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="w-full max-w-md mb-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-300 ease-in-out">
+        <div className="flex items-center justify-between p-4">
+          <div>
+            <h3 className="text-lg font-medium text-blue-600">导入历史记录</h3>
+            <p className="text-sm text-gray-500">
+              将.json文件导入，恢复历史记录
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => handleImport()}
+              className="px-4 py-2 text-sm text-white bg-blue-500 rounded hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isImporting}
+            >
+              {isImporting ? "导入中..." : "导入"}
+            </button>
+          </div>
         </div>
       </div>
 

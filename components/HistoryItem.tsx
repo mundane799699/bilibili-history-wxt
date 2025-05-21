@@ -1,31 +1,16 @@
 import { HistoryItem as HistoryItemType } from "../utils/types";
-import { getContentUrl } from "../utils/api";
+import { getContentUrl } from "../utils/common";
 import { Trash2 } from "lucide-react";
 import { deleteHistoryItem } from "../utils/db";
 import { getStorageValue } from "../utils/storage";
 import { toast } from "react-hot-toast";
 import { IS_SYNC_DELETE } from "../utils/constants";
+import { getTypeTag } from "../utils/common";
 
 interface HistoryItemProps {
   item: HistoryItemType;
   onDelete?: () => void;
 }
-
-const getTypeTag = (business: string): string => {
-  switch (business) {
-    case "live":
-      return "直播";
-    case "article":
-    case "article-list":
-      return "专栏";
-    case "cheese":
-      return "课堂";
-    case "pgc":
-      return "番剧";
-    default:
-      return "";
-  }
-};
 
 const deleteBilibiliHistory = async (
   business: string,
@@ -96,7 +81,7 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
               alt={item.title}
               className="w-full h-40 object-cover"
             />
-            {getTypeTag(item.business) && (
+            {getTypeTag(item.business) !== "视频" && (
               <span className="absolute bottom-2 right-2 px-2 py-1 rounded text-xs text-white bg-[#fb7299]">
                 {getTypeTag(item.business)}
               </span>

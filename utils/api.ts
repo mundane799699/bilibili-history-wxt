@@ -21,21 +21,3 @@ export const fetchHistory = async (
 
   return data.data.list;
 };
-
-export const getContentUrl = (item: HistoryItem): string => {
-  switch (item.business) {
-    case "archive":
-      return `https://www.bilibili.com/video/${item.bvid}`;
-    case "pgc":
-      return item.uri || "";
-    case "article":
-    case "article-list":
-      return `https://www.bilibili.com/read/cv${item.id}`;
-    case "live":
-      return `https://live.bilibili.com/${item.id}`;
-    case "cheese":
-      return item.uri || "";
-    default:
-      return `https://www.bilibili.com/video/${item.bvid}`;
-  }
-};
