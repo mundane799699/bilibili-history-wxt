@@ -6,6 +6,10 @@ export const HAS_FULL_SYNC = "hasFullSync";
 
 export const UPDATE_HISTORY = [
   {
+    version: "1.5.0",
+    changes: ["修改导出功能，增加导入功能"],
+  },
+  {
     version: "1.4.2",
     changes: ["修复了打开浏览器历史页面跳转到插件页面的问题"],
   },
