@@ -3,8 +3,18 @@ import { Link, useLocation } from "react-router-dom";
 export const Sidebar = () => {
   const location = useLocation();
 
+  const [version, setVersion] = useState<string>("");
+
+  useEffect(() => {
+    // 兼容 Chrome/Firefox
+    const manifest = browser?.runtime?.getManifest?.();
+    if (manifest?.version) {
+      setVersion(manifest.version);
+    }
+  }, []);
+
   return (
-    <div className="w-40 bg-gray-100 flex-shrink-0">
+    <div className="w-40 bg-gray-100 flex-shrink-0 relative">
       <nav className="space-y-2 p-4">
         <Link
           to="/"
@@ -57,6 +67,10 @@ export const Sidebar = () => {
           设置
         </Link>
       </nav>
+
+      <p className="absolute bottom-2 left-2 text-gray-600 text-base">
+        {version ? `v${version}` : ""}
+      </p>
     </div>
   );
 };
