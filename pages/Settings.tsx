@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { clearHistory, saveHistory } from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
-import { IS_SYNC_DELETE } from "../utils/constants";
+import { IS_SYNC_DELETE, SYNC_INTERVAL } from "../utils/constants";
 import { exportHistoryToCSV, exportHistoryToJSON } from "../utils/export";
 import toast from "react-hot-toast";
 import { HistoryItem } from "../utils/types";
@@ -18,12 +18,15 @@ const Settings = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [exportFormat, setExportFormat] = useState<"csv" | "json">("json");
+  const [syncInterval, setSyncInterval] = useState(1);
 
   useEffect(() => {
     // 加载同步删除设置
     const loadSettings = async () => {
       const syncDelete = await getStorageValue(IS_SYNC_DELETE, true);
+      const storedSyncInterval = await getStorageValue(SYNC_INTERVAL, 1);
       setIsSyncDelete(syncDelete);
+      setSyncInterval(storedSyncInterval);
     };
     loadSettings();
   }, []);
@@ -34,6 +37,13 @@ const Settings = () => {
     const newValue = e.target.checked;
     setIsSyncDelete(newValue);
     await setStorageValue(IS_SYNC_DELETE, newValue);
+  };
+
+  const handleSyncIntervalChange = async (newInterval: number) => {
+    if (newInterval >= 1) {
+      setSyncInterval(newInterval);
+      await setStorageValue(SYNC_INTERVAL, newInterval);
+    }
   };
 
   const handleReset = async () => {
@@ -232,6 +242,35 @@ const Settings = () => {
               disabled={isImporting}
             >
               {isImporting ? "导入中..." : "导入"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="w-full max-w-md mb-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-300 ease-in-out">
+        <div className="flex items-center justify-between p-4">
+          <div>
+            <h3 className="text-lg font-medium text-blue-600">
+              自动同步时间间隔
+            </h3>
+            <p className="text-sm text-gray-500">单位：分钟，最小值为1</p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => handleSyncIntervalChange(syncInterval - 1)}
+              className="px-3 py-1 text-sm text-white bg-blue-500 rounded hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={syncInterval <= 1}
+            >
+              -
+            </button>
+            <span className="px-3 py-1 text-sm text-gray-700 bg-gray-200 rounded-md">
+              {syncInterval}
+            </span>
+            <button
+              onClick={() => handleSyncIntervalChange(syncInterval + 1)}
+              className="px-3 py-1 text-sm text-white bg-blue-500 rounded hover:bg-blue-600 transition-colors"
+            >
+              +
             </button>
           </div>
         </div>

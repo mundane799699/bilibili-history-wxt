@@ -4,6 +4,10 @@ export const IS_SYNCING = "isSyncing";
 
 export const HAS_FULL_SYNC = "hasFullSync";
 
+export const SYNC_INTERVAL = "syncInterval";
+
+export const SYNC_TIME_REMAIN = "syncTimeRemain";
+
 export const UPDATE_HISTORY = [
   {
     version: "1.5.0",

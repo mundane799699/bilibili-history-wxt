@@ -43,7 +43,7 @@ export const History: React.FC = () => {
 
       const { items, hasMore } = await getHistory(
         lastViewTime,
-        40,
+        100,
         debouncedKeyword,
         debouncedAuthorKeyword,
         date

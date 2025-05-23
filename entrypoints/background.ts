@@ -1,4 +1,9 @@
-import { IS_SYNCING, HAS_FULL_SYNC } from "../utils/constants";
+import {
+  IS_SYNCING,
+  HAS_FULL_SYNC,
+  SYNC_INTERVAL,
+  SYNC_TIME_REMAIN,
+} from "../utils/constants";
 import { openDB, getItem } from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
 
@@ -18,31 +23,48 @@ export default defineBackground(() => {
     }
   });
 
+  const intervalSync = async (syncInterval: number) => {
+    try {
+      // 检查是否正在同步
+      const isSyncing = await getStorageValue(IS_SYNCING);
+      if (isSyncing) {
+        console.log("同步正在进行中，跳过本次定时同步");
+        return;
+      }
+
+      // 设置同步状态为进行中
+      await setStorageValue(IS_SYNCING, true);
+
+      // 执行增量同步
+      await syncHistory(false);
+    } catch (error) {
+      console.error("定时同步失败:", error);
+    } finally {
+      // 无论成功还是失败，都重置同步状态
+      await setStorageValue(IS_SYNCING, false);
+      // 重置当前同步剩余时间
+      await setStorageValue(SYNC_TIME_REMAIN, syncInterval);
+    }
+  };
+
   // 监听定时任务
-  browser.alarms.onAlarm.addListener((alarm) => {
+  browser.alarms.onAlarm.addListener(async (alarm) => {
     if (alarm.name === "syncHistory") {
-      // 使用立即执行的异步函数处理定时任务
-      (async () => {
-        try {
-          // 检查是否正在同步
-          const isSyncing = await getStorageValue(IS_SYNCING);
-          if (isSyncing) {
-            console.log("同步正在进行中，跳过本次定时同步");
-            return;
-          }
-
-          // 设置同步状态为进行中
-          await setStorageValue(IS_SYNCING, true);
-
-          // 执行增量同步
-          await syncHistory(false);
-        } catch (error) {
-          console.error("定时同步失败:", error);
-        } finally {
-          // 无论成功还是失败，都重置同步状态
-          await setStorageValue(IS_SYNCING, false);
-        }
-      })();
+      // 获取同步间隔
+      const syncInterval = await getStorageValue(SYNC_INTERVAL, 1);
+      // 获取当前同步剩余时间
+      const syncRemain = await getStorageValue(SYNC_TIME_REMAIN, syncInterval);
+      // 当前同步剩余时间减1
+      const currentSyncRemain = syncRemain - 1;
+      // 如果当前同步剩余时间大于0，则不进行同步
+      if (currentSyncRemain > 0) {
+        console.log(`还需${currentSyncRemain}分钟进行同步，暂时跳过`);
+        // 更新同步剩余时间
+        await setStorageValue(SYNC_TIME_REMAIN, currentSyncRemain);
+        return;
+      }
+      // 使用提取的函数处理定时任务
+      intervalSync(syncInterval);
     }
   });
 
@@ -66,7 +88,7 @@ export default defineBackground(() => {
           await setStorageValue(IS_SYNCING, true);
 
           // 之前有没有全量同步过
-          const hasFullSync = await getStorageValue(HAS_FULL_SYNC);
+          const hasFullSync = await getStorageValue(HAS_FULL_SYNC, false);
           if (hasFullSync) {
             await syncHistory(false);
             // 如果已经有同步记录，直接返回成功
