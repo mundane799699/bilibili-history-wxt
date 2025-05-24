@@ -57,6 +57,16 @@ export const Sidebar = () => {
           更新日志
         </Link>
         <Link
+          to="/open-source"
+          className={`block w-full px-4 py-2 text-left rounded transition-colors text-lg ${
+            location.pathname === "/open-source"
+              ? "bg-pink-400 text-white"
+              : "text-gray-700 hover:bg-gray-200"
+          }`}
+        >
+          参与开发
+        </Link>
+        <Link
           to="/settings"
           className={`block w-full px-4 py-2 text-left rounded transition-colors text-lg ${
             location.pathname === "/settings"
