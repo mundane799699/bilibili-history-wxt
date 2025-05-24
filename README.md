@@ -2,7 +2,7 @@
 
 ## 官网
 
-[bilibilihistory.com](bilibilihistory.com)
+[bilibilihistory.com](https://bilibilihistory.com/)
 
 ## 插件地址
 
@@ -51,7 +51,7 @@ pnpm dev
 ## 参与开发
 
 欢迎各位开发者贡献代码，让这个插件变得更好用。  
-目前积压的需求有很多，因为我本人时间有限，但是又不想让这个项目的更新停滞，所以将代码开源。  
+目前积压的需求有很多，因为我本人时间有限，但是又不想让这个项目的更新停滞，所以将代码开源。
 
 可以加我微信，拉你进入开发者交流群， 请备注**参与开发**。
 ![](https://cdn.mundane.ink/202402032206594.png)
