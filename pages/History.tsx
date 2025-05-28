@@ -53,6 +53,11 @@ export const History: React.FC = () => {
         setHistory((prev) => [...prev, ...items]);
       } else {
         setHistory(items);
+        // 查找最近的可滚动父元素（与 ScrollToTopButton 保持一致）
+        const scrollableParent = document.querySelector(".overflow-auto");
+        if (scrollableParent) {
+          scrollableParent.scrollTo({ top: 0, behavior: "smooth" });
+        }
       }
 
       setHasMore(hasMore);
@@ -117,14 +122,41 @@ export const History: React.FC = () => {
           Bilibili 无限历史记录
         </a>
         <div className="flex items-center">
-          <div className="relative mr-2">
+          <div className="flex items-center mr-2 gap-2">
+            <button
+              className="px-3 py-2 border border-gray-200 rounded-l bg-gray-50 hover:bg-gray-100 disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-400"
+              disabled={!date}
+              onClick={() => {
+                if (date) {
+                  const currentDate = new Date(date);
+                  currentDate.setDate(currentDate.getDate() - 1);
+                  setDate(currentDate.toISOString().split("T")[0]);
+                }
+              }}
+            >
+              -
+            </button>
             <input
               type="date"
-              className="px-2 py-2 border border-gray-200 rounded"
+              className="px-2 py-2 border border-gray-200"
+              value={date}
               onChange={(e) => {
                 setDate(e.target.value);
               }}
             />
+            <button
+              className="px-3 py-2 border border-gray-200 rounded-r bg-gray-50 hover:bg-gray-100 disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-400"
+              disabled={!date}
+              onClick={() => {
+                if (date) {
+                  const currentDate = new Date(date);
+                  currentDate.setDate(currentDate.getDate() + 1);
+                  setDate(currentDate.toISOString().split("T")[0]);
+                }
+              }}
+            >
+              +
+            </button>
           </div>
           <div className="relative mr-2">
             <input
@@ -160,7 +192,7 @@ export const History: React.FC = () => {
             <input
               type="text"
               className="w-[300px] px-2 py-2 border border-gray-200 rounded"
-              placeholder="搜索历史记录..."
+              placeholder="搜索标题..."
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
             />
