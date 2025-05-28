@@ -14,7 +14,7 @@ export const Sidebar = () => {
   }, []);
 
   return (
-    <div className="w-40 bg-gray-100 flex-shrink-0 relative">
+    <div className="fixed top-0 left-0 w-40 bg-gray-100 flex-shrink-0 h-full">
       <nav className="space-y-2 p-4">
         <Link
           to="/"

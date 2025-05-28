@@ -10,15 +10,13 @@ import Feedback from "../../pages/Feedback";
 import UpdateHistory from "../../pages/UpdateHistory";
 import OpenSource from "../../pages/OpenSource";
 const App = () => {
-  const containerRef = useRef<HTMLDivElement>(null);
-
   return (
     <HashRouter>
       <Toaster position="top-center" />
-      <div className="flex h-screen overflow-hidden">
+      <div className="flex h-screen">
         <Sidebar />
         {/* 主内容区域 */}
-        <div ref={containerRef} className="flex-1 overflow-auto">
+        <div className="ml-40 w-full">
           <div>
             <Routes>
               <Route path="/" element={<History />} />
@@ -30,7 +28,7 @@ const App = () => {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>
-          <ScrollToTopButton containerRef={containerRef} />
+          <ScrollToTopButton />
         </div>
       </div>
     </HashRouter>

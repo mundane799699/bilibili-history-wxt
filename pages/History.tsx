@@ -53,11 +53,7 @@ export const History: React.FC = () => {
         setHistory((prev) => [...prev, ...items]);
       } else {
         setHistory(items);
-        // 查找最近的可滚动父元素（与 ScrollToTopButton 保持一致）
-        const scrollableParent = document.querySelector(".overflow-auto");
-        if (scrollableParent) {
-          scrollableParent.scrollTo({ top: 0, behavior: "smooth" });
-        }
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
 
       setHasMore(hasMore);
