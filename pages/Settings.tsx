@@ -263,9 +263,16 @@ const Settings = () => {
             >
               -
             </button>
-            <span className="px-3 py-1 text-sm text-gray-700 bg-gray-200 rounded-md">
-              {syncInterval}
-            </span>
+            <input
+              type="number"
+              value={syncInterval}
+              onChange={(e) => {
+                const filteredValue = e.target.value.replace(/[^0-9]/g, '');
+                const numValue = parseInt(filteredValue) || 1;
+                handleSyncIntervalChange(Math.max(1, numValue));
+              }}
+              className="px-3 py-1 text-sm text-gray-700 bg-gray-200 rounded-md w-16 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
             <button
               onClick={() => handleSyncIntervalChange(syncInterval + 1)}
               className="px-3 py-1 text-sm text-white bg-blue-500 rounded hover:bg-blue-600 transition-colors"
