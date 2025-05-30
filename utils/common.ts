@@ -25,8 +25,9 @@ export const getContentUrl = (item: HistoryItem): string => {
     case "pgc":
       return item.uri || "";
     case "article":
-    case "article-list":
       return `https://www.bilibili.com/read/cv${item.id}`;
+    case "article-list":
+      return `https://www.bilibili.com/read/cv${item.cid}`;
     case "live":
       return `https://live.bilibili.com/${item.id}`;
     case "cheese":
