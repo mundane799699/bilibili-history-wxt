@@ -193,6 +193,7 @@ export default defineBackground(() => {
               id: item.history.oid,
               business: item.history.business,
               bvid: item.history.bvid,
+              cid: item.history.cid,
               title: item.title,
               tag_name: item.tag_name,
               cover: item.cover || (item.covers && item.covers[0]),
