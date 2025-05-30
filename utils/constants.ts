@@ -10,6 +10,11 @@ export const SYNC_TIME_REMAIN = "syncTimeRemain";
 
 export const UPDATE_HISTORY = [
   {
+    date: "2025-05-30",
+    version: "1.6.2",
+    changes: ["修复了旧版本专栏的跳转", "间隔时间可以手动输入"],
+  },
+  {
     date: "2025-05-28",
     version: "1.6.1",
     changes: ["日期选择增加+、-按钮"],
