@@ -5,6 +5,7 @@ export interface HistoryItem {
   business: "archive" | "pgc" | "article" | "article-list" | "live" | "cheese";
   viewTime: number;
   id: string;
+  cid?: string;
   author_name: string;
   author_mid: number;
   uri?: string;
