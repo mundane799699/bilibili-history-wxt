@@ -5,16 +5,17 @@
   "version": "1.6.2",
   "type": "module",
   "scripts": {
-    "dev": "wxt",
+    "dev": "wxt --mode development",
     "dev:firefox": "wxt -b firefox",
     "build": "wxt build",
     "build:firefox": "wxt build -b firefox",
-    "zip": "wxt zip",
-    "zip:firefox": "wxt zip -b firefox",
+    "zip": "wxt --mode production zip",
+    "zip:firefox": "wxt --mode production zip -b firefox",
     "compile": "tsc --noEmit",
     "postinstall": "wxt prepare"
   },
   "dependencies": {
+    "axios": "^1.9.0",
     "dayjs": "^1.11.13",
     "lucide-react": "^0.511.0",
     "react": "^19.1.0",

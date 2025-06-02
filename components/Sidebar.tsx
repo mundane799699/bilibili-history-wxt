@@ -1,4 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { UserInfo } from "./UserInfo";
 
 export const Sidebar = () => {
   const location = useLocation();
@@ -15,6 +17,8 @@ export const Sidebar = () => {
 
   return (
     <div className="fixed top-0 left-0 w-40 bg-gray-100 flex-shrink-0 h-full">
+      <UserInfo />
+
       <nav className="space-y-2 p-4">
         <Link
           to="/"

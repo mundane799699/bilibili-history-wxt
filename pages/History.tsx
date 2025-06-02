@@ -108,8 +108,8 @@ export const History: React.FC = () => {
   };
 
   return (
-    <div className="max-w-[1200px] mx-auto">
-      <div className="flex justify-between items-center mb-5 sticky top-0 bg-white py-4 z-10 border-b border-gray-200">
+    <div>
+      <div className="flex justify-between items-center mb-5 sticky top-0 bg-white py-4 px-10 z-10 border-b border-gray-200">
         <a
           href="https://bilibilihistory.com"
           target="_blank"
@@ -216,20 +216,22 @@ export const History: React.FC = () => {
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-5">
-        {history.map((item) => (
-          <HistoryItem
-            key={item.id}
-            item={item}
-            onDelete={() => {
-              // 从列表中移除被删除的项
-              setHistory((prev) => prev.filter((h) => h.id !== item.id));
-            }}
-          />
-        ))}
-      </div>
-      <div ref={loadMoreRef} className="text-center my-8">
-        {getLoadMoreText()}
+      <div className="max-w-[1200px] mx-auto">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-5">
+          {history.map((item) => (
+            <HistoryItem
+              key={item.id}
+              item={item}
+              onDelete={() => {
+                // 从列表中移除被删除的项
+                setHistory((prev) => prev.filter((h) => h.id !== item.id));
+              }}
+            />
+          ))}
+        </div>
+        <div ref={loadMoreRef} className="text-center my-8">
+          {getLoadMoreText()}
+        </div>
       </div>
     </div>
   );

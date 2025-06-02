@@ -7,6 +7,6 @@ export default defineConfig({
     name: "Bilibili 无限历史记录",
     description: "不限制数量的保存你的bilibili历史记录",
     permissions: ["storage", "tabs", "cookies", "alarms"],
-    host_permissions: ["*://*.bilibili.com/*"],
+    host_permissions: ["*://*.bilibili.com/*", "*://*.bilibilihistory.com/*"],
   },
 });
