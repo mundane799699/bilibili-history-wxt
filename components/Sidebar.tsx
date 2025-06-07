@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { Crown } from "lucide-react";
 import { UserInfo } from "./UserInfo";
 
 export const Sidebar = () => {
@@ -51,24 +52,24 @@ export const Sidebar = () => {
           反馈
         </Link>
         <Link
-          to="/update-history"
+          to="/cloud-sync"
           className={`block w-full px-4 py-2 text-left rounded transition-colors text-lg ${
-            location.pathname === "/update-history"
+            location.pathname === "/cloud-sync"
               ? "bg-pink-400 text-white"
               : "text-gray-700 hover:bg-gray-200"
           }`}
         >
-          更新日志
-        </Link>
-        <Link
-          to="/open-source"
-          className={`block w-full px-4 py-2 text-left rounded transition-colors text-lg ${
-            location.pathname === "/open-source"
-              ? "bg-pink-400 text-white"
-              : "text-gray-700 hover:bg-gray-200"
-          }`}
-        >
-          参与开发
+          <span className="flex items-center gap-2">
+            云同步
+            <Crown
+              size={16}
+              className={` ${
+                location.pathname === "/cloud-sync"
+                  ? "text-white"
+                  : "text-yellow-500"
+              }`}
+            />
+          </span>
         </Link>
         <Link
           to="/settings"

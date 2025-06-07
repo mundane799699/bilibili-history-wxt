@@ -9,6 +9,7 @@ import { Toaster } from "react-hot-toast";
 import Feedback from "../../pages/Feedback";
 import UpdateHistory from "../../pages/UpdateHistory";
 import OpenSource from "../../pages/OpenSource";
+import CloudSync from "../../pages/CloudSync";
 const App = () => {
   return (
     <HashRouter>
@@ -23,8 +24,7 @@ const App = () => {
               <Route path="/about" element={<About />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/feedback" element={<Feedback />} />
-              <Route path="/update-history" element={<UpdateHistory />} />
-              <Route path="/open-source" element={<OpenSource />} />
+              <Route path="/cloud-sync" element={<CloudSync />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>
