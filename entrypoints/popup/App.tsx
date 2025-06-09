@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
 import { Toaster } from "react-hot-toast";
 function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [status, setStatus] = useState("");
+  const [isFullSync, setIsFullSync] = useState(false);
 
   useEffect(() => {
     // 检查同步状态
@@ -21,14 +22,20 @@ function App() {
     setIsSyncing(true);
     setStatus("正在同步...");
 
-    browser.runtime.sendMessage({ action: "syncHistory" }, (response) => {
-      if (response && response.success) {
-        setStatus(response.message);
-      } else {
-        setStatus("同步失败：" + (response ? response.error : "未知错误"));
+    browser.runtime.sendMessage(
+      {
+        action: "syncHistory",
+        isFullSync: isFullSync,
+      },
+      (response) => {
+        if (response && response.success) {
+          setStatus(response.message);
+        } else {
+          setStatus("同步失败：" + (response ? response.error : "未知错误"));
+        }
+        setIsSyncing(false);
       }
-      setIsSyncing(false);
-    });
+    );
   };
 
   return (
@@ -54,6 +61,24 @@ function App() {
         >
           {isSyncing ? "同步中..." : "立即同步"}
         </button>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="fullSync"
+            checked={isFullSync}
+            onChange={(e) => setIsFullSync(e.target.checked)}
+            disabled={isSyncing}
+            className="w-4 h-4 text-[#00a1d6] bg-gray-100 border-gray-300 rounded focus:ring-[#00a1d6] focus:ring-2"
+          />
+          <label
+            htmlFor="fullSync"
+            className={`text-sm ${
+              isSyncing ? "text-gray-400" : "text-gray-700"
+            } cursor-pointer select-none`}
+          >
+            全量同步
+          </label>
+        </div>
         {status && <div className="mt-2.5 text-gray-600">{status}</div>}
       </div>
     </>

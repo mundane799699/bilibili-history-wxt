@@ -260,3 +260,32 @@ export const getAllHistory = async (): Promise<HistoryItem[]> => {
     request.onerror = () => reject(request.error);
   });
 };
+
+export const getUnuploadedHistory = async (): Promise<HistoryItem[]> => {
+  const db = await openDB();
+  const tx = db.transaction("history", "readonly");
+  const store = tx.objectStore("history");
+  const index = store.index("viewTime");
+
+  return new Promise((resolve, reject) => {
+    const request = index.openCursor(null, "prev");
+    const items: HistoryItem[] = [];
+
+    request.onsuccess = (event) => {
+      const cursor = (event.target as IDBRequest).result as IDBCursorWithValue;
+
+      if (cursor) {
+        const item = cursor.value as HistoryItem;
+        // 获取uploaded不为true的数据（包括undefined和false）
+        if (item.uploaded !== true) {
+          items.push(item);
+        }
+        cursor.continue();
+      } else {
+        resolve(items);
+      }
+    };
+
+    request.onerror = () => reject(request.error);
+  });
+};

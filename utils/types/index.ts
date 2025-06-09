@@ -2,6 +2,7 @@ export interface HistoryItem {
   bvid: string;
   title: string;
   cover: string;
+  tag_name?: string;
   business: "archive" | "pgc" | "article" | "article-list" | "live" | "cheese";
   viewTime: number;
   id: string;
@@ -9,6 +10,7 @@ export interface HistoryItem {
   author_name: string;
   author_mid: number;
   uri?: string;
+  uploaded?: boolean;
 }
 
 export interface DBConfig {

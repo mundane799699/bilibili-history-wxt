@@ -87,17 +87,26 @@ export default defineBackground(() => {
           // 设置同步状态为进行中
           await setStorageValue(IS_SYNCING, true);
 
-          // 之前有没有全量同步过
-          const hasFullSync = await getStorageValue(HAS_FULL_SYNC, false);
-          if (hasFullSync) {
-            await syncHistory(false);
-            // 如果已经有同步记录，直接返回成功
-            sendResponse({ success: true, message: "增量同步成功" });
-          } else {
-            // 如果没有同步记录，执行全量同步
+          // 获取前端传递的isFullSync参数，如果没有则根据历史记录判断
+          const forceFullSync = message.isFullSync || false;
+
+          if (forceFullSync) {
+            // 如果前端强制要求全量同步
             await syncHistory(true);
-            await setStorageValue(HAS_FULL_SYNC, true);
-            sendResponse({ success: true, message: "首次全量同步成功" });
+            sendResponse({ success: true, message: "全量同步成功" });
+          } else {
+            // 之前有没有全量同步过
+            const hasFullSync = await getStorageValue(HAS_FULL_SYNC, false);
+            if (hasFullSync) {
+              await syncHistory(false);
+              // 如果已经有同步记录，直接返回成功
+              sendResponse({ success: true, message: "增量同步成功" });
+            } else {
+              // 如果没有同步记录，执行全量同步
+              await syncHistory(true);
+              await setStorageValue(HAS_FULL_SYNC, true);
+              sendResponse({ success: true, message: "全量同步成功" });
+            }
           }
         } catch (error) {
           console.error("同步失败:", error);
@@ -202,6 +211,7 @@ export default defineBackground(() => {
               author_name: item.author_name || "",
               author_mid: item.author_mid || "",
               timestamp: Date.now(),
+              uploaded: false,
             });
           }
           console.log(`同步了${data.data.list.length}条历史记录`);

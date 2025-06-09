@@ -1,7 +1,50 @@
+import { getUnuploadedHistory } from "../utils/db";
+import { uploadBatchHistory } from "../services/history";
+import { toast } from "react-hot-toast";
+
 const CloudSync = () => {
-  const handleUpload = () => {
-    // TODO: 实现上传数据到云端的逻辑
-    console.log("上传数据到云端");
+  const handleUpload = async () => {
+    try {
+      console.log("开始上传数据到云端");
+      // 从indexeddb中获取uploaded不为true的数据
+      const unuploadedData = await getUnuploadedHistory();
+      console.log("获取到未上传的数据:", unuploadedData.length, "条");
+
+      if (unuploadedData.length === 0) {
+        console.log("没有需要上传的数据");
+        toast.success("没有需要上传的数据");
+        return;
+      }
+
+      const batchSize = 100;
+      let batch = [];
+      let successCount = 0;
+      // 分批上传
+      for (let i = 0; i < unuploadedData.length; i++) {
+        batch.push(unuploadedData[i]);
+        if (batch.length === batchSize || i === unuploadedData.length - 1) {
+          try {
+            const result = (await uploadBatchHistory(batch)) as any;
+            const { message, count, success } = result;
+            if (success) {
+              successCount += count;
+              toast.success(`成功上传${successCount}条数据`);
+            } else {
+              toast.error(`${batch.length}条数据上传失败`);
+              console.error(`${batch.length}条数据上传失败`, message);
+            }
+          } catch (error) {
+            toast.error(`${batch.length}条数据上传失败`);
+            console.error(`${batch.length}条数据上传失败`, error);
+          } finally {
+            batch = [];
+          }
+        }
+      }
+    } catch (error) {
+      console.error("上传数据失败:", error);
+      toast.error("上传数据失败，请稍后重试");
+    }
   };
 
   const handleDownload = () => {
