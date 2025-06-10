@@ -289,3 +289,59 @@ export const getUnuploadedHistory = async (): Promise<HistoryItem[]> => {
     request.onerror = () => reject(request.error);
   });
 };
+
+export const markHistoryAsUploaded = async (
+  historyItems: HistoryItem[]
+): Promise<void> => {
+  const db = await openDB();
+  const tx = db.transaction("history", "readwrite");
+  const store = tx.objectStore("history");
+
+  return new Promise((resolve, reject) => {
+    let operationsCompleted = 0;
+    let operationsFailed = false;
+
+    if (historyItems.length === 0) {
+      resolve();
+      return;
+    }
+
+    historyItems.forEach((item) => {
+      if (operationsFailed) return;
+
+      // 更新item的uploaded字段
+      const updatedItem = { ...item, uploaded: true };
+      const request = store.put(updatedItem);
+
+      request.onsuccess = () => {
+        operationsCompleted++;
+      };
+
+      request.onerror = () => {
+        if (!operationsFailed) {
+          operationsFailed = true;
+          console.error(
+            "更新 IndexedDB 中项目的uploaded状态失败:",
+            request.error,
+            "项目:",
+            item
+          );
+        }
+      };
+    });
+
+    tx.oncomplete = () => {
+      if (!operationsFailed) {
+        console.log(`成功标记 ${historyItems.length} 条历史记录为已上传。`);
+        resolve();
+      } else {
+        reject(new Error("部分或全部历史记录项更新失败，但事务意外完成。"));
+      }
+    };
+
+    tx.onerror = () => {
+      console.error("更新历史记录uploaded状态事务失败:", tx.error);
+      reject(tx.error);
+    };
+  });
+};
