@@ -10,6 +10,15 @@ export const SYNC_TIME_REMAIN = "syncTimeRemain";
 
 export const UPDATE_HISTORY = [
   {
+    date: "2025-06-15",
+    version: "1.7.0",
+    changes: [
+      "增加云同步功能(测试阶段)",
+      "pop中可选择增量同步或者全量同步",
+      "优化菜单项",
+    ],
+  },
+  {
     date: "2025-05-30",
     version: "1.6.2",
     changes: ["修复了旧版本专栏的跳转", "间隔时间可以手动输入"],
