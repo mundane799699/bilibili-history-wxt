@@ -4,7 +4,7 @@ export interface HistoryItem {
   cover: string;
   tag_name?: string;
   business: "archive" | "pgc" | "article" | "article-list" | "live" | "cheese";
-  viewTime: number;
+  view_at: number;
   id: string;
   cid?: string;
   author_name: string;

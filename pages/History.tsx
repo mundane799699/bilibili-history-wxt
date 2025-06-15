@@ -33,7 +33,7 @@ export const History: React.FC = () => {
             setHistory((currentHistory) => {
               const lastTime =
                 currentHistory.length > 0
-                  ? currentHistory[currentHistory.length - 1].viewTime
+                  ? currentHistory[currentHistory.length - 1].view_at
                   : "";
               resolve(lastTime);
               return currentHistory;

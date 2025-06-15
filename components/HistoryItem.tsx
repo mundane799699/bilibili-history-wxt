@@ -113,7 +113,7 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
               >
                 {item.author_name}
               </span>
-              <span>{new Date(item.viewTime * 1000).toLocaleString()}</span>
+              <span>{new Date(item.view_at * 1000).toLocaleString()}</span>
             </div>
           </div>
         </div>

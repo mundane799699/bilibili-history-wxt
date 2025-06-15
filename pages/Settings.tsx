@@ -104,7 +104,7 @@ const Settings = () => {
                 items.some(
                   (item) =>
                     typeof item.id === "undefined" ||
-                    typeof item.viewTime === "undefined"
+                    typeof item.view_at === "undefined"
                 )
               ) {
                 toast.error(

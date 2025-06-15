@@ -206,7 +206,7 @@ export default defineBackground(() => {
               title: item.title,
               tag_name: item.tag_name,
               cover: item.cover || (item.covers && item.covers[0]),
-              viewTime: item.view_at,
+              view_at: item.view_at,
               uri: item.uri,
               author_name: item.author_name || "",
               author_mid: item.author_mid || "",

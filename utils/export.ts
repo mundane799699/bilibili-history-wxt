@@ -21,7 +21,7 @@ const convertToCSV = (items: HistoryItem[]): string => {
 
   // 转换每条记录为CSV行
   const rows = items.map((item) => {
-    const viewTime = new Date(item.viewTime * 1000).toLocaleString();
+    const viewAt = new Date(item.view_at * 1000).toLocaleString();
     const type = getTypeTag(item.business);
     const url = getContentUrl(item);
     const authorUrl = `https://space.bilibili.com/${item.author_mid}`;
@@ -36,7 +36,7 @@ const convertToCSV = (items: HistoryItem[]): string => {
 
     return [
       escapeField(item.title),
-      escapeField(viewTime),
+      escapeField(viewAt),
       escapeField(type),
       escapeField(url),
       escapeField(item.cover || ""),
