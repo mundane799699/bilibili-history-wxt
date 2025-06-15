@@ -1,21 +1,19 @@
+import { useEffect } from "react";
 import { getSession } from "@/services/auth";
-
-type UserInfo = {
-  email: string;
-  name: string;
-  id: string;
-  avatar?: string;
-};
+import { useUserStore } from "@/utils/store";
 
 export const UserInfo = () => {
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const { userInfo, isLoading, setUserInfo, setIsLoading } = useUserStore();
 
   const fetchUserInfo = () => {
+    setIsLoading(true);
     getSession().then((res: any) => {
       if (res) {
         const { user } = res;
         setUserInfo(user);
       }
+    }).finally(() => {
+      setIsLoading(false);
     });
   };
 
@@ -27,6 +25,7 @@ export const UserInfo = () => {
     const handleTabActivated = (activeInfo: any) => {
       browser.tabs.get(activeInfo.tabId).then((tab) => {
         if (tab.url?.startsWith(browser.runtime.getURL("/my-history.html"))) {
+          console.log("userInfo = ", userInfo);
           if (userInfo) {
             return;
           }
@@ -39,7 +38,7 @@ export const UserInfo = () => {
     return () => {
       browser.tabs.onActivated.removeListener(handleTabActivated);
     };
-  }, []);
+  }, [userInfo]);
 
   // 获取用户名首字母并转为大写
   const getInitial = (name: string) => {
@@ -51,7 +50,8 @@ export const UserInfo = () => {
     if (userInfo) {
       console.log("已登录");
     } else {
-      window.open("https://bilibilihistory.com/login", "_blank");
+      const baseUrl = import.meta.env.VITE_BASE_API || "https://bilibilihistory.com";
+      window.open(`${baseUrl}/login`, "_blank");
     }
   };
 
@@ -78,7 +78,7 @@ export const UserInfo = () => {
             className={`text-sm font-medium text-gray-900 truncate cursor-pointer hover:text-pink-400`}
             onClick={handleUserNameClick}
           >
-            {userInfo ? userInfo.name : "未登录"}
+            {isLoading ? "加载中..." : userInfo ? userInfo.name : "未登录"}
           </p>
         </div>
       </div>

@@ -1,9 +1,13 @@
-import { getUnuploadedHistory, markHistoryAsUploaded } from "../utils/db";
-import { uploadBatchHistory } from "../services/history";
+import { getUnuploadedHistory, markHistoryAsUploaded } from "@/utils/db";
+import { uploadBatchHistory } from "@/services/history";
 import { toast } from "react-hot-toast";
 import { useState } from "react";
+import { useUserStore } from "@/utils/store";
+import { LoginModal } from "@/components/LoginModal";
 
 const CloudSync = () => {
+  const { userInfo } = useUserStore();
+  
   const [uploadModal, setUploadModal] = useState({
     isOpen: false,
     totalCount: 0,
@@ -15,7 +19,15 @@ const CloudSync = () => {
     logs: [] as string[],
   });
 
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
   const handleUpload = async () => {
+    // 检查用户是否已登录
+    if (!userInfo) {
+      setShowLoginModal(true);
+      return;
+    }
+
     try {
       console.log("开始上传数据到云端");
       // 从indexeddb中获取uploaded不为true的数据
@@ -161,11 +173,19 @@ const CloudSync = () => {
     console.log("从云端获取数据");
   };
 
+  const handleViewCloudData = () => {
+    const baseUrl = import.meta.env.VITE_BASE_API || "https://bilibilihistory.com";
+    window.open(`${baseUrl}/dashboard`, "_blank");
+  };
+
   return (
     <div className="max-w-[800px] mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">云同步</h1>
+      <p className="text-gray-600 text-base mb-2">
+        云同步允许你将数据在浏览器插件和云端之间同步。
+      </p>
       <p className="text-gray-600 text-base mb-8">
-        云同步是允许你将数据在浏览器插件和云端之间同步。该功能是付费功能，目前免费使用。
+        该功能是付费功能，目前正在测试阶段，可免费上传500条。
       </p>
 
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -190,8 +210,29 @@ const CloudSync = () => {
         </button>
 
         <button
+          onClick={handleViewCloudData}
+          className="flex items-center justify-center gap-3 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 min-w-[200px]"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          查看云端数据
+        </button>
+
+        <button
           onClick={handleDownload}
-          className="flex items-center justify-center gap-3 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 min-w-[200px]"
+          disabled
+          className="disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400 flex items-center justify-center gap-3 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 min-w-[200px]"
         >
           <svg
             className="w-5 h-5"
@@ -206,7 +247,7 @@ const CloudSync = () => {
               d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3 3m0 0l-3-3m3 3V8"
             />
           </svg>
-          从云端获取数据
+          从云端获取数据(待开发)
         </button>
       </div>
 
@@ -214,6 +255,7 @@ const CloudSync = () => {
         <h3 className="text-lg font-semibold mb-2 text-gray-800">使用说明</h3>
         <ul className="text-sm text-gray-600 space-y-1">
           <li>• 点击"上传数据到云端"将本地数据同步到云端服务器</li>
+          <li>• 点击"查看云端数据"查看已同步到云端的数据</li>
           <li>• 点击"从云端获取数据"将云端数据同步到浏览器插件</li>
         </ul>
       </div>
@@ -361,6 +403,12 @@ const CloudSync = () => {
           </div>
         </div>
       )}
+
+      {/* 登录提示弹窗 */}
+      <LoginModal 
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+      />
     </div>
   );
 };
