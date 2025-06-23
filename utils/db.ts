@@ -36,40 +36,40 @@ export const openDB = (): Promise<IDBDatabase> => {
       } else if (oldVersion === 1 && newVersion >= 2) {
         // 从版本1升级到版本2：重命名viewTime字段为view_at
         console.log("开始迁移数据：viewTime -> view_at");
-        
+
         // 获取现有的对象存储
         const store = transaction.objectStore("history");
-        
+
         // 删除旧的viewTime索引
         if (store.indexNames.contains("viewTime")) {
           store.deleteIndex("viewTime");
           console.log("删除旧的viewTime索引");
         }
-        
+
         // 创建新的view_at索引
         store.createIndex("view_at", "view_at", { unique: false });
         console.log("创建新的view_at索引");
-        
+
         // 迁移数据：将viewTime字段重命名为view_at
         const getAllRequest = store.getAll();
         getAllRequest.onsuccess = () => {
           const allRecords = getAllRequest.result;
           console.log(`开始迁移 ${allRecords.length} 条记录`);
-          
+
           allRecords.forEach((record: any) => {
             if (record.viewTime !== undefined) {
               // 将viewTime重命名为view_at
               record.view_at = record.viewTime;
               delete record.viewTime;
-              
+
               // 更新记录
               store.put(record);
             }
           });
-          
+
           console.log("数据迁移完成");
         };
-        
+
         getAllRequest.onerror = () => {
           console.error("数据迁移失败:", getAllRequest.error);
         };
@@ -307,7 +307,7 @@ export const getAllHistory = async (): Promise<HistoryItem[]> => {
   });
 };
 
-export const getUnuploadedHistory = async (): Promise<HistoryItem[]> => {
+export const getUnUploadedHistory = async (): Promise<HistoryItem[]> => {
   const db = await openDB();
   const tx = db.transaction("history", "readonly");
   const store = tx.objectStore("history");

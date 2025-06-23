@@ -1,4 +1,4 @@
-import { getUnuploadedHistory, markHistoryAsUploaded } from "@/utils/db";
+import { getUnUploadedHistory, markHistoryAsUploaded } from "@/utils/db";
 import { uploadBatchHistory } from "@/services/history";
 import { toast } from "react-hot-toast";
 import { useState } from "react";
@@ -7,19 +7,15 @@ import { LoginModal } from "@/components/LoginModal";
 
 const CloudSync = () => {
   const { userInfo } = useUserStore();
-  
-  const [uploadModal, setUploadModal] = useState({
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [uploadInfo, setUploadInfo] = useState({
+    isUploading: false,
     isOpen: false,
     totalCount: 0,
     successCount: 0,
     failedCount: 0,
-    currentBatch: 0,
-    totalBatches: 0,
-    isUploading: false,
-    logs: [] as string[],
+    message: "",
   });
-
-  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const handleUpload = async () => {
     // 检查用户是否已登录
@@ -31,140 +27,66 @@ const CloudSync = () => {
     try {
       console.log("开始上传数据到云端");
       // 从indexeddb中获取uploaded不为true的数据
-      const unuploadedData = await getUnuploadedHistory();
-      console.log("获取到未上传的数据:", unuploadedData.length, "条");
+      const unUploadedData = await getUnUploadedHistory();
+      console.log("获取到未上传的数据:", unUploadedData.length, "条");
 
-      if (unuploadedData.length === 0) {
+      if (unUploadedData.length === 0) {
         console.log("没有需要上传的数据");
         toast.success("没有需要上传的数据");
         return;
       }
 
-      const batchSize = 100;
-      const totalBatches = Math.ceil(unuploadedData.length / batchSize);
-
-      // 初始化弹窗状态
-      setUploadModal({
+      // 初始化弹窗信息
+      setUploadInfo({
+        isUploading: true,
+        totalCount: unUploadedData.length,
         isOpen: true,
-        totalCount: unuploadedData.length,
         successCount: 0,
         failedCount: 0,
-        currentBatch: 0,
-        totalBatches,
-        isUploading: true,
-        logs: [
-          `开始上传 ${unuploadedData.length} 条数据，共 ${totalBatches} 批`,
-        ],
+        message: "",
       });
-
+      const batchSize = 100;
       let batch = [];
-      let successCount = 0;
-      let failedCount = 0;
-      let currentBatchIndex = 0;
-
       // 分批上传
-      for (let i = 0; i < unuploadedData.length; i++) {
-        batch.push(unuploadedData[i]);
-        if (batch.length === batchSize || i === unuploadedData.length - 1) {
-          currentBatchIndex++;
-          const batchStartTime = new Date().toLocaleTimeString();
-
-          // 更新当前批次信息
-          setUploadModal((prev) => ({
-            ...prev,
-            currentBatch: currentBatchIndex,
-            logs: [
-              ...prev.logs,
-              `正在上传第 ${currentBatchIndex} 批，共 ${batch.length} 条数据... (${batchStartTime})`,
-            ],
-          }));
-
-          try {
-            const result = (await uploadBatchHistory(batch)) as any;
-            const { message, count, success } = result;
-            const batchEndTime = new Date().toLocaleTimeString();
-
-            if (success) {
-              // 上传成功后，立即更新这批数据的uploaded状态
-              try {
-                await markHistoryAsUploaded(batch);
-                successCount += count;
-                setUploadModal((prev) => ({
-                  ...prev,
-                  successCount,
-                  logs: [
-                    ...prev.logs,
-                    `✅ 第 ${currentBatchIndex} 批上传成功：${count} 条数据，已标记为已上传 (${batchEndTime})`,
-                  ],
-                }));
-              } catch (dbError) {
-                // 即使数据库更新失败，也要记录上传成功的数量
-                successCount += count;
-                setUploadModal((prev) => ({
-                  ...prev,
-                  successCount,
-                  logs: [
-                    ...prev.logs,
-                    `⚠️ 第 ${currentBatchIndex} 批上传成功：${count} 条数据，但更新本地状态失败 (${batchEndTime})`,
-                  ],
-                }));
-                console.error("更新本地数据库状态失败:", dbError);
-              }
-            } else {
-              failedCount += batch.length;
-              setUploadModal((prev) => ({
-                ...prev,
-                failedCount,
-                logs: [
-                  ...prev.logs,
-                  `❌ 第 ${currentBatchIndex} 批上传失败：${batch.length} 条数据 - ${message} (${batchEndTime})`,
-                ],
-              }));
-              console.error(`${batch.length}条数据上传失败`, message);
-            }
-          } catch (error) {
-            failedCount += batch.length;
-            const batchEndTime = new Date().toLocaleTimeString();
-            setUploadModal((prev) => ({
+      for (let i = 0; i < unUploadedData.length; i++) {
+        batch.push(unUploadedData[i]);
+        if (batch.length === batchSize || i === unUploadedData.length - 1) {
+          // 达到条件，上传该批次数据
+          const result = (await uploadBatchHistory(batch)) as any;
+          const { message, success } = result;
+          if (success) {
+            // 上传成功，标记为已上传
+            await markHistoryAsUploaded(batch);
+            setUploadInfo((prev) => ({
               ...prev,
-              failedCount,
-              logs: [
-                ...prev.logs,
-                `❌ 第 ${currentBatchIndex} 批上传失败：${batch.length} 条数据 - ${error} (${batchEndTime})`,
-              ],
+              successCount: prev.successCount + batch.length,
             }));
-            console.error(`${batch.length}条数据上传失败`, error);
-          } finally {
-            batch = [];
+          } else {
+            setUploadInfo((prev) => ({
+              ...prev,
+              failedCount: prev.failedCount + batch.length,
+            }));
+            if (message === "目前免费用户最多可以上传500条历史记录") {
+              setUploadInfo((prev) => ({
+                ...prev,
+                failedCount: prev.totalCount - prev.successCount,
+                message: message,
+              }));
+              // 达到免费用户上传上限，不再上传，直接跳出循环
+              break;
+            }
           }
+          // 清空批次
+          batch = [];
         }
-      }
-
-      // 上传完成
-      const completionTime = new Date().toLocaleTimeString();
-      setUploadModal((prev) => ({
-        ...prev,
-        isUploading: false,
-        logs: [
-          ...prev.logs,
-          `🎉 上传完成！成功：${successCount} 条，失败：${failedCount} 条 (${completionTime})`,
-        ],
-      }));
-
-      if (successCount > 0) {
-        toast.success(`成功上传 ${successCount} 条数据`);
-      }
-      if (failedCount > 0) {
-        toast.error(`${failedCount} 条数据上传失败`);
       }
     } catch (error) {
       console.error("上传数据失败:", error);
-      setUploadModal((prev) => ({
+    } finally {
+      setUploadInfo((prev) => ({
         ...prev,
         isUploading: false,
-        logs: [...prev.logs, `❌ 上传过程出错：${error}`],
       }));
-      toast.error("上传数据失败，请稍后重试");
     }
   };
 
@@ -174,7 +96,8 @@ const CloudSync = () => {
   };
 
   const handleViewCloudData = () => {
-    const baseUrl = import.meta.env.VITE_BASE_API || "https://bilibilihistory.com";
+    const baseUrl =
+      import.meta.env.VITE_BASE_API || "https://bilibilihistory.com";
     window.open(`${baseUrl}/dashboard`, "_blank");
   };
 
@@ -261,7 +184,7 @@ const CloudSync = () => {
       </div>
 
       {/* 上传进度弹窗 */}
-      {uploadModal.isOpen && (
+      {uploadInfo.isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
             {/* 弹窗标题 */}
@@ -269,10 +192,13 @@ const CloudSync = () => {
               <h2 className="text-xl font-semibold text-gray-800">
                 数据上传进度
               </h2>
-              {!uploadModal.isUploading && (
+              {!uploadInfo.isUploading && (
                 <button
                   onClick={() =>
-                    setUploadModal((prev) => ({ ...prev, isOpen: false }))
+                    setUploadInfo((prev) => ({
+                      ...prev,
+                      isOpen: false,
+                    }))
                   }
                   className="text-gray-400 hover:text-gray-600 text-2xl"
                 >
@@ -280,124 +206,16 @@ const CloudSync = () => {
                 </button>
               )}
             </div>
-
-            {/* 进度信息 */}
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                <div className="bg-blue-50 p-3 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {uploadModal.totalCount}
-                  </div>
-                  <div className="text-sm text-gray-600">总数据量</div>
-                </div>
-                <div className="bg-green-50 p-3 rounded-lg">
-                  <div className="text-2xl font-bold text-green-600">
-                    {uploadModal.successCount}
-                  </div>
-                  <div className="text-sm text-gray-600">成功上传</div>
-                </div>
-                <div className="bg-red-50 p-3 rounded-lg">
-                  <div className="text-2xl font-bold text-red-600">
-                    {uploadModal.failedCount}
-                  </div>
-                  <div className="text-sm text-gray-600">失败数量</div>
-                </div>
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <div className="text-2xl font-bold text-gray-600">
-                    {uploadModal.currentBatch}/{uploadModal.totalBatches}
-                  </div>
-                  <div className="text-sm text-gray-600">批次进度</div>
-                </div>
-              </div>
-
-              {/* 进度条 */}
-              <div className="mt-4">
-                <div className="flex justify-between text-sm text-gray-600 mb-1">
-                  <span>总体进度</span>
-                  <span>
-                    {Math.round(
-                      (uploadModal.currentBatch / uploadModal.totalBatches) *
-                        100
-                    )}
-                    %
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                    style={{
-                      width: `${
-                        (uploadModal.currentBatch / uploadModal.totalBatches) *
-                        100
-                      }%`,
-                    }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-
-            {/* 日志区域 */}
-            <div className="flex-1 px-6 py-4 overflow-hidden flex flex-col">
-              <h3 className="text-lg font-medium text-gray-800 mb-3">
-                上传日志
-              </h3>
-              <div className="flex-1 bg-gray-50 rounded-lg p-4 overflow-y-auto">
-                <div className="space-y-2">
-                  {uploadModal.logs.map((log, index) => (
-                    <div
-                      key={index}
-                      className={`text-sm p-2 rounded ${
-                        log.includes("✅")
-                          ? "bg-green-100 text-green-800"
-                          : log.includes("❌")
-                          ? "bg-red-100 text-red-800"
-                          : log.includes("🎉")
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-gray-100 text-gray-700"
-                      }`}
-                    >
-                      {log}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* 底部按钮 */}
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
-              {uploadModal.isUploading ? (
-                <div className="flex items-center text-blue-600">
-                  <svg
-                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  正在上传中...
-                </div>
-              ) : (
-                <button
-                  onClick={() =>
-                    setUploadModal((prev) => ({ ...prev, isOpen: false }))
-                  }
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  关闭
-                </button>
+            <div className="p-6 flex flex-col gap-2">
+              <p>未上传记录数量：{uploadInfo.totalCount}条</p>
+              <p className="text-green-500">
+                上传成功：{uploadInfo.successCount}条
+              </p>
+              <p className="text-red-500">
+                上传失败：{uploadInfo.failedCount}条
+              </p>
+              {uploadInfo.message && (
+                <p className="text-red-500">{uploadInfo.message}</p>
               )}
             </div>
           </div>
@@ -405,7 +223,7 @@ const CloudSync = () => {
       )}
 
       {/* 登录提示弹窗 */}
-      <LoginModal 
+      <LoginModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
       />
