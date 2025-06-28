@@ -130,13 +130,13 @@ const CloudSync = () => {
         云同步允许你将数据在浏览器插件和云端之间同步。
       </p>
       <p className="text-gray-600 text-base mb-8">
-        该功能是付费功能，目前正在测试阶段，可免费上传500条。
+        该功能是付费功能，免费用户最多可以上传500条。
       </p>
 
-      <div className="flex flex-col sm:flex-row gap-4 justify-center">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <button
           onClick={handleUpload}
-          className="flex items-center justify-center gap-3 px-6 py-3 bg-pink-400 hover:bg-pink-500 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 min-w-[200px]"
+          className="flex items-center justify-center gap-3 px-6 py-3 bg-pink-400 hover:bg-pink-500 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 w-full"
         >
           <svg
             className="w-5 h-5"
@@ -156,7 +156,7 @@ const CloudSync = () => {
 
         <button
           onClick={handleViewCloudData}
-          className="flex items-center justify-center gap-3 px-6 py-3 bg-blue-400 hover:bg-blue-500 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 min-w-[200px]"
+          className="flex items-center justify-center gap-3 px-6 py-3 bg-blue-400 hover:bg-blue-500 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 w-full"
         >
           <svg
             className="w-5 h-5"
@@ -176,7 +176,7 @@ const CloudSync = () => {
 
         <button
           onClick={handleResetHistory}
-          className="flex items-center justify-center gap-3 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 min-w-[200px]"
+          className="flex items-center justify-center gap-3 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 w-full"
         >
           <svg
             className="w-5 h-5"
@@ -197,7 +197,7 @@ const CloudSync = () => {
         <button
           onClick={handleDownload}
           disabled
-          className="disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400 flex items-center justify-center gap-3 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 min-w-[200px]"
+          className="disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400 flex items-center justify-center gap-3 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 w-full"
         >
           <svg
             className="w-5 h-5"
