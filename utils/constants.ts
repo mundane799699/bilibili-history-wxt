@@ -10,6 +10,15 @@ export const SYNC_TIME_REMAIN = "syncTimeRemain";
 
 export const UPDATE_HISTORY = [
   {
+    date: "2025-06-28",
+    version: "1.7.1",
+    changes: [
+      "优化云同步功能(正式启用)",
+      "显示历史记录总数",
+      "优化关于和反馈页面",
+    ],
+  },
+  {
     date: "2025-06-15",
     version: "1.7.0",
     changes: [
