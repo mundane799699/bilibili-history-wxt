@@ -18,15 +18,6 @@ export const About: React.FC = () => {
 
       <div className="space-y-6">
         <section>
-          <h2 className="text-xl font-semibold mb-3">简介</h2>
-          <div className="text-gray-600 text-base space-y-4">
-            <p>
-              由于b站本身的历史记录有存储上限，而我希望可以查看更久远的历史记录，所以开发了这个扩展。
-            </p>
-          </div>
-        </section>
-
-        <section>
           <h2 className="text-xl font-semibold mb-3">官网</h2>
           <a
             href="https://bilibilihistory.com"
@@ -36,6 +27,16 @@ export const About: React.FC = () => {
             bilibilihistory.com
           </a>
         </section>
+
+        <section>
+          <h2 className="text-xl font-semibold mb-3">简介</h2>
+          <div className="text-gray-600 text-base space-y-4">
+            <p>
+              由于b站本身的历史记录有存储上限，而我希望可以查看更久远的历史记录，所以开发了这个扩展。
+            </p>
+          </div>
+        </section>
+
         <section>
           <h2 className="text-xl font-semibold mb-3">功能特点</h2>
           <ul className="list-disc list-inside text-gray-600 space-y-2 text-base">
