@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { HistoryItem } from "../components/HistoryItem";
-import { getHistory, clearHistory } from "../utils/db";
+import { getHistory, clearHistory, getTotalHistoryCount } from "../utils/db";
 import { HistoryItem as HistoryItemType } from "../utils/types";
 import { useDebounce } from "use-debounce";
+import { RefreshCwIcon } from "lucide-react";
 
 export const History: React.FC = () => {
   const [history, setHistory] = useState<HistoryItemType[]>([]);
@@ -13,6 +14,7 @@ export const History: React.FC = () => {
   const [date, setDate] = useState("");
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [totalHistoryCount, setTotalHistoryCount] = useState(0);
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -71,6 +73,15 @@ export const History: React.FC = () => {
   }, [debouncedKeyword, debouncedAuthorKeyword, date]);
 
   useEffect(() => {
+    getTotalCount();
+  }, []);
+
+  const getTotalCount = async () => {
+    const count = await getTotalHistoryCount();
+    setTotalHistoryCount(count);
+  };
+
+  useEffect(() => {
     const options = {
       threshold: 0.1,
       rootMargin: "200px",
@@ -110,13 +121,9 @@ export const History: React.FC = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-5 sticky top-0 bg-white py-4 px-10 z-10 border-b border-gray-200">
-        <a
-          href="https://bilibilihistory.com"
-          target="_blank"
-          className="text-2xl font-bold text-pink-400 hover:text-pink-500"
-        >
-          Bilibili 无限历史记录
-        </a>
+        <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-md">
+          历史记录总数量：{totalHistoryCount}
+        </span>
         <div className="flex items-center">
           <div className="flex items-center mr-2 gap-2">
             <button
@@ -214,6 +221,14 @@ export const History: React.FC = () => {
               </button>
             )}
           </div>
+          <button
+            onClick={() => {
+              loadHistory(false);
+            }}
+            className="p-2 border border-gray-200 rounded-full bg-gray-50 hover:bg-gray-100 disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-400"
+          >
+            <RefreshCwIcon className="w-4 h-4" />
+          </button>
         </div>
       </div>
       <div className="max-w-[1200px] mx-auto">

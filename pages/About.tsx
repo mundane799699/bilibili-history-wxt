@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { UPDATE_HISTORY } from "../utils/constants";
 
 export const About: React.FC = () => {
   const [version, setVersion] = useState<string>("");
@@ -20,7 +21,7 @@ export const About: React.FC = () => {
           <h2 className="text-xl font-semibold mb-3">简介</h2>
           <div className="text-gray-600 text-base space-y-4">
             <p>
-              由于b站本身的历史记录有存储上限，而我个人希望可以查看更久远的历史记录，所以开发了这个扩展。
+              由于b站本身的历史记录有存储上限，而我希望可以查看更久远的历史记录，所以开发了这个扩展。
             </p>
           </div>
         </section>
@@ -100,6 +101,25 @@ export const About: React.FC = () => {
           <p className="text-base text-gray-600">
             具体需求可以在github项目地址加我微信具体沟通。
           </p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold mb-3">更新日志</h2>
+          <ul className="space-y-8">
+            {UPDATE_HISTORY.map((release) => (
+              <li key={release.version}>
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg">{release.version}</h2>
+                  <p className="text-gray-600 text-base">{release.date}</p>
+                </div>
+                <ul className="list-disc list-inside text-gray-600 space-y-2 text-base">
+                  {release.changes.map((change, index) => (
+                    <li key={index}>{change}</li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
         </section>
       </div>
     </div>

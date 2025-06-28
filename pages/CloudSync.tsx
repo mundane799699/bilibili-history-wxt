@@ -1,9 +1,15 @@
-import { getUnUploadedHistory, markHistoryAsUploaded } from "@/utils/db";
+import {
+  getUnUploadedHistory,
+  markHistoryAsUploaded,
+  markAllHistoryAsUnuploaded,
+} from "@/utils/db";
 import { uploadBatchHistory } from "@/services/history";
 import { toast } from "react-hot-toast";
 import { useState } from "react";
 import { useUserStore } from "@/utils/store";
 import { LoginModal } from "@/components/LoginModal";
+const FREE_LIMIT_MESSAGE = "免费用户最多可以上传500条历史记录";
+const EXPIRED_MESSAGE = "您的会员已过期，无法上传更多记录";
 
 const CloudSync = () => {
   const { userInfo } = useUserStore();
@@ -46,38 +52,34 @@ const CloudSync = () => {
         message: "",
       });
       const batchSize = 100;
-      let batch = [];
       // 分批上传
-      for (let i = 0; i < unUploadedData.length; i++) {
-        batch.push(unUploadedData[i]);
-        if (batch.length === batchSize || i === unUploadedData.length - 1) {
-          // 达到条件，上传该批次数据
-          const result = (await uploadBatchHistory(batch)) as any;
-          const { message, success } = result;
-          if (success) {
-            // 上传成功，标记为已上传
-            await markHistoryAsUploaded(batch);
+      for (let i = 0; i < unUploadedData.length; i += batchSize) {
+        const batch = unUploadedData.slice(i, i + batchSize);
+        // 上传该批次数据
+        const result = (await uploadBatchHistory(batch)) as any;
+        const { message, success } = result;
+        if (success) {
+          // 上传成功，标记为已上传
+          await markHistoryAsUploaded(batch);
+          setUploadInfo((prev) => ({
+            ...prev,
+            successCount: prev.successCount + batch.length,
+          }));
+        } else {
+          if (message === FREE_LIMIT_MESSAGE || message === EXPIRED_MESSAGE) {
             setUploadInfo((prev) => ({
               ...prev,
-              successCount: prev.successCount + batch.length,
+              failedCount: prev.totalCount - prev.successCount,
+              message: message,
             }));
+            // 达到免费用户上传上限，不再上传，直接跳出循环
+            break;
           } else {
             setUploadInfo((prev) => ({
               ...prev,
               failedCount: prev.failedCount + batch.length,
             }));
-            if (message === "目前免费用户最多可以上传500条历史记录") {
-              setUploadInfo((prev) => ({
-                ...prev,
-                failedCount: prev.totalCount - prev.successCount,
-                message: message,
-              }));
-              // 达到免费用户上传上限，不再上传，直接跳出循环
-              break;
-            }
           }
-          // 清空批次
-          batch = [];
         }
       }
     } catch (error) {
@@ -107,6 +109,11 @@ const CloudSync = () => {
     window.open(`${baseUrl}/pricing`, "_blank");
   };
 
+  const handleResetHistory = async () => {
+    await markAllHistoryAsUnuploaded();
+    toast.success("已将本地所有数据设置为未上传");
+  };
+
   const progress =
     uploadInfo.totalCount > 0
       ? Math.round(
@@ -129,7 +136,7 @@ const CloudSync = () => {
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
         <button
           onClick={handleUpload}
-          className="flex items-center justify-center gap-3 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 min-w-[200px]"
+          className="flex items-center justify-center gap-3 px-6 py-3 bg-pink-400 hover:bg-pink-500 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 min-w-[200px]"
         >
           <svg
             className="w-5 h-5"
@@ -149,7 +156,7 @@ const CloudSync = () => {
 
         <button
           onClick={handleViewCloudData}
-          className="flex items-center justify-center gap-3 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 min-w-[200px]"
+          className="flex items-center justify-center gap-3 px-6 py-3 bg-blue-400 hover:bg-blue-500 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 min-w-[200px]"
         >
           <svg
             className="w-5 h-5"
@@ -165,6 +172,26 @@ const CloudSync = () => {
             />
           </svg>
           查看云端数据
+        </button>
+
+        <button
+          onClick={handleResetHistory}
+          className="flex items-center justify-center gap-3 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 min-w-[200px]"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+          将本地所有数据标记为未上传
         </button>
 
         <button
@@ -195,6 +222,9 @@ const CloudSync = () => {
           <li>• 点击"上传数据到云端"将本地数据同步到云端服务器</li>
           <li>• 点击"查看云端数据"查看已同步到云端的数据</li>
           <li>• 点击"从云端获取数据"将云端数据同步到浏览器插件</li>
+          <li className="text-red-500">
+            • 已经上传的数据会标记为已上传，再次点击上传时不会重复上传
+          </li>
         </ul>
       </div>
 
@@ -328,17 +358,18 @@ const CloudSync = () => {
                 </div>
               )}
 
-              {uploadInfo.message === "目前免费用户最多可以上传500条历史记录" &&
-                !uploadInfo.isUploading && (
-                  <div className="mt-6 text-center">
-                    <button
-                      onClick={handleUpgrade}
-                      className="w-full px-6 py-3 bg-gradient-to-r from-orange-400 to-pink-500 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
-                    >
-                      升级到高级版，解锁无限上传
-                    </button>
-                  </div>
-                )}
+              {uploadInfo.message === FREE_LIMIT_MESSAGE ||
+                (uploadInfo.message === EXPIRED_MESSAGE &&
+                  !uploadInfo.isUploading && (
+                    <div className="mt-6 text-center">
+                      <button
+                        onClick={handleUpgrade}
+                        className="w-full px-6 py-3 bg-gradient-to-r from-orange-400 to-pink-500 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                      >
+                        升级到高级版，解锁无限上传
+                      </button>
+                    </div>
+                  ))}
             </div>
 
             {/* 弹窗页脚 */}

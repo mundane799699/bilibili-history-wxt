@@ -162,6 +162,25 @@ const matchAuthorKeyword = (item: HistoryItem, authorKeyword: string) => {
   );
 };
 
+export const getTotalHistoryCount = async (): Promise<number> => {
+  const db = await openDB();
+  const tx = db.transaction("history", "readonly");
+  const store = tx.objectStore("history");
+
+  return new Promise<number>((resolve, reject) => {
+    const request = store.count();
+
+    request.onsuccess = () => {
+      resolve(request.result);
+    };
+
+    request.onerror = () => {
+      console.error("获取历史记录总数失败:", request.error);
+      reject(request.error);
+    };
+  });
+};
+
 export const getHistory = async (
   lastViewTime: any = "",
   pageSize: number = 20,
@@ -387,6 +406,51 @@ export const markHistoryAsUploaded = async (
 
     tx.onerror = () => {
       console.error("更新历史记录uploaded状态事务失败:", tx.error);
+      reject(tx.error);
+    };
+  });
+};
+
+export const markAllHistoryAsUnuploaded = async (): Promise<void> => {
+  const db = await openDB();
+  const tx = db.transaction("history", "readwrite");
+  const store = tx.objectStore("history");
+
+  return new Promise<void>((resolve, reject) => {
+    const request = store.openCursor();
+    let updatedCount = 0;
+
+    request.onsuccess = (event) => {
+      const cursor = (event.target as IDBRequest).result as IDBCursorWithValue;
+
+      if (cursor) {
+        const item = cursor.value as HistoryItem;
+        // 只有在尚未标记为未上传时才更新
+        if (item.uploaded !== false) {
+          const updatedItem = { ...item, uploaded: false };
+          const updateRequest = cursor.update(updatedItem);
+          updateRequest.onsuccess = () => {
+            updatedCount++;
+          };
+        }
+        cursor.continue();
+      } else {
+        // 游标完成，事务将自动完成。
+      }
+    };
+
+    request.onerror = () => {
+      console.error("在标记所有历史记录为未上传时发生错误:", request.error);
+      reject(request.error);
+    };
+
+    tx.oncomplete = () => {
+      console.log(`成功将 ${updatedCount} 条历史记录标记为未上传。`);
+      resolve();
+    };
+
+    tx.onerror = () => {
+      console.error("标记所有历史记录为未上传的事务失败:", tx.error);
       reject(tx.error);
     };
   });

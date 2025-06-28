@@ -2,19 +2,23 @@ import { useEffect } from "react";
 import { getSession } from "@/services/auth";
 import { useUserStore } from "@/utils/store";
 
+const baseUrl = import.meta.env.VITE_BASE_API || "https://bilibilihistory.com";
+
 export const UserInfo = () => {
   const { userInfo, isLoading, setUserInfo, setIsLoading } = useUserStore();
 
   const fetchUserInfo = () => {
     setIsLoading(true);
-    getSession().then((res: any) => {
-      if (res) {
-        const { user } = res;
-        setUserInfo(user);
-      }
-    }).finally(() => {
-      setIsLoading(false);
-    });
+    getSession()
+      .then((res: any) => {
+        if (res) {
+          const { user } = res;
+          setUserInfo(user);
+        }
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -48,9 +52,8 @@ export const UserInfo = () => {
 
   const handleUserNameClick = () => {
     if (userInfo) {
-      console.log("已登录");
+      window.open(`${baseUrl}/dashboard`, "_blank");
     } else {
-      const baseUrl = import.meta.env.VITE_BASE_API || "https://bilibilihistory.com";
       window.open(`${baseUrl}/login`, "_blank");
     }
   };
