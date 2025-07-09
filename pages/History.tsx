@@ -122,7 +122,7 @@ export const History: React.FC = () => {
     <div>
       <div className="flex justify-between items-center mb-5 sticky top-0 bg-white py-4 px-10 z-10 border-b border-gray-200">
         <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-md">
-          历史记录总数量：{totalHistoryCount}
+          总记录数：{totalHistoryCount}
         </span>
         <div className="flex items-center">
           <div className="flex items-center mr-2 gap-2">
@@ -224,6 +224,7 @@ export const History: React.FC = () => {
           <button
             onClick={() => {
               loadHistory(false);
+              getTotalCount();
             }}
             className="p-2 border border-gray-200 rounded-full bg-gray-50 hover:bg-gray-100 disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-400"
           >
@@ -240,6 +241,7 @@ export const History: React.FC = () => {
               onDelete={() => {
                 // 从列表中移除被删除的项
                 setHistory((prev) => prev.filter((h) => h.id !== item.id));
+                getTotalCount();
               }}
             />
           ))}

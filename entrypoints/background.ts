@@ -68,58 +68,78 @@ export default defineBackground(() => {
     }
   });
 
+  // 处理同步历史记录的消息
+  const handleSyncHistory = async (
+    message: any,
+    sendResponse: (response: any) => void
+  ) => {
+    try {
+      // 检查是否正在同步
+      const isSyncing = await getStorageValue(IS_SYNCING);
+      if (isSyncing) {
+        console.log("同步正在进行中，请稍后再试");
+        sendResponse({
+          success: false,
+          error: "同步正在进行中，请稍后再试",
+        });
+        return;
+      }
+
+      // 设置同步状态为进行中
+      await setStorageValue(IS_SYNCING, true);
+
+      // 获取前端传递的isFullSync参数，如果没有则根据历史记录判断
+      const forceFullSync = message.isFullSync || false;
+
+      if (forceFullSync) {
+        // 如果前端强制要求全量同步
+        await syncHistory(true);
+        sendResponse({ success: true, message: "全量同步成功" });
+      } else {
+        // 之前有没有全量同步过
+        const hasFullSync = await getStorageValue(HAS_FULL_SYNC, false);
+        if (hasFullSync) {
+          await syncHistory(false);
+          // 如果已经有同步记录，直接返回成功
+          sendResponse({ success: true, message: "增量同步成功" });
+        } else {
+          // 如果没有同步记录，执行全量同步
+          await syncHistory(true);
+          await setStorageValue(HAS_FULL_SYNC, true);
+          sendResponse({ success: true, message: "全量同步成功" });
+        }
+      }
+    } catch (error) {
+      console.error("同步失败:", error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : "未知错误",
+      });
+    } finally {
+      // 无论成功还是失败，都重置同步状态
+      await setStorageValue(IS_SYNCING, false);
+    }
+  };
+
+  // 处理删除历史记录的消息
+  const handleDeleteHistoryItem = async (
+    message: any,
+    sendResponse: (response: any) => void
+  ) => {
+    try {
+      await deleteHistoryItem(message.id);
+      sendResponse({ success: true, message: "历史记录删除成功" });
+    } catch (error) {
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : "删除失败",
+      });
+    }
+  };
+
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "syncHistory") {
-      // 使用立即执行的异步函数处理消息
-      (async () => {
-        try {
-          // 检查是否正在同步
-          const isSyncing = await getStorageValue(IS_SYNCING);
-          if (isSyncing) {
-            console.log("同步正在进行中，请稍后再试");
-            sendResponse({
-              success: false,
-              error: "同步正在进行中，请稍后再试",
-            });
-            return;
-          }
-
-          // 设置同步状态为进行中
-          await setStorageValue(IS_SYNCING, true);
-
-          // 获取前端传递的isFullSync参数，如果没有则根据历史记录判断
-          const forceFullSync = message.isFullSync || false;
-
-          if (forceFullSync) {
-            // 如果前端强制要求全量同步
-            await syncHistory(true);
-            sendResponse({ success: true, message: "全量同步成功" });
-          } else {
-            // 之前有没有全量同步过
-            const hasFullSync = await getStorageValue(HAS_FULL_SYNC, false);
-            if (hasFullSync) {
-              await syncHistory(false);
-              // 如果已经有同步记录，直接返回成功
-              sendResponse({ success: true, message: "增量同步成功" });
-            } else {
-              // 如果没有同步记录，执行全量同步
-              await syncHistory(true);
-              await setStorageValue(HAS_FULL_SYNC, true);
-              sendResponse({ success: true, message: "全量同步成功" });
-            }
-          }
-        } catch (error) {
-          console.error("同步失败:", error);
-          sendResponse({
-            success: false,
-            error: error instanceof Error ? error.message : "未知错误",
-          });
-        } finally {
-          // 无论成功还是失败，都重置同步状态
-          await setStorageValue(IS_SYNCING, false);
-        }
-      })();
-
+      handleSyncHistory(message, sendResponse);
       return true; // 保持消息通道开放
     } else if (message.action === "getCookies") {
       browser.cookies.getAll({ domain: "bilibili.com" }, (cookies) => {
@@ -127,18 +147,7 @@ export default defineBackground(() => {
       });
       return true;
     } else if (message.action === "deleteHistoryItem") {
-      // 处理删除历史记录的消息
-      (async () => {
-        try {
-          await deleteHistoryItem(message.id);
-          sendResponse({ success: true, message: "历史记录删除成功" });
-        } catch (error) {
-          sendResponse({
-            success: false,
-            error: error instanceof Error ? error.message : "删除失败",
-          });
-        }
-      })();
+      handleDeleteHistoryItem(message, sendResponse);
       return true; // 保持消息通道开放
     }
   });
