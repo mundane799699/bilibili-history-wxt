@@ -2,7 +2,7 @@
   "name": "bilibili-unlimited-history",
   "description": "manifest.json description",
   "private": true,
-  "version": "1.7.1",
+  "version": "1.7.2",
   "type": "module",
   "scripts": {
     "dev": "wxt --mode development",

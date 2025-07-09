@@ -11,6 +11,14 @@ export const SYNC_TIME_REMAIN = "syncTimeRemain";
 
 export const UPDATE_HISTORY = [
   {
+    date: "2025-07-09",
+    version: "1.7.2",
+    changes: [
+      "支持在B站网页端删除历史记录时同步删除插件历史记录",
+      "修复刷新按钮不刷新总记录数的bug",
+    ],
+  },
+  {
     date: "2025-06-28",
     version: "1.7.1",
     changes: [
