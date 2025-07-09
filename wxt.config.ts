@@ -12,5 +12,11 @@ export default defineConfig({
       "*://*.bilibilihistory.com/*",
       "http://localhost:3001/*",
     ],
+    web_accessible_resources: [
+      {
+        resources: ["injected.js"],
+        matches: ["*://*.bilibili.com/*"],
+      },
+    ],
   },
 });

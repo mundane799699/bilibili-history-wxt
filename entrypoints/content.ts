@@ -1,7 +1,7 @@
 export default defineContentScript({
   matches: ["*://*.bilibili.com/*"],
   runAt: "document_start",
-  main() {
+  async main() {
     console.log("hello content");
     // 监听来自history页面的消息
     browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -73,5 +73,9 @@ export default defineContentScript({
         throw new Error(data.message || "删除历史记录失败");
       }
     }
+
+    await injectScript("/injected.js" as any, {
+      keepInDom: true,
+    });
   },
 });
