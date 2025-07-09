@@ -281,7 +281,7 @@ export const clearHistory = async (): Promise<void> => {
   });
 };
 
-export const deleteHistoryItem = async (id: string): Promise<void> => {
+export const deleteHistoryItem = async (id: number): Promise<void> => {
   const db = await openDB();
   const tx = db.transaction("history", "readwrite");
   const store = tx.objectStore("history");
@@ -290,12 +290,12 @@ export const deleteHistoryItem = async (id: string): Promise<void> => {
     const request = store.delete(id);
 
     request.onsuccess = () => {
-      console.log("历史记录删除成功");
+      console.log("历史记录删除成功, id =", id);
       resolve();
     };
 
     request.onerror = () => {
-      console.error("删除历史记录失败:", request.error);
+      console.error("删除历史记录失败, id =", id, request.error);
       reject(request.error);
     };
   });

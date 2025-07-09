@@ -5,7 +5,7 @@ export interface HistoryItem {
   tag_name?: string;
   business: "archive" | "pgc" | "article" | "article-list" | "live" | "cheese";
   view_at: number;
-  id: string;
+  id: number;
   cid?: string;
   author_name: string;
   author_mid: number;

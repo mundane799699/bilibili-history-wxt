@@ -14,7 +14,7 @@ interface HistoryItemProps {
 
 const deleteBilibiliHistory = async (
   business: string,
-  id: string
+  id: number
 ): Promise<void> => {
   await new Promise((resolve, reject) => {
     browser.tabs.query({ url: "*://*.bilibili.com/*" }, (tabs) => {

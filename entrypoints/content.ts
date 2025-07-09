@@ -3,6 +3,27 @@ export default defineContentScript({
   runAt: "document_start",
   async main() {
     console.log("hello content");
+
+    // 监听来自injected script的window消息
+    window.addEventListener("message", (event) => {
+      // 确保消息来自同源
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
+      // 处理来自injected script的删除历史记录消息
+      if (
+        event.data.type === "DELETE_HISTORY_FROM_INJECT" &&
+        event.data.action === "deleteHistoryItem"
+      ) {
+        // 转发消息给background
+        browser.runtime.sendMessage({
+          action: "deleteHistoryItem",
+          id: event.data.id,
+        });
+      }
+    });
+
     // 监听来自history页面的消息
     browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
       console.log("request", request);

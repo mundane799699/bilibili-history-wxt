@@ -4,7 +4,7 @@ import {
   SYNC_INTERVAL,
   SYNC_TIME_REMAIN,
 } from "../utils/constants";
-import { openDB, getItem } from "../utils/db";
+import { openDB, getItem, deleteHistoryItem } from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
 
 export default defineBackground(() => {
@@ -126,6 +126,20 @@ export default defineBackground(() => {
         sendResponse({ success: true, cookies });
       });
       return true;
+    } else if (message.action === "deleteHistoryItem") {
+      // 处理删除历史记录的消息
+      (async () => {
+        try {
+          await deleteHistoryItem(message.id);
+          sendResponse({ success: true, message: "历史记录删除成功" });
+        } catch (error) {
+          sendResponse({
+            success: false,
+            error: error instanceof Error ? error.message : "删除失败",
+          });
+        }
+      })();
+      return true; // 保持消息通道开放
     }
   });
 
