@@ -3,6 +3,7 @@ import {
   HAS_FULL_SYNC,
   SYNC_INTERVAL,
   SYNC_TIME_REMAIN,
+  IS_SYNC_DELETE_FROM_BILIBILI,
 } from "../utils/constants";
 import { openDB, getItem, deleteHistoryItem } from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
@@ -127,6 +128,14 @@ export default defineBackground(() => {
     sendResponse: (response: any) => void
   ) => {
     try {
+      const syncDeleteFromBilibili = await getStorageValue(
+        IS_SYNC_DELETE_FROM_BILIBILI,
+        true
+      );
+      if (!syncDeleteFromBilibili) {
+        sendResponse({ success: true, message: "同步删除未开启" });
+        return;
+      }
       await deleteHistoryItem(message.id);
       sendResponse({ success: true, message: "历史记录删除成功" });
     } catch (error) {

@@ -1,4 +1,5 @@
 export const IS_SYNC_DELETE = "isSyncDelete";
+export const IS_SYNC_DELETE_FROM_BILIBILI = "isSyncDeleteFromBilibili";
 
 export const IS_SYNCING = "isSyncing";
 

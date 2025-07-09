@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { clearHistory, saveHistory } from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
-import { IS_SYNC_DELETE, SYNC_INTERVAL } from "../utils/constants";
+import {
+  IS_SYNC_DELETE,
+  SYNC_INTERVAL,
+  IS_SYNC_DELETE_FROM_BILIBILI,
+} from "../utils/constants";
 import { exportHistoryToCSV, exportHistoryToJSON } from "../utils/export";
 import toast from "react-hot-toast";
 import { HistoryItem } from "../utils/types";
@@ -9,6 +13,8 @@ import { HistoryItem } from "../utils/types";
 const Settings = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isSyncDelete, setIsSyncDelete] = useState(true);
+  const [isSyncDeleteFromBilibili, setIsSyncDeleteFromBilibili] =
+    useState(true);
 
   const [showResetResultDialog, setShowResetResultDialog] = useState(false);
   const [resetResult, setResetResult] = useState("");
@@ -24,8 +30,13 @@ const Settings = () => {
     // 加载同步删除设置
     const loadSettings = async () => {
       const syncDelete = await getStorageValue(IS_SYNC_DELETE, true);
+      const syncDeleteFromBilibili = await getStorageValue(
+        IS_SYNC_DELETE_FROM_BILIBILI,
+        true
+      );
       const storedSyncInterval = await getStorageValue(SYNC_INTERVAL, 1);
       setIsSyncDelete(syncDelete);
+      setIsSyncDeleteFromBilibili(syncDeleteFromBilibili);
       setSyncInterval(storedSyncInterval);
     };
     loadSettings();
@@ -37,6 +48,14 @@ const Settings = () => {
     const newValue = e.target.checked;
     setIsSyncDelete(newValue);
     await setStorageValue(IS_SYNC_DELETE, newValue);
+  };
+
+  const handleSyncDeleteFromBilibiliChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const newValue = e.target.checked;
+    setIsSyncDeleteFromBilibili(newValue);
+    await setStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, newValue);
   };
 
   const handleSyncIntervalChange = async (newInterval: number) => {
@@ -165,7 +184,7 @@ const Settings = () => {
       <div className="w-full max-w-md mb-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-300 ease-in-out">
         <div className="flex items-center justify-between p-4">
           <div>
-            <h3 className="text-lg font-medium">同步删除设置</h3>
+            <h3 className="text-lg font-medium">同步删除：插件 -&gt; B站</h3>
             <p className="text-sm text-gray-500">
               删除本地历史记录时同步删除B站服务器历史记录
             </p>
@@ -191,6 +210,26 @@ const Settings = () => {
               className="sr-only peer"
               checked={isSyncDelete}
               onChange={handleSyncDeleteChange}
+            />
+            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+          </label>
+        </div>
+      </div>
+
+      <div className="w-full max-w-md mb-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-300 ease-in-out">
+        <div className="flex items-center justify-between p-4">
+          <div>
+            <h3 className="text-lg font-medium">同步删除：B站 -&gt; 插件</h3>
+            <p className="text-sm text-gray-500">
+              在B站网页端删除历史记录时同步删除插件历史记录
+            </p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              className="sr-only peer"
+              checked={isSyncDeleteFromBilibili}
+              onChange={handleSyncDeleteFromBilibiliChange}
             />
             <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
           </label>
@@ -267,7 +306,7 @@ const Settings = () => {
               type="number"
               value={syncInterval}
               onChange={(e) => {
-                const filteredValue = e.target.value.replace(/[^0-9]/g, '');
+                const filteredValue = e.target.value.replace(/[^0-9]/g, "");
                 const numValue = parseInt(filteredValue) || 1;
                 handleSyncIntervalChange(Math.max(1, numValue));
               }}
