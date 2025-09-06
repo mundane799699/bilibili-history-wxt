@@ -4,12 +4,11 @@ import { About } from "../../pages/About";
 import { Sidebar } from "../../components/Sidebar";
 import Settings from "../../pages/Settings";
 import ScrollToTopButton from "../../components/ScrollToTopButton";
-import { useRef } from "react";
 import { Toaster } from "react-hot-toast";
 import Feedback from "../../pages/Feedback";
-import UpdateHistory from "../../pages/UpdateHistory";
-import OpenSource from "../../pages/OpenSource";
 import CloudSync from "../../pages/CloudSync";
+import SearchMusic from "../../pages/music/SearchMusic";
+import LikedMusic from "../../pages/music/LikedMusic";
 const App = () => {
   return (
     <HashRouter>
@@ -25,6 +24,8 @@ const App = () => {
               <Route path="/settings" element={<Settings />} />
               <Route path="/feedback" element={<Feedback />} />
               <Route path="/cloud-sync" element={<CloudSync />} />
+              <Route path="/music/search" element={<SearchMusic />} />
+              <Route path="/music/liked" element={<LikedMusic />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>

@@ -1,7 +1,57 @@
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Crown } from "lucide-react";
+import {
+  CloudIcon,
+  Crown,
+  HistoryIcon,
+  InfoIcon,
+  MessageCircleIcon,
+  MusicIcon,
+  SettingsIcon,
+} from "lucide-react";
 import { UserInfo } from "./UserInfo";
+import ExpandableMenu from "./ExpandableMenu";
+const menuList = [
+  {
+    title: "历史记录",
+    icon: <HistoryIcon />,
+    to: "/",
+  },
+  {
+    title: "听歌",
+    icon: <MusicIcon />,
+    subMenus: [
+      {
+        title: "搜索",
+        to: "/music/search",
+      },
+      {
+        title: "我喜欢的音乐",
+        to: "/music/liked",
+      },
+    ],
+  },
+  {
+    title: "关于",
+    icon: <InfoIcon />,
+    to: "/about",
+  },
+  {
+    title: "反馈",
+    icon: <MessageCircleIcon />,
+    to: "/feedback",
+  },
+  {
+    title: "云同步",
+    icon: <CloudIcon />,
+    to: "/cloud-sync",
+  },
+  {
+    title: "设置",
+    icon: <SettingsIcon />,
+    to: "/settings",
+  },
+];
 
 export const Sidebar = () => {
   const location = useLocation();
@@ -21,66 +71,9 @@ export const Sidebar = () => {
       <UserInfo />
 
       <nav className="space-y-2 p-4">
-        <Link
-          to="/"
-          className={`block w-full px-4 py-2 text-left rounded transition-colors text-lg ${
-            location.pathname === "/"
-              ? "bg-pink-400 text-white"
-              : "text-gray-700 hover:bg-gray-200"
-          }`}
-        >
-          历史记录
-        </Link>
-        <Link
-          to="/about"
-          className={`block w-full px-4 py-2 text-left rounded transition-colors text-lg ${
-            location.pathname === "/about"
-              ? "bg-pink-400 text-white"
-              : "text-gray-700 hover:bg-gray-200"
-          }`}
-        >
-          关于
-        </Link>
-        <Link
-          to="/feedback"
-          className={`block w-full px-4 py-2 text-left rounded transition-colors text-lg ${
-            location.pathname === "/feedback"
-              ? "bg-pink-400 text-white"
-              : "text-gray-700 hover:bg-gray-200"
-          }`}
-        >
-          反馈
-        </Link>
-        <Link
-          to="/cloud-sync"
-          className={`block w-full px-4 py-2 text-left rounded transition-colors text-lg ${
-            location.pathname === "/cloud-sync"
-              ? "bg-pink-400 text-white"
-              : "text-gray-700 hover:bg-gray-200"
-          }`}
-        >
-          <span className="flex items-center gap-2">
-            云同步
-            <Crown
-              size={16}
-              className={` ${
-                location.pathname === "/cloud-sync"
-                  ? "text-white"
-                  : "text-yellow-500"
-              }`}
-            />
-          </span>
-        </Link>
-        <Link
-          to="/settings"
-          className={`block w-full px-4 py-2 text-left rounded transition-colors text-lg ${
-            location.pathname === "/settings"
-              ? "bg-pink-400 text-white"
-              : "text-gray-700 hover:bg-gray-200"
-          }`}
-        >
-          设置
-        </Link>
+        {menuList.map((item, index) => (
+          <ExpandableMenu key={index} {...item} />
+        ))}
       </nav>
 
       <p className="absolute bottom-2 left-2 text-gray-600 text-base">
