@@ -14,12 +14,12 @@ import ExpandableMenu from "./ExpandableMenu";
 const menuList = [
   {
     title: "历史记录",
-    icon: <HistoryIcon />,
+    icon: <HistoryIcon className="w-4 h-4" />,
     to: "/",
   },
   {
     title: "听歌",
-    icon: <MusicIcon />,
+    icon: <MusicIcon className="w-4 h-4" />,
     subMenus: [
       {
         title: "搜索",
@@ -33,22 +33,22 @@ const menuList = [
   },
   {
     title: "关于",
-    icon: <InfoIcon />,
+    icon: <InfoIcon className="w-4 h-4" />,
     to: "/about",
   },
   {
     title: "反馈",
-    icon: <MessageCircleIcon />,
+    icon: <MessageCircleIcon className="w-4 h-4" />,
     to: "/feedback",
   },
   {
     title: "云同步",
-    icon: <CloudIcon />,
+    icon: <CloudIcon className="w-4 h-4" />,
     to: "/cloud-sync",
   },
   {
     title: "设置",
-    icon: <SettingsIcon />,
+    icon: <SettingsIcon className="w-4 h-4" />,
     to: "/settings",
   },
 ];

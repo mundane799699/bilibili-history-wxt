@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 
@@ -22,6 +22,7 @@ const ExpandableMenu = ({
 }: ExpandableMenuProps) => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(initialIsOpen);
+  const location = useLocation();
 
   const handleClick = (
     to: string | undefined,
@@ -41,7 +42,9 @@ const ExpandableMenu = ({
   return (
     <div className="cursor-pointer">
       <div
-        className="py-4 flex items-center text-slate-600 pl-6 hover:text-pink-400 text-sm"
+        className={`py-4 flex items-center  pl-6 hover:text-pink-500 text-sm ${
+          location.pathname === to ? "text-pink-500" : "text-slate-600"
+        }`}
         onClick={(e) => {
           // 如果有子菜单，切换展开状态
           if (subMenus && subMenus.length > 0) {
@@ -73,7 +76,11 @@ const ExpandableMenu = ({
             <li key={index}>
               <Link
                 to={item.to}
-                className="py-4 flex items-center text-slate-600 pl-6 hover:text-pink-400 text-sm"
+                className={`py-4 flex items-center pl-6 hover:text-pink-500 text-sm ${
+                  location.pathname === item.to
+                    ? "text-pink-500"
+                    : "text-slate-600"
+                }`}
               >
                 <span className="ml-6 text-xs">{item.title}</span>
               </Link>
