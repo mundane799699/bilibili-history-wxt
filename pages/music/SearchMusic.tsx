@@ -1,8 +1,9 @@
-import { Search, Play, User, Eye, Heart, Clock } from "lucide-react";
-import React, { useState } from "react";
+import { Search } from "lucide-react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import VideoItem from "../../components/VideoItem";
 
 // 定义搜索结果项的类型
-interface SearchResultItem {
+export interface SearchResultItem {
   type: string;
   id: number;
   author: string;
@@ -29,40 +30,52 @@ interface SearchResultItem {
   [key: string]: any;
 }
 
-// 格式化时间戳
-const formatDate = (timestamp: number): string => {
-  if (timestamp === 0) return "";
-  const date = new Date(timestamp * 1000);
-  return date.toLocaleDateString("zh-CN");
-};
-
-// 清理HTML标签
-const cleanHtml = (html: string): string => {
-  return html.replace(/<[^>]*>/g, "");
-};
-
 const SearchMusic = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const pageRef = useRef(1);
+  const numPagesRef = useRef(0);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const getLoadMoreText = () => {
+    if (loading) {
+      return "加载中...";
+    }
+    if (searchResults.length === 0) {
+      return "暂无搜索结果";
+    }
+
+    if (pageRef.current < numPagesRef.current) {
+      return "向下滚动加载更多";
+    }
+
+    return "已加载全部";
+  };
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim()) {
+      return;
+    }
 
     setLoading(true);
     setError("");
+    // 重置分页
+    pageRef.current = 1;
 
     try {
       // https://api.bilibili.com/x/web-interface/search/type?page=1&page_size=42&platform=pc&highlight=1&keyword=brave+heart&search_type=video&preload=true&com2co=true
       const response = await fetch(
-        `https://api.bilibili.com/x/web-interface/search/type?page=1&page_size=42&platform=pc&highlight=1&keyword=${searchQuery}&search_type=video&preload=true&com2co=true`
+        `https://api.bilibili.com/x/web-interface/search/type?page=${pageRef.current}&page_size=42&platform=pc&highlight=1&keyword=${searchQuery}&search_type=video&preload=true&com2co=true`
       );
       const {
         data: { result, next, numPages },
       } = await response.json();
 
       setSearchResults(result || []);
+      pageRef.current = next;
+      numPagesRef.current = numPages;
     } catch (err) {
       setError("搜索失败，请稍后重试");
       console.error("搜索错误:", err);
@@ -71,85 +84,79 @@ const SearchMusic = () => {
     }
   };
 
+  const loadMore = useCallback(async () => {
+    if (
+      loading ||
+      pageRef.current > numPagesRef.current ||
+      !searchQuery.trim()
+    ) {
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        `https://api.bilibili.com/x/web-interface/search/type?page=${pageRef.current}&page_size=42&platform=pc&highlight=1&keyword=${searchQuery}&search_type=video&preload=true&com2co=true`
+      );
+      const {
+        data: { result, next, numPages },
+      } = await response.json();
+
+      // 追加新的搜索结果到现有结果
+      setSearchResults((prev) => [...prev, ...(result || [])]);
+      pageRef.current = next;
+      numPagesRef.current = numPages;
+    } catch (err) {
+      setError("加载更多失败，请稍后重试");
+      console.error("加载更多错误:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [loading, searchQuery]);
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       handleSearch();
     }
   };
 
-  const getCover = (item: SearchResultItem) => {
-    let cover = "";
-    switch (item.type) {
-      case "video":
-        cover = `https:${item.pic}@672w_378h_1c_!web-search-common-cover.avif`;
-        break;
-      case "ketang":
-        cover = `${item.pic}@672w_378h_1c_!web-search-common-cover.avif`;
-        break;
-      default:
-        cover = item.pic;
-    }
-    return cover;
-  };
+  // 使用 Intersection Observer 监听 loadMoreRef
+  useEffect(() => {
+    const loadMoreElement = loadMoreRef.current;
+    if (!loadMoreElement) return;
 
-  // 视频项组件
-  const VideoItem = ({ item }: { item: SearchResultItem }) => (
-    <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
-      <div className="flex gap-4 p-4 items-center">
-        {/* 视频封面 */}
-        <div className="flex-shrink-0 w-40 h-24 relative">
-          <img
-            src={getCover(item)}
-            alt={cleanHtml(item.title)}
-            className="w-full h-full object-cover rounded-lg"
-          />
-          <div className="absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-xs px-1 rounded">
-            {item.duration}
-          </div>
-        </div>
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        // 当 loadMoreRef 进入视口且可以加载更多时，触发加载
+        if (
+          entry.isIntersecting &&
+          pageRef.current <= numPagesRef.current &&
+          !loading &&
+          searchQuery.trim()
+        ) {
+          loadMore();
+        }
+      },
+      {
+        rootMargin: "100px", // 提前100px开始加载
+        threshold: 0.1,
+      }
+    );
 
-        {/* 视频信息 */}
-        <div className="flex-1 min-w-0">
-          {/* 标题 */}
-          <h3
-            className="text-lg font-semibold text-gray-900 mb-2 truncate hover:text-pink-600 cursor-pointer"
-            onClick={() => window.open(item.arcurl, "_blank")}
-            dangerouslySetInnerHTML={{ __html: item.title }}
-          />
+    observer.observe(loadMoreElement);
 
-          {/* UP主信息 */}
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-sm text-gray-600 hover:text-pink-600 cursor-pointer">
-              {item.author}
-            </span>
-            <span className="text-xs text-gray-400">
-              {formatDate(item.pubdate)}
-            </span>
-          </div>
-
-          {/* 描述 */}
-          <p className="text-sm text-gray-600 mb-3 truncate">
-            {item.description}
-          </p>
-        </div>
-
-        {/* 操作按钮 */}
-        <div className="flex items-center gap-2">
-          <button className="p-2">
-            <Play size={20} />
-          </button>
-          <button className="p-2">
-            <Heart size={20} />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+    return () => {
+      observer.unobserve(loadMoreElement);
+    };
+  }, [loading, searchQuery, loadMore]); // 依赖项：当loading状态、搜索关键词或loadMore函数变化时重新创建observer
 
   return (
     <div className="">
       {/* 搜索框区域 */}
-      <div className="flex items-center gap-4 mb-8 sticky pt-2 top-0 bg-white z-10 px-4">
+      <div className="flex items-center gap-4 sticky p-4 top-0 bg-white z-10 border-b border-gray-200">
         <input
           type="text"
           value={searchQuery}
@@ -189,6 +196,10 @@ const SearchMusic = () => {
           </div>
         </div>
       )}
+
+      <div ref={loadMoreRef} className="text-center py-8 text-gray-500">
+        {getLoadMoreText()}
+      </div>
     </div>
   );
 };
