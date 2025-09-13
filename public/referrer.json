@@ -1,0 +1,52 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        {
+          "header": "origin",
+          "operation": "set",
+          "value": "https://www.bilibili.com"
+        },
+        {
+          "header": "referer",
+          "operation": "set",
+          "value": "https://www.bilibili.com"
+        }
+      ]
+    },
+    "condition": {
+      "domainType": "thirdParty",
+      "urlFilter": "bilivideo.com",
+      "resourceTypes": ["xmlhttprequest", "media", "websocket", "script"],
+      "requestMethods": ["post", "get"]
+    }
+  },
+  {
+    "id": 2,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        {
+          "header": "origin",
+          "operation": "set",
+          "value": "https://message.bilibili.com/"
+        },
+        {
+          "header": "referer",
+          "operation": "set",
+          "value": "https://message.bilibili.com/"
+        }
+      ]
+    },
+    "condition": {
+      "domainType": "thirdParty",
+      "urlFilter": "https://api.bilibili.com/x/space/wbi",
+      "resourceTypes": ["xmlhttprequest", "media", "websocket", "script"],
+      "requestMethods": ["post", "get"]
+    }
+  }
+]

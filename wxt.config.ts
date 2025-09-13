@@ -6,9 +6,26 @@ export default defineConfig({
   manifest: {
     name: "Bilibili 无限历史记录",
     description: "不限制数量的保存你的bilibili历史记录",
-    permissions: ["storage", "tabs", "cookies", "alarms"],
+    permissions: [
+      "storage",
+      "tabs",
+      "cookies",
+      "alarms",
+      "declarativeNetRequest",
+    ],
+    declarative_net_request: {
+      rule_resources: [
+        {
+          id: "referrer-bilibili",
+          enabled: true,
+          path: "referrer.json",
+        },
+      ],
+    },
     host_permissions: [
       "*://*.bilibili.com/*",
+      "*://*.bilivideo.com/*",
+      "*://*.bilivideo.cn/*",
       "*://*.bilibilihistory.com/*",
       "http://localhost:3001/*",
     ],

@@ -1,6 +1,6 @@
 import { Search } from "lucide-react";
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import VideoItem from "../../components/VideoItem";
+import SongItem from "../../components/SongItem";
 
 // 定义搜索结果项的类型
 export interface SearchResultItem {
@@ -43,15 +43,12 @@ const SearchMusic = () => {
     if (loading) {
       return "加载中...";
     }
-    if (searchResults.length === 0) {
-      return "暂无搜索结果";
-    }
 
     if (pageRef.current < numPagesRef.current) {
       return "向下滚动加载更多";
     }
 
-    return "已加载全部";
+    return "";
   };
 
   const handleSearch = async () => {
@@ -84,7 +81,7 @@ const SearchMusic = () => {
     }
   };
 
-  const loadMore = useCallback(async () => {
+  const loadMore = async () => {
     if (
       loading ||
       pageRef.current > numPagesRef.current ||
@@ -114,7 +111,7 @@ const SearchMusic = () => {
     } finally {
       setLoading(false);
     }
-  }, [loading, searchQuery]);
+  };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
@@ -191,7 +188,7 @@ const SearchMusic = () => {
         <div className="mx-auto max-w-6xl">
           <div className="space-y-4">
             {searchResults.map((item) => (
-              <VideoItem key={item.id} item={item} />
+              <SongItem key={item.id} item={item} />
             ))}
           </div>
         </div>

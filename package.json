@@ -15,8 +15,10 @@
     "postinstall": "wxt prepare"
   },
   "dependencies": {
+    "@types/howler": "^2.2.12",
     "axios": "^1.9.0",
     "dayjs": "^1.11.13",
+    "howler": "^2.2.4",
     "lucide-react": "^0.511.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
