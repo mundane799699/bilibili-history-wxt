@@ -1,4 +1,4 @@
-import { Heart, Play, Pause, Loader2 } from "lucide-react";
+import { Heart, Play, Pause, Loader2, Square } from "lucide-react";
 import { SearchResultItem } from "../pages/music/SearchMusic";
 import { useState, useRef, useEffect } from "react";
 import { Howl } from "howler";
@@ -49,16 +49,23 @@ const SontItem = ({ item }: { item: SearchResultItem }) => {
 
   const handlePlay = async (item: SearchResultItem) => {
     try {
-      setIsLoading(true);
       setError(null);
 
-      // 如果正在播放，则暂停
+      // 如果已经有音频实例且正在播放，则暂停
       if (isPlaying && howlRef.current) {
         howlRef.current.pause();
         setIsPlaying(false);
-        setIsLoading(false);
         return;
       }
+
+      // 如果已经有音频实例但暂停了，则继续播放
+      if (howlRef.current && !isPlaying) {
+        howlRef.current.play();
+        return;
+      }
+
+      // 如果没有音频实例，则创建新的
+      setIsLoading(true);
 
       // https://api.bilibili.com/x/web-interface/view?bvid=BV1Za411A78m
       const response = await fetch(
@@ -91,12 +98,6 @@ const SontItem = ({ item }: { item: SearchResultItem }) => {
       const url = getUpUrl(dash.audio[0]);
       // 音频URL: https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/27/41/1141484127/1141484127_nb3-1-30232.m4s?e=ig8euxZM2rNcNbdlhoNvNC8BqJIzNbfqXBvEqxTEto8BTrNvN0GvT90W5JZMkX_YN0MvXg8gNEV4NC8xNEV4N03eN0B5tZlqNxTEto8BTrNvNeZVuJ10Kj_g2UB02J0mN0B5tZlqNCNEto8BTrNvNC7MTX502C8f2jmMQJ6mqF2fka1mqx6gqj0eN0B599M=&platform=pc&deadline=1757742372&os=cosbv&og=cos&trid=24f4d752005449a694e70e34a474887u&uipk=5&mid=3382088&oi=0x240884410c08bb3055767312c03672b6&nbs=1&gen=playurlv3&upsig=43553846d3b0a2d670779d40cc004c7d&uparams=e,platform,deadline,os,og,trid,uipk,mid,oi,nbs,gen&bvc=vod&nettype=0&bw=109960&dl=0&f=u_0_0&agrr=0&buvid=59B5EE85-AC62-367D-45DE-0FE215D3A8BF29152infoc&build=0&orderid=1,3
       console.log("音频URL:", url);
-
-      // 停止之前的音频
-      if (howlRef.current) {
-        howlRef.current.stop();
-        howlRef.current.unload();
-      }
 
       // 创建新的Howl实例
       howlRef.current = new Howl({
@@ -143,6 +144,17 @@ const SontItem = ({ item }: { item: SearchResultItem }) => {
       setIsPlaying(false);
       setIsLoading(false);
     }
+  };
+
+  const handleStop = () => {
+    if (howlRef.current) {
+      howlRef.current.stop();
+      howlRef.current.unload();
+      howlRef.current = null;
+    }
+    setIsPlaying(false);
+    setIsLoading(false);
+    setError(null);
   };
 
   const getUpUrl = (obj: any) => {
@@ -207,6 +219,13 @@ const SontItem = ({ item }: { item: SearchResultItem }) => {
 
         {/* 操作按钮 */}
         <div className="flex items-center gap-2">
+          <button
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200"
+            onClick={handleStop}
+            title="停止"
+          >
+            <Square size={20} />
+          </button>
           <button
             className={`p-2 rounded-full transition-colors duration-200 ${
               isPlaying
