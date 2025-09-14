@@ -1,5 +1,5 @@
-import { HistoryItem } from "./types";
-import { getAllHistory } from "./db";
+import { HistoryItem, LikedMusic } from "./types";
+import { getAllHistory, getAllLikedMusic } from "./db";
 import { getTypeTag, getContentUrl } from "./common";
 
 /**
@@ -117,6 +117,35 @@ export const exportHistoryToJSON = async (): Promise<void> => {
     URL.revokeObjectURL(url);
   } catch (error) {
     console.error("导出历史记录为JSON失败:", error);
+    throw error;
+  }
+};
+
+/**
+ * 导出喜欢音乐为JSON文件
+ */
+export const exportLikedMusicToJSON = async (): Promise<void> => {
+  try {
+    const items = await getAllLikedMusic();
+
+    const json = JSON.stringify(items, null, 2);
+
+    const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+
+    const date = new Date().toISOString().split("T")[0];
+    link.download = `bilibili-liked-music-${date}.json`;
+
+    document.body.appendChild(link);
+    link.click();
+
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("导出喜欢音乐为JSON失败:", error);
     throw error;
   }
 };

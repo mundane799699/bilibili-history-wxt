@@ -6,9 +6,14 @@ import {
   SYNC_INTERVAL,
   IS_SYNC_DELETE_FROM_BILIBILI,
 } from "../utils/constants";
-import { exportHistoryToCSV, exportHistoryToJSON } from "../utils/export";
+import {
+  exportHistoryToCSV,
+  exportHistoryToJSON,
+  exportLikedMusicToJSON,
+} from "../utils/export";
 import toast from "react-hot-toast";
-import { HistoryItem } from "../utils/types";
+import { HistoryItem, LikedMusic } from "../utils/types";
+import { importLikedMusic } from "../utils/db";
 
 const Settings = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -23,6 +28,8 @@ const Settings = () => {
 
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isExportingMusic, setIsExportingMusic] = useState(false);
+  const [isImportingMusic, setIsImportingMusic] = useState(false);
   const [exportFormat, setExportFormat] = useState<"csv" | "json">("json");
   const [syncInterval, setSyncInterval] = useState(1);
 
@@ -161,6 +168,78 @@ const Settings = () => {
     }
   };
 
+  const handleExportLikedMusic = async () => {
+    try {
+      setIsExportingMusic(true);
+      await exportLikedMusicToJSON();
+      toast.success("我喜欢的音乐导出成功！");
+    } catch (error) {
+      console.error("导出我喜欢的音乐失败:", error);
+      toast.error("导出我喜欢的音乐失败，请重试！");
+    } finally {
+      setIsExportingMusic(false);
+    }
+  };
+
+  const handleImportLikedMusic = async () => {
+    try {
+      setIsImportingMusic(true);
+      const fileInput = document.createElement("input");
+      fileInput.type = "file";
+      fileInput.accept = ".json";
+
+      fileInput.onchange = async (event) => {
+        const file = (event.target as HTMLInputElement).files?.[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            try {
+              const jsonContent = e.target?.result as string;
+              const items = JSON.parse(jsonContent) as LikedMusic[];
+              if (
+                !Array.isArray(items) ||
+                items.some(
+                  (item) =>
+                    typeof item.bvid === "undefined" ||
+                    typeof item.title === "undefined" ||
+                    typeof item.added_at === "undefined"
+                )
+              ) {
+                toast.error(
+                  "文件内容格式不正确，请确保导入的是正确的喜欢音乐文件。"
+                );
+                setIsImportingMusic(false);
+                return;
+              }
+              await importLikedMusic(items);
+              toast.success("我喜欢的音乐导入成功！");
+            } catch (parseError) {
+              console.error("解析JSON文件失败:", parseError);
+              toast.error("导入失败，文件格式错误或内容不正确。");
+            } finally {
+              setIsImportingMusic(false);
+            }
+          };
+          reader.onerror = () => {
+            console.error("读取文件失败");
+            toast.error("导入失败，无法读取文件。");
+            setIsImportingMusic(false);
+          };
+          reader.readAsText(file);
+        } else {
+          setIsImportingMusic(false);
+        }
+      };
+
+      fileInput.click();
+    } catch (error) {
+      console.error(`导入我喜欢的音乐失败:`, error);
+      toast.error("导入我喜欢的音乐失败，请重试。");
+    } finally {
+      setIsImportingMusic(false);
+    }
+  };
+
   return (
     <div className="p-4 flex flex-col container mx-auto items-center">
       <div className="w-full max-w-md mb-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-300 ease-in-out">
@@ -289,7 +368,51 @@ const Settings = () => {
       <div className="w-full max-w-md mb-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-300 ease-in-out">
         <div className="flex items-center justify-between p-4">
           <div>
-            <h3 className="text-lg font-medium text-blue-600">
+            <h3 className="text-lg font-medium text-purple-600">
+              导出我喜欢的音乐
+            </h3>
+            <p className="text-sm text-gray-500">
+              将所有喜欢的音乐导出为JSON文件
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleExportLikedMusic}
+              className="px-4 py-2 text-sm text-white bg-purple-500 rounded hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isExportingMusic}
+            >
+              {isExportingMusic ? "导出中..." : "导出"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="w-full max-w-md mb-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-300 ease-in-out">
+        <div className="flex items-center justify-between p-4">
+          <div>
+            <h3 className="text-lg font-medium text-purple-600">
+              导入我喜欢的音乐
+            </h3>
+            <p className="text-sm text-gray-500">
+              将.json文件导入，恢复喜欢的音乐
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleImportLikedMusic}
+              className="px-4 py-2 text-sm text-white bg-purple-500 rounded hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isImportingMusic}
+            >
+              {isImportingMusic ? "导入中..." : "导入"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="w-full max-w-md mb-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-300 ease-in-out">
+        <div className="flex items-center justify-between p-4">
+          <div>
+            <h3 className="text-lg font-medium text-fuchsia-600">
               自动同步时间间隔
             </h3>
             <p className="text-sm text-gray-500">单位：分钟，最小值为1</p>
@@ -297,7 +420,7 @@ const Settings = () => {
           <div className="flex items-center space-x-2">
             <button
               onClick={() => handleSyncIntervalChange(syncInterval - 1)}
-              className="px-3 py-1 text-sm text-white bg-blue-500 rounded hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1 text-sm text-white bg-fuchsia-500 rounded hover:bg-fuchsia-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={syncInterval <= 1}
             >
               -
@@ -314,7 +437,7 @@ const Settings = () => {
             />
             <button
               onClick={() => handleSyncIntervalChange(syncInterval + 1)}
-              className="px-3 py-1 text-sm text-white bg-blue-500 rounded hover:bg-blue-600 transition-colors"
+              className="px-3 py-1 text-sm text-white bg-fuchsia-500 rounded hover:bg-fuchsia-600 transition-colors"
             >
               +
             </button>

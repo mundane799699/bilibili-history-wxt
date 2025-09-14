@@ -652,3 +652,53 @@ export const clearLikedMusic = async (): Promise<void> => {
     };
   });
 };
+
+export const importLikedMusic = async (musicList: LikedMusic[]): Promise<void> => {
+  const db = await openDB();
+  const tx = db.transaction("likedMusic", "readwrite");
+  const store = tx.objectStore("likedMusic");
+
+  return new Promise((resolve, reject) => {
+    let operationsCompleted = 0;
+    let operationsFailed = false;
+
+    if (musicList.length === 0) {
+      resolve();
+      return;
+    }
+
+    musicList.forEach((music) => {
+      if (operationsFailed) return;
+
+      const request = store.put(music);
+      request.onsuccess = () => {
+        operationsCompleted++;
+      };
+      request.onerror = () => {
+        if (!operationsFailed) {
+          operationsFailed = true;
+          console.error(
+            "向 IndexedDB 中 put 喜欢音乐项目失败:",
+            request.error,
+            "项目:",
+            music
+          );
+        }
+      };
+    });
+
+    tx.oncomplete = () => {
+      if (!operationsFailed) {
+        console.log("所有喜欢音乐已成功导入。");
+        resolve();
+      } else {
+        reject(new Error("部分或全部喜欢音乐项目导入失败，但事务意外完成。"));
+      }
+    };
+
+    tx.onerror = () => {
+      console.error("导入喜欢音乐事务失败:", tx.error);
+      reject(tx.error);
+    };
+  });
+};
