@@ -13,10 +13,47 @@ interface LikedMusicItemProps {
   playError?: string;
 }
 
+// 波动动画组件
+const WaveAnimation = () => {
+  return (
+    <div className="flex items-center justify-center space-x-1">
+      <div
+        className="w-1 h-4 bg-pink-500 rounded-full animate-pulse"
+        style={{
+          animationDelay: "0ms",
+          animationDuration: "800ms",
+        }}
+      ></div>
+      <div
+        className="w-1 h-6 bg-pink-500 rounded-full animate-pulse"
+        style={{
+          animationDelay: "200ms",
+          animationDuration: "800ms",
+        }}
+      ></div>
+      <div
+        className="w-1 h-3 bg-pink-500 rounded-full animate-pulse"
+        style={{
+          animationDelay: "400ms",
+          animationDuration: "800ms",
+        }}
+      ></div>
+      <div
+        className="w-1 h-5 bg-pink-500 rounded-full animate-pulse"
+        style={{
+          animationDelay: "600ms",
+          animationDuration: "800ms",
+        }}
+      ></div>
+    </div>
+  );
+};
+
 const LikedMusicItem = ({
   music,
   onRemoved,
   onPlay,
+  isPlaying,
   playError,
 }: LikedMusicItemProps) => {
   // 取消收藏状态管理
@@ -56,6 +93,12 @@ const LikedMusicItem = ({
             alt={music.title}
             className="w-full h-full object-cover rounded-lg"
           />
+          {/* 播放状态指示器 */}
+          {isPlaying && (
+            <div className="absolute inset-0 bg-black bg-opacity-30 rounded-lg flex items-center justify-center">
+              <WaveAnimation />
+            </div>
+          )}
         </div>
 
         {/* 音乐信息 */}

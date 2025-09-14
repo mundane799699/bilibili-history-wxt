@@ -83,8 +83,8 @@ export const openDB = (): Promise<IDBDatabase> => {
         getAllRequest.onerror = () => {
           console.error("数据迁移失败:", getAllRequest.error);
         };
-      } else if (oldVersion === 2 && newVersion >= 3) {
-        // 从版本2升级到版本3：创建likedMusic表（使用bvid作为主键）
+      } else if (oldVersion <= 2 && newVersion >= 3) {
+        // 从版本2及以下升级到版本3及以上：创建likedMusic表（使用bvid作为主键）
         console.log("创建likedMusic表");
 
         const likedMusicStore = db.createObjectStore("likedMusic", {
