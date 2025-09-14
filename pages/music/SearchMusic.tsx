@@ -151,7 +151,7 @@ const SearchMusic = () => {
   }, [loading, searchQuery, loadMore]); // 依赖项：当loading状态、搜索关键词或loadMore函数变化时重新创建observer
 
   return (
-    <div className="">
+    <div className="min-h-screen">
       {/* 搜索框区域 */}
       <div className="flex items-center gap-4 sticky p-4 top-0 bg-white z-10 border-b border-gray-200">
         <input
