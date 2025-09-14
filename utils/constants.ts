@@ -11,6 +11,11 @@ export const SYNC_TIME_REMAIN = "syncTimeRemain";
 
 export const UPDATE_HISTORY = [
   {
+    date: "2025-09-14",
+    version: "1.8.0",
+    changes: ["增加听歌功能，超级棒！！！"],
+  },
+  {
     date: "2025-07-09",
     version: "1.7.2",
     changes: [
