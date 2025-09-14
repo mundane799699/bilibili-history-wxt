@@ -51,15 +51,8 @@ const LikedMusic = () => {
 
       // 如果当前音乐正在播放，则暂停
       if (currentPlaying === bvid && howlRef.current) {
-        const currentState = playingStates[bvid];
-        if (currentState?.isPlaying) {
-          howlRef.current.pause();
-          return;
-        } else {
-          // 如果是暂停状态，继续播放
-          howlRef.current.play();
-          return;
-        }
+        console.log("当前点击的音乐正在播放");
+        return;
       }
 
       // 如果有其他音乐在播放，先停止并重置其状态
@@ -321,7 +314,7 @@ const LikedMusic = () => {
               </button>
 
               <button
-                className={`p-3 rounded-full transition-colors duration-200 ${
+                className={`p-2 rounded-full transition-colors duration-200 ${
                   currentState?.isPlaying
                     ? "bg-pink-500 text-white hover:bg-pink-600"
                     : "bg-gray-100 hover:bg-gray-200"
@@ -362,18 +355,18 @@ const LikedMusic = () => {
 
           {/* 当前播放信息 */}
           {currentMusic && (
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 w-96">
               <img
                 src={currentMusic.pic}
                 alt={currentMusic.title}
-                className="w-32 h-20 object-cover rounded-lg"
+                className="w-16 h-10 object-cover rounded-lg"
               />
-              <div className="min-w-0 max-w-xs">
+              <div className="min-w-0">
                 <a
                   href={`https://www.bilibili.com/video/${currentMusic.bvid}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm font-medium text-gray-900 truncate cursor-pointer"
+                  className="block text-sm font-medium text-gray-900 truncate cursor-pointer"
                 >
                   {currentMusic.title}
                 </a>
@@ -401,7 +394,6 @@ const LikedMusic = () => {
                 music={music}
                 onRemoved={() => handleMusicRemoved(music.bvid)}
                 onPlay={() => handlePlay(music)}
-                onStop={() => handleStop(music.bvid)}
                 isPlaying={playingStates[music.bvid]?.isPlaying || false}
                 isLoading={playingStates[music.bvid]?.isLoading || false}
                 playError={playingStates[music.bvid]?.error}

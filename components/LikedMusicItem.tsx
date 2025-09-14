@@ -8,7 +8,6 @@ interface LikedMusicItemProps {
   music: LikedMusic;
   onRemoved?: () => void;
   onPlay: () => void;
-  onStop: () => void;
   isPlaying: boolean;
   isLoading: boolean;
   playError?: string;
@@ -18,10 +17,7 @@ const LikedMusicItem = ({
   music,
   onRemoved,
   onPlay,
-  onStop,
-  isPlaying,
-  isLoading,
-  playError
+  playError,
 }: LikedMusicItemProps) => {
   // 取消收藏状态管理
   const [removing, setRemoving] = useState(false);
@@ -31,7 +27,8 @@ const LikedMusicItem = ({
     return dayjs(timestamp).format("YYYY-MM-DD HH:mm:ss");
   };
 
-  const handleRemove = async () => {
+  const handleRemove = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (removing) return;
 
     setRemoving(true);
@@ -46,9 +43,11 @@ const LikedMusicItem = ({
     }
   };
 
-
   return (
-    <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
+    <div
+      className="bg-white rounded-lg shadow-md hover:shadow-lg hover:bg-gray-50 transition-shadow duration-300 overflow-hidden cursor-pointer"
+      onClick={() => onPlay()}
+    >
       <div className="flex gap-4 p-4 items-center">
         {/* 音乐封面 */}
         <div className="flex-shrink-0 w-32 h-20 relative">
@@ -62,17 +61,17 @@ const LikedMusicItem = ({
         {/* 音乐信息 */}
         <div className="flex-1 min-w-0">
           {/* 标题 */}
-          <h3
-            className="text-lg font-semibold text-gray-900 mb-2 truncate hover:text-pink-600 cursor-pointer"
-            onClick={() =>
-              window.open(
-                `https://www.bilibili.com/video/${music.bvid}`,
-                "_blank"
-              )
-            }
-          >
-            {music.title}
-          </h3>
+          <div className="truncate">
+            <a
+              href={`https://www.bilibili.com/video/${music.bvid}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-lg font-semibold text-gray-900 mb-2  hover:text-pink-600 cursor-pointer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {music.title}
+            </a>
+          </div>
 
           {/* UP主信息 */}
           <div className="flex items-center gap-2 mb-2">
@@ -81,6 +80,7 @@ const LikedMusicItem = ({
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm text-gray-600 hover:text-pink-600 cursor-pointer"
+              onClick={(e) => e.stopPropagation()}
             >
               {music.author}
             </a>
@@ -100,31 +100,6 @@ const LikedMusicItem = ({
 
         {/* 操作按钮 */}
         <div className="flex items-center gap-2">
-          <button
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200"
-            onClick={onStop}
-            title="停止"
-          >
-            <Square size={20} />
-          </button>
-          <button
-            className={`p-2 rounded-full transition-colors duration-200 ${
-              isPlaying
-                ? "bg-pink-500 text-white hover:bg-pink-600"
-                : "hover:bg-gray-100"
-            } ${isLoading ? "cursor-not-allowed" : "cursor-pointer"}`}
-            onClick={onPlay}
-            disabled={isLoading}
-            title={isLoading ? "加载中..." : isPlaying ? "暂停" : "播放"}
-          >
-            {isLoading ? (
-              <Loader2 size={20} className="animate-spin" />
-            ) : isPlaying ? (
-              <Pause size={20} />
-            ) : (
-              <Play size={20} />
-            )}
-          </button>
           <button
             className={`p-2 rounded-full transition-colors duration-200 hover:bg-gray-100 ${
               removing ? "cursor-not-allowed" : "cursor-pointer"
