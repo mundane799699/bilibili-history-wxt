@@ -39,6 +39,32 @@ const LikedMusic = () => {
     return urlList[0] || url1;
   };
 
+  // 处理歌曲播放结束后的自动切换逻辑
+  const handleMusicEnd = (endedBvid: string) => {
+    setPlayingStates((prev) => ({
+      ...prev,
+      [endedBvid]: { isPlaying: false, isLoading: false },
+    }));
+
+    // 找到当前音乐在播放列表中的索引
+    const currentIndex = likedMusic.findIndex(
+      (music) => music.bvid === endedBvid
+    );
+
+    if (currentIndex >= 0 && currentIndex < likedMusic.length - 1) {
+      // 如果有下一首歌，自动播放
+      const nextMusic = likedMusic[currentIndex + 1];
+      console.log("自动播放下一首:", nextMusic.title);
+      setTimeout(() => {
+        handlePlay(nextMusic);
+      }, 500); // 延迟500ms播放下一首，避免状态冲突
+    } else {
+      // 如果没有下一首歌，停止播放
+      console.log("播放列表结束，停止播放");
+      setCurrentPlaying(null);
+    }
+  };
+
   const handlePlay = async (music: LikedMusicType) => {
     try {
       const bvid = music.bvid;
@@ -133,11 +159,7 @@ const LikedMusic = () => {
           }));
         },
         onend: () => {
-          setPlayingStates((prev) => ({
-            ...prev,
-            [bvid]: { isPlaying: false, isLoading: false },
-          }));
-          setCurrentPlaying(null);
+          handleMusicEnd(bvid);
         },
         onplayerror: (_id: any, error: any) => {
           console.error("播放错误:", error);
