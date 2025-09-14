@@ -1,6 +1,5 @@
 import { Play, Pause, Loader2, Square, Trash2 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
-import { Howl } from "howler";
+import { useState } from "react";
 import dayjs from "dayjs";
 import { deleteLikedMusic } from "../utils/db";
 import { LikedMusic } from "../utils/types";
@@ -8,135 +7,28 @@ import { LikedMusic } from "../utils/types";
 interface LikedMusicItemProps {
   music: LikedMusic;
   onRemoved?: () => void;
+  onPlay: () => void;
+  onStop: () => void;
+  isPlaying: boolean;
+  isLoading: boolean;
+  playError?: string;
 }
 
-const LikedMusicItem = ({ music, onRemoved }: LikedMusicItemProps) => {
-  // 音频播放状态管理
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const howlRef = useRef<Howl | null>(null);
-
+const LikedMusicItem = ({
+  music,
+  onRemoved,
+  onPlay,
+  onStop,
+  isPlaying,
+  isLoading,
+  playError
+}: LikedMusicItemProps) => {
   // 取消收藏状态管理
   const [removing, setRemoving] = useState(false);
-
-  // 组件卸载时清理音频资源
-  useEffect(() => {
-    return () => {
-      if (howlRef.current) {
-        howlRef.current.stop();
-        howlRef.current.unload();
-      }
-    };
-  }, []);
 
   // 格式化时间戳
   const formatDate = (timestamp: number): string => {
     return dayjs(timestamp).format("YYYY-MM-DD HH:mm:ss");
-  };
-
-  const handlePlay = async () => {
-    try {
-      setError(null);
-
-      // 如果已经有音频实例且正在播放，则暂停
-      if (isPlaying && howlRef.current) {
-        howlRef.current.pause();
-        setIsPlaying(false);
-        return;
-      }
-
-      // 如果已经有音频实例但暂停了，则继续播放
-      if (howlRef.current && !isPlaying) {
-        howlRef.current.play();
-        return;
-      }
-
-      // 如果没有音频实例，则创建新的
-      setIsLoading(true);
-
-      // 获取视频信息
-      const response = await fetch(
-        `https://api.bilibili.com/x/web-interface/view?bvid=${music.bvid}`
-      );
-      const { data, code, message } = await response.json();
-      if (code !== 0) {
-        throw new Error(message || "获取视频信息失败");
-      }
-      const { cid } = data;
-
-      // 获取播放地址
-      const response2 = await fetch(
-        `https://api.bilibili.com/x/player/playurl?fnval=16&bvid=${music.bvid}&cid=${cid}`
-      );
-      const {
-        data: data2,
-        code: code2,
-        message: message2,
-      } = await response2.json();
-      if (code2 !== 0) {
-        throw new Error(message2 || "获取播放地址失败");
-      }
-
-      const { dash } = data2;
-      if (!dash || !dash.audio || dash.audio.length === 0) {
-        throw new Error("未找到音频流");
-      }
-
-      const url = getUpUrl(dash.audio[0]);
-
-      // 创建新的Howl实例
-      howlRef.current = new Howl({
-        src: [url],
-        format: ["m4a", "mp3"],
-        html5: true,
-        onload: () => {
-          setIsLoading(false);
-        },
-        onplay: () => {
-          setIsPlaying(true);
-          setIsLoading(false);
-        },
-        onpause: () => {
-          setIsPlaying(false);
-        },
-        onend: () => {
-          setIsPlaying(false);
-          setIsLoading(false);
-        },
-        onplayerror: (id: any, error: any) => {
-          console.error("播放错误:", error);
-          setError("音频播放失败");
-          setIsPlaying(false);
-          setIsLoading(false);
-        },
-        onloaderror: (id: any, error: any) => {
-          console.error("加载错误:", error);
-          setError("音频加载失败");
-          setIsPlaying(false);
-          setIsLoading(false);
-        },
-      });
-
-      // 播放音频
-      howlRef.current.play();
-    } catch (error) {
-      console.error("播放失败:", error);
-      setError(error instanceof Error ? error.message : "播放失败");
-      setIsPlaying(false);
-      setIsLoading(false);
-    }
-  };
-
-  const handleStop = () => {
-    if (howlRef.current) {
-      howlRef.current.stop();
-      howlRef.current.unload();
-      howlRef.current = null;
-    }
-    setIsPlaying(false);
-    setIsLoading(false);
-    setError(null);
   };
 
   const handleRemove = async () => {
@@ -149,23 +41,11 @@ const LikedMusicItem = ({ music, onRemoved }: LikedMusicItemProps) => {
       onRemoved?.();
     } catch (error) {
       console.error("取消收藏失败:", error);
-      setError(error instanceof Error ? error.message : "取消收藏失败");
     } finally {
       setRemoving(false);
     }
   };
 
-  const getUpUrl = (obj: any) => {
-    const url1 = obj.baseUrl || "";
-    const url2 = obj.backup_url?.[0] || "";
-    const url3 = obj.backup_url?.[1] || "";
-
-    // 找到第一个不是https://xy 开头的url
-    const urlList = [url1, url2, url3].filter(
-      (url) => !url.startsWith("https://xy")
-    );
-    return urlList[0] || url1;
-  };
 
   return (
     <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
@@ -210,10 +90,10 @@ const LikedMusicItem = ({ music, onRemoved }: LikedMusicItemProps) => {
           </div>
 
           {/* 错误提示 */}
-          {error && (
+          {playError && (
             <div className="text-red-500 text-xs mb-2 flex items-center gap-1">
               <span>⚠️</span>
-              <span>{error}</span>
+              <span>{playError}</span>
             </div>
           )}
         </div>
@@ -222,7 +102,7 @@ const LikedMusicItem = ({ music, onRemoved }: LikedMusicItemProps) => {
         <div className="flex items-center gap-2">
           <button
             className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200"
-            onClick={handleStop}
+            onClick={onStop}
             title="停止"
           >
             <Square size={20} />
@@ -233,7 +113,7 @@ const LikedMusicItem = ({ music, onRemoved }: LikedMusicItemProps) => {
                 ? "bg-pink-500 text-white hover:bg-pink-600"
                 : "hover:bg-gray-100"
             } ${isLoading ? "cursor-not-allowed" : "cursor-pointer"}`}
-            onClick={handlePlay}
+            onClick={onPlay}
             disabled={isLoading}
             title={isLoading ? "加载中..." : isPlaying ? "暂停" : "播放"}
           >
