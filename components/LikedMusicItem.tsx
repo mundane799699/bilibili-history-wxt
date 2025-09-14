@@ -1,34 +1,24 @@
-import { Heart, Play, Pause, Loader2, Square } from "lucide-react";
-import { SearchResultItem } from "../pages/music/SearchMusic";
+import { Play, Pause, Loader2, Square, Trash2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { Howl } from "howler";
-import { saveLikedMusic, deleteLikedMusic, isLikedMusic } from "../utils/db";
+import dayjs from "dayjs";
+import { deleteLikedMusic } from "../utils/db";
 import { LikedMusic } from "../utils/types";
-import { toast } from "react-hot-toast";
 
-const SontItem = ({ item }: { item: SearchResultItem }) => {
+interface LikedMusicItemProps {
+  music: LikedMusic;
+  onRemoved?: () => void;
+}
+
+const LikedMusicItem = ({ music, onRemoved }: LikedMusicItemProps) => {
   // 音频播放状态管理
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const howlRef = useRef<Howl | null>(null);
 
-  // 收藏状态管理
-  const [isLiked, setIsLiked] = useState(false);
-  const [likeLoading, setLikeLoading] = useState(false);
-
-  // 组件加载时检查收藏状态
-  useEffect(() => {
-    const checkLikedStatus = async () => {
-      try {
-        const liked = await isLikedMusic(item.bvid);
-        setIsLiked(liked);
-      } catch (error) {
-        console.error("检查收藏状态失败:", error);
-      }
-    };
-    checkLikedStatus();
-  }, [item.bvid]);
+  // 取消收藏状态管理
+  const [removing, setRemoving] = useState(false);
 
   // 组件卸载时清理音频资源
   useEffect(() => {
@@ -40,34 +30,12 @@ const SontItem = ({ item }: { item: SearchResultItem }) => {
     };
   }, []);
 
-  const getCover = (item: SearchResultItem) => {
-    let cover = "";
-    switch (item.type) {
-      case "video":
-        cover = `https:${item.pic}@672w_378h_1c_!web-search-common-cover.avif`;
-        break;
-      case "ketang":
-        cover = `${item.pic}@672w_378h_1c_!web-search-common-cover.avif`;
-        break;
-      default:
-        cover = item.pic;
-    }
-    return cover;
-  };
-
   // 格式化时间戳
   const formatDate = (timestamp: number): string => {
-    if (timestamp === 0) return "";
-    const date = new Date(timestamp * 1000);
-    return date.toLocaleDateString("zh-CN");
+    return dayjs(timestamp).format("YYYY-MM-DD HH:mm:ss");
   };
 
-  // 清理HTML标签
-  const cleanHtml = (html: string): string => {
-    return html.replace(/<[^>]*>/g, "");
-  };
-
-  const handlePlay = async (item: SearchResultItem) => {
+  const handlePlay = async () => {
     try {
       setError(null);
 
@@ -87,9 +55,9 @@ const SontItem = ({ item }: { item: SearchResultItem }) => {
       // 如果没有音频实例，则创建新的
       setIsLoading(true);
 
-      // https://api.bilibili.com/x/web-interface/view?bvid=BV1Za411A78m
+      // 获取视频信息
       const response = await fetch(
-        `https://api.bilibili.com/x/web-interface/view?bvid=${item.bvid}`
+        `https://api.bilibili.com/x/web-interface/view?bvid=${music.bvid}`
       );
       const { data, code, message } = await response.json();
       if (code !== 0) {
@@ -97,9 +65,9 @@ const SontItem = ({ item }: { item: SearchResultItem }) => {
       }
       const { cid } = data;
 
-      // https://api.bilibili.com/x/player/playurl?fnval=16&bvid=BV1ZL411i7YQ&cid=1141484127
+      // 获取播放地址
       const response2 = await fetch(
-        `https://api.bilibili.com/x/player/playurl?fnval=16&bvid=${item.bvid}&cid=${cid}`
+        `https://api.bilibili.com/x/player/playurl?fnval=16&bvid=${music.bvid}&cid=${cid}`
       );
       const {
         data: data2,
@@ -116,31 +84,25 @@ const SontItem = ({ item }: { item: SearchResultItem }) => {
       }
 
       const url = getUpUrl(dash.audio[0]);
-      // 音频URL: https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/27/41/1141484127/1141484127_nb3-1-30232.m4s?e=ig8euxZM2rNcNbdlhoNvNC8BqJIzNbfqXBvEqxTEto8BTrNvN0GvT90W5JZMkX_YN0MvXg8gNEV4NC8xNEV4N03eN0B5tZlqNxTEto8BTrNvNeZVuJ10Kj_g2UB02J0mN0B5tZlqNCNEto8BTrNvNC7MTX502C8f2jmMQJ6mqF2fka1mqx6gqj0eN0B599M=&platform=pc&deadline=1757742372&os=cosbv&og=cos&trid=24f4d752005449a694e70e34a474887u&uipk=5&mid=3382088&oi=0x240884410c08bb3055767312c03672b6&nbs=1&gen=playurlv3&upsig=43553846d3b0a2d670779d40cc004c7d&uparams=e,platform,deadline,os,og,trid,uipk,mid,oi,nbs,gen&bvc=vod&nettype=0&bw=109960&dl=0&f=u_0_0&agrr=0&buvid=59B5EE85-AC62-367D-45DE-0FE215D3A8BF29152infoc&build=0&orderid=1,3
-      console.log("音频URL:", url);
 
       // 创建新的Howl实例
       howlRef.current = new Howl({
         src: [url],
         format: ["m4a", "mp3"],
-        html5: true, // 强制使用HTML5 Audio
+        html5: true,
         onload: () => {
           setIsLoading(false);
-          console.log("音频加载完成");
         },
         onplay: () => {
           setIsPlaying(true);
           setIsLoading(false);
-          console.log("开始播放");
         },
         onpause: () => {
           setIsPlaying(false);
-          console.log("暂停播放");
         },
         onend: () => {
           setIsPlaying(false);
           setIsLoading(false);
-          console.log("播放结束");
         },
         onplayerror: (id: any, error: any) => {
           console.error("播放错误:", error);
@@ -177,43 +139,19 @@ const SontItem = ({ item }: { item: SearchResultItem }) => {
     setError(null);
   };
 
-  const handleLike = async () => {
-    if (likeLoading) {
-      return;
-    }
-    if (item.type !== "video") {
-      toast("暂不支持的类型", {
-        icon: "🙂",
-      });
-      return;
-    }
+  const handleRemove = async () => {
+    if (removing) return;
 
-    setLikeLoading(true);
+    setRemoving(true);
     try {
-      if (isLiked) {
-        // 取消收藏
-        await deleteLikedMusic(item.bvid);
-        setIsLiked(false);
-        console.log("取消收藏成功:", item.title);
-      } else {
-        // 添加收藏
-        const likedMusic: LikedMusic = {
-          bvid: item.bvid,
-          title: cleanHtml(item.title),
-          author: item.author,
-          mid: item.mid,
-          pic: getCover(item),
-          added_at: Date.now(),
-        };
-        await saveLikedMusic(likedMusic);
-        setIsLiked(true);
-        console.log("收藏成功:", item.title);
-      }
+      await deleteLikedMusic(music.bvid);
+      console.log("取消收藏成功:", music.title);
+      onRemoved?.();
     } catch (error) {
-      console.error("操作失败:", error);
-      setError(error instanceof Error ? error.message : "操作失败");
+      console.error("取消收藏失败:", error);
+      setError(error instanceof Error ? error.message : "取消收藏失败");
     } finally {
-      setLikeLoading(false);
+      setRemoving(false);
     }
   };
 
@@ -232,46 +170,44 @@ const SontItem = ({ item }: { item: SearchResultItem }) => {
   return (
     <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
       <div className="flex gap-4 p-4 items-center">
-        {/* 视频封面 */}
-        <div className="flex-shrink-0 w-40 h-24 relative">
+        {/* 音乐封面 */}
+        <div className="flex-shrink-0 w-32 h-20 relative">
           <img
-            src={getCover(item)}
-            alt={cleanHtml(item.title)}
+            src={music.pic}
+            alt={music.title}
             className="w-full h-full object-cover rounded-lg"
           />
-          <div className="absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-xs px-1 rounded">
-            {item.duration}
-          </div>
         </div>
 
-        {/* 视频信息 */}
+        {/* 音乐信息 */}
         <div className="flex-1 min-w-0">
           {/* 标题 */}
           <h3
             className="text-lg font-semibold text-gray-900 mb-2 truncate hover:text-pink-600 cursor-pointer"
-            onClick={() => window.open(item.arcurl, "_blank")}
-            dangerouslySetInnerHTML={{ __html: item.title }}
-          />
+            onClick={() =>
+              window.open(
+                `https://www.bilibili.com/video/${music.bvid}`,
+                "_blank"
+              )
+            }
+          >
+            {music.title}
+          </h3>
 
           {/* UP主信息 */}
           <div className="flex items-center gap-2 mb-2">
             <a
-              href={`https://space.bilibili.com/${item.mid}`}
+              href={`https://space.bilibili.com/${music.mid}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm text-gray-600 hover:text-pink-600 cursor-pointer"
             >
-              {item.author}
+              {music.author}
             </a>
             <span className="text-xs text-gray-400">
-              {formatDate(item.pubdate)}
+              收藏于 {formatDate(music.added_at)}
             </span>
           </div>
-
-          {/* 描述 */}
-          <p className="text-sm text-gray-600 mb-3 truncate">
-            {item.description}
-          </p>
 
           {/* 错误提示 */}
           {error && (
@@ -297,7 +233,7 @@ const SontItem = ({ item }: { item: SearchResultItem }) => {
                 ? "bg-pink-500 text-white hover:bg-pink-600"
                 : "hover:bg-gray-100"
             } ${isLoading ? "cursor-not-allowed" : "cursor-pointer"}`}
-            onClick={() => handlePlay(item)}
+            onClick={handlePlay}
             disabled={isLoading}
             title={isLoading ? "加载中..." : isPlaying ? "暂停" : "播放"}
           >
@@ -310,19 +246,17 @@ const SontItem = ({ item }: { item: SearchResultItem }) => {
             )}
           </button>
           <button
-            className={`p-2 rounded-full transition-colors duration-200 ${
-              isLiked
-                ? "bg-pink-500 text-white hover:bg-pink-600"
-                : "hover:bg-gray-100"
-            } ${likeLoading ? "cursor-not-allowed" : "cursor-pointer"}`}
-            onClick={handleLike}
-            disabled={likeLoading}
-            title={likeLoading ? "处理中..." : isLiked ? "取消收藏" : "收藏"}
+            className={`p-2 rounded-full transition-colors duration-200 hover:bg-gray-100 ${
+              removing ? "cursor-not-allowed" : "cursor-pointer"
+            }`}
+            onClick={handleRemove}
+            disabled={removing}
+            title={removing ? "处理中..." : "取消收藏"}
           >
-            {likeLoading ? (
+            {removing ? (
               <Loader2 size={20} className="animate-spin" />
             ) : (
-              <Heart size={20} fill={isLiked ? "currentColor" : "none"} />
+              <Trash2 size={20} />
             )}
           </button>
         </div>
@@ -331,4 +265,4 @@ const SontItem = ({ item }: { item: SearchResultItem }) => {
   );
 };
 
-export default SontItem;
+export default LikedMusicItem;

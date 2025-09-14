@@ -13,11 +13,24 @@ export interface HistoryItem {
   uploaded?: boolean;
 }
 
+export interface LikedMusic {
+  bvid: string;
+  title: string;
+  author: string;
+  mid: number;
+  pic: string;
+  added_at: number;
+}
+
 export interface DBConfig {
   name: string;
   version: number;
   stores: {
     history: {
+      keyPath: string;
+      indexes: string[];
+    };
+    likedMusic: {
       keyPath: string;
       indexes: string[];
     };

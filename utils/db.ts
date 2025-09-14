@@ -1,13 +1,17 @@
-import { DBConfig, HistoryItem } from "./types";
+import { DBConfig, HistoryItem, LikedMusic } from "./types";
 import dayjs from "dayjs";
 
 const DB_CONFIG: DBConfig = {
   name: "bilibiliHistory",
-  version: 2,
+  version: 3,
   stores: {
     history: {
       keyPath: "id",
       indexes: ["view_at"],
+    },
+    likedMusic: {
+      keyPath: "bvid",
+      indexes: ["added_at"],
     },
   },
 };
@@ -30,8 +34,14 @@ export const openDB = (): Promise<IDBDatabase> => {
 
       // 首次创建数据库 (oldVersion === 0)
       if (oldVersion === 0) {
-        const store = db.createObjectStore("history", { keyPath: "id" });
-        store.createIndex("view_at", "view_at", { unique: false });
+        const historyStore = db.createObjectStore("history", { keyPath: "id" });
+        historyStore.createIndex("view_at", "view_at", { unique: false });
+
+        const likedMusicStore = db.createObjectStore("likedMusic", {
+          keyPath: "bvid",
+        });
+        likedMusicStore.createIndex("added_at", "added_at", { unique: false });
+
         console.log("首次创建数据库和索引");
       } else if (oldVersion === 1 && newVersion >= 2) {
         // 从版本1升级到版本2：重命名viewTime字段为view_at
@@ -73,6 +83,16 @@ export const openDB = (): Promise<IDBDatabase> => {
         getAllRequest.onerror = () => {
           console.error("数据迁移失败:", getAllRequest.error);
         };
+      } else if (oldVersion === 2 && newVersion >= 3) {
+        // 从版本2升级到版本3：创建likedMusic表（使用bvid作为主键）
+        console.log("创建likedMusic表");
+
+        const likedMusicStore = db.createObjectStore("likedMusic", {
+          keyPath: "bvid",
+        });
+        likedMusicStore.createIndex("added_at", "added_at", { unique: false });
+
+        console.log("likedMusic表创建完成");
       }
     };
   });
@@ -452,6 +472,183 @@ export const markAllHistoryAsUnuploaded = async (): Promise<void> => {
     tx.onerror = () => {
       console.error("标记所有历史记录为未上传的事务失败:", tx.error);
       reject(tx.error);
+    };
+  });
+};
+
+// 喜欢音乐相关函数
+export const saveLikedMusic = async (music: LikedMusic): Promise<void> => {
+  const db = await openDB();
+  const tx = db.transaction("likedMusic", "readwrite");
+  const store = tx.objectStore("likedMusic");
+
+  return new Promise((resolve, reject) => {
+    const request = store.put(music);
+
+    request.onsuccess = () => {
+      console.log("喜欢的音乐已保存:", music.title);
+      resolve();
+    };
+
+    request.onerror = () => {
+      console.error("保存喜欢的音乐失败:", request.error);
+      reject(request.error);
+    };
+  });
+};
+
+export const isLikedMusic = async (bvid: string): Promise<boolean> => {
+  const db = await openDB();
+  const tx = db.transaction("likedMusic", "readonly");
+  const store = tx.objectStore("likedMusic");
+
+  return new Promise((resolve, reject) => {
+    const request = store.get(bvid);
+
+    request.onsuccess = () => {
+      resolve(!!request.result);
+    };
+
+    request.onerror = () => {
+      console.error("检查音乐是否已喜欢失败:", request.error);
+      reject(request.error);
+    };
+  });
+};
+
+export const getLikedMusic = async (
+  lastAddedTime: number = Date.now(),
+  pageSize: number = 20,
+  keyword: string = ""
+): Promise<{ items: LikedMusic[]; hasMore: boolean }> => {
+  const db = await openDB();
+  const tx = db.transaction("likedMusic", "readonly");
+  const store = tx.objectStore("likedMusic");
+  const index = store.index("added_at");
+
+  const range = IDBKeyRange.upperBound(lastAddedTime, true);
+  const request = index.openCursor(range, "prev");
+  const items: LikedMusic[] = [];
+  let hasMore = false;
+
+  return new Promise((resolve, reject) => {
+    request.onsuccess = (event) => {
+      const cursor = (event.target as IDBRequest).result as IDBCursorWithValue;
+
+      if (cursor) {
+        const value = cursor.value as LikedMusic;
+
+        if (items.length < pageSize) {
+          if (
+            !keyword ||
+            value.title.toLowerCase().includes(keyword.toLowerCase()) ||
+            value.author.toLowerCase().includes(keyword.toLowerCase())
+          ) {
+            items.push(value);
+          }
+          cursor.continue();
+        } else {
+          hasMore = true;
+          resolve({ items, hasMore });
+        }
+      } else {
+        resolve({ items, hasMore });
+      }
+    };
+
+    request.onerror = () => {
+      console.error("获取喜欢音乐失败:", request.error);
+      reject(request.error);
+    };
+  });
+};
+
+export const getAllLikedMusic = async (): Promise<LikedMusic[]> => {
+  const db = await openDB();
+  const tx = db.transaction("likedMusic", "readonly");
+  const store = tx.objectStore("likedMusic");
+  const index = store.index("added_at");
+
+  return new Promise((resolve, reject) => {
+    const request = index.openCursor(null, "prev");
+    const items: LikedMusic[] = [];
+
+    request.onsuccess = (event) => {
+      const cursor = (event.target as IDBRequest).result as IDBCursorWithValue;
+
+      if (cursor) {
+        items.push(cursor.value as LikedMusic);
+        cursor.continue();
+      } else {
+        resolve(items);
+      }
+    };
+
+    request.onerror = () => {
+      console.error("获取所有喜欢音乐失败:", request.error);
+      reject(request.error);
+    };
+  });
+};
+
+export const getTotalLikedMusicCount = async (): Promise<number> => {
+  const db = await openDB();
+  const tx = db.transaction("likedMusic", "readonly");
+  const store = tx.objectStore("likedMusic");
+
+  return new Promise<number>((resolve, reject) => {
+    const request = store.count();
+
+    request.onsuccess = () => {
+      resolve(request.result);
+    };
+
+    request.onerror = () => {
+      console.error("获取喜欢音乐总数失败:", request.error);
+      reject(request.error);
+    };
+  });
+};
+
+export const deleteLikedMusic = async (bvid: string): Promise<void> => {
+  const db = await openDB();
+  const tx = db.transaction("likedMusic", "readwrite");
+  const store = tx.objectStore("likedMusic");
+
+  return new Promise<void>((resolve, reject) => {
+    const request = store.delete(bvid);
+
+    request.onsuccess = () => {
+      console.log("喜欢的音乐删除成功, bvid =", bvid);
+      resolve();
+    };
+
+    request.onerror = () => {
+      console.error("删除喜欢的音乐失败, bvid =", bvid, request.error);
+      reject(request.error);
+    };
+  });
+};
+
+// deleteLikedMusicByBvid 现在与 deleteLikedMusic 功能相同，保留为别名
+export const deleteLikedMusicByBvid = deleteLikedMusic;
+
+export const clearLikedMusic = async (): Promise<void> => {
+  const db = await openDB();
+  const tx = db.transaction("likedMusic", "readwrite");
+  const store = tx.objectStore("likedMusic");
+
+  return new Promise<void>((resolve, reject) => {
+    const request = store.clear();
+
+    request.onsuccess = () => {
+      console.log("喜欢的音乐已全部清空");
+      resolve();
+    };
+
+    request.onerror = () => {
+      console.error("清空喜欢的音乐失败:", request.error);
+      reject(request.error);
     };
   });
 };
