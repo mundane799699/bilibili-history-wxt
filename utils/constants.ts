@@ -11,6 +11,11 @@ export const SYNC_TIME_REMAIN = "syncTimeRemain";
 
 export const UPDATE_HISTORY = [
   {
+    date: "2025-09-16",
+    version: "1.8.1",
+    changes: ["修复了不能上传b站视频的bug"],
+  },
+  {
     date: "2025-09-14",
     version: "1.8.0",
     changes: ["增加听歌功能，超级棒！！！"],
