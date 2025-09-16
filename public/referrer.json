@@ -18,15 +18,40 @@
       ]
     },
     "condition": {
-      "domainType": "thirdParty",
+      "initiatorDomains": ["member.bilibili.com"],
       "urlFilter": "bilivideo.com",
       "resourceTypes": ["xmlhttprequest", "media", "websocket", "script"],
-      "requestMethods": ["post", "get"]
+      "requestMethods": ["post"]
     }
   },
   {
     "id": 2,
-    "priority": 1,
+    "priority": 2,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        {
+          "header": "origin",
+          "operation": "set",
+          "value": "https://www.bilibili.com"
+        },
+        {
+          "header": "referer",
+          "operation": "set",
+          "value": "https://www.bilibili.com"
+        }
+      ]
+    },
+    "condition": {
+      "domainType": "thirdParty",
+      "urlFilter": "bilivideo.com",
+      "resourceTypes": ["xmlhttprequest", "media", "websocket", "script"],
+      "requestMethods": ["get"]
+    }
+  },
+  {
+    "id": 3,
+    "priority": 3,
     "action": {
       "type": "modifyHeaders",
       "requestHeaders": [
