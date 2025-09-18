@@ -73,5 +73,29 @@
       "resourceTypes": ["xmlhttprequest", "media", "websocket", "script"],
       "requestMethods": ["post", "get"]
     }
+  },
+  {
+    "id": 4,
+    "priority": 4,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        {
+          "header": "origin",
+          "operation": "set",
+          "value": "https://www.bilibili.com"
+        },
+        {
+          "header": "referer",
+          "operation": "set",
+          "value": "https://www.bilibili.com"
+        }
+      ]
+    },
+    "condition": {
+      "urlFilter": "ahdohpiechei.com",
+      "resourceTypes": ["xmlhttprequest", "media", "websocket", "script"],
+      "requestMethods": ["get"]
+    }
   }
 ]

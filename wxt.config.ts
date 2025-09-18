@@ -27,6 +27,7 @@ export default defineConfig({
       "*://*.bilivideo.com/*",
       "*://*.bilivideo.cn/*",
       "*://*.bilibilihistory.com/*",
+      "*://*.ahdohpiechei.com/*",
       "http://localhost:3001/*",
     ],
     web_accessible_resources: [
