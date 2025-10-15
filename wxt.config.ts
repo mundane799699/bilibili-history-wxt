@@ -22,14 +22,7 @@ export default defineConfig({
         },
       ],
     },
-    host_permissions: [
-      "*://*.bilibili.com/*",
-      "*://*.bilivideo.com/*",
-      "*://*.bilivideo.cn/*",
-      "*://*.bilibilihistory.com/*",
-      "*://*.ahdohpiechei.com/*",
-      "http://localhost:3001/*",
-    ],
+    host_permissions: ["<all_urls>"],
     web_accessible_resources: [
       {
         resources: ["injected.js"],
