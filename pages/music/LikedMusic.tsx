@@ -28,7 +28,13 @@ const LikedMusic = () => {
     Record<string, { isPlaying: boolean; isLoading: boolean; error?: string }>
   >({});
   const [playMode, setPlayMode] = useState<PlayMode>("order"); // 播放模式：顺序、单曲循环、随机
+  const playModeRef = useRef<PlayMode>(playMode); // 用于存储最新的播放模式，避免闭包问题
   const howlRef = useRef<Howl | null>(null);
+
+  // 同步 playMode 到 ref，确保始终获取最新值
+  useEffect(() => {
+    playModeRef.current = playMode;
+  }, [playMode]);
 
   // 组件卸载时清理音频资源
   useEffect(() => {
@@ -60,9 +66,9 @@ const LikedMusic = () => {
       [endedBvid]: { isPlaying: false, isLoading: false },
     }));
 
-    console.log("当前播放模式:", playMode);
+    console.log("当前播放模式:", playModeRef.current);
     // 单曲循环模式：重新播放当前歌曲
-    if (playMode === "loop") {
+    if (playModeRef.current === "loop") {
       const currentMusic = likedMusic.find((music) => music.bvid === endedBvid);
       console.log("currentMusic:", currentMusic);
       if (currentMusic) {
@@ -80,7 +86,7 @@ const LikedMusic = () => {
     );
 
     // 随机播放模式
-    if (playMode === "random") {
+    if (playModeRef.current === "random") {
       if (likedMusic.length > 1) {
         // 随机选择一首不是当前歌曲的音乐
         let randomIndex;
