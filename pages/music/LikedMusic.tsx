@@ -1,9 +1,21 @@
 import { useState, useEffect, useRef } from "react";
 import { Howl } from "howler";
-import { SkipBack, Play, Pause, SkipForward, Loader2 } from "lucide-react";
+import {
+  SkipBack,
+  Play,
+  Pause,
+  SkipForward,
+  Loader2,
+  Repeat,
+  Repeat1,
+  Shuffle,
+} from "lucide-react";
 import { getAllLikedMusic } from "../../utils/db";
 import { LikedMusic as LikedMusicType } from "../../utils/types";
 import LikedMusicItem from "../../components/LikedMusicItem";
+import { getStorageValue, setStorageValue } from "../../utils/storage";
+
+type PlayMode = "order" | "loop" | "random";
 
 const LikedMusic = () => {
   const [likedMusic, setLikedMusic] = useState<LikedMusicType[]>([]);
@@ -15,6 +27,7 @@ const LikedMusic = () => {
   const [playingStates, setPlayingStates] = useState<
     Record<string, { isPlaying: boolean; isLoading: boolean; error?: string }>
   >({});
+  const [playMode, setPlayMode] = useState<PlayMode>("order"); // 播放模式：顺序、单曲循环、随机
   const howlRef = useRef<Howl | null>(null);
 
   // 组件卸载时清理音频资源
@@ -41,16 +54,50 @@ const LikedMusic = () => {
 
   // 处理歌曲播放结束后的自动切换逻辑
   const handleMusicEnd = (endedBvid: string) => {
+    console.log("endedBvid:", endedBvid);
     setPlayingStates((prev) => ({
       ...prev,
       [endedBvid]: { isPlaying: false, isLoading: false },
     }));
+
+    console.log("当前播放模式:", playMode);
+    // 单曲循环模式：重新播放当前歌曲
+    if (playMode === "loop") {
+      const currentMusic = likedMusic.find((music) => music.bvid === endedBvid);
+      console.log("currentMusic:", currentMusic);
+      if (currentMusic) {
+        console.log("单曲循环，重新播放:", currentMusic.title);
+        setTimeout(() => {
+          handlePlay(currentMusic);
+        }, 500);
+      }
+      return;
+    }
 
     // 找到当前音乐在播放列表中的索引
     const currentIndex = likedMusic.findIndex(
       (music) => music.bvid === endedBvid
     );
 
+    // 随机播放模式
+    if (playMode === "random") {
+      if (likedMusic.length > 1) {
+        // 随机选择一首不是当前歌曲的音乐
+        let randomIndex;
+        do {
+          randomIndex = Math.floor(Math.random() * likedMusic.length);
+        } while (randomIndex === currentIndex && likedMusic.length > 1);
+
+        const nextMusic = likedMusic[randomIndex];
+        console.log("随机播放下一首:", nextMusic.title);
+        setTimeout(() => {
+          handlePlay(nextMusic);
+        }, 500);
+      }
+      return;
+    }
+
+    // 顺序播放模式
     if (currentIndex >= 0 && currentIndex < likedMusic.length - 1) {
       // 如果有下一首歌，自动播放
       const nextMusic = likedMusic[currentIndex + 1];
@@ -258,11 +305,59 @@ const LikedMusic = () => {
     const currentIndex = likedMusic.findIndex(
       (music) => music.bvid === currentPlaying
     );
+
+    // 随机播放模式：随机选择下一首
+    if (playMode === "random") {
+      if (likedMusic.length > 1) {
+        let randomIndex;
+        do {
+          randomIndex = Math.floor(Math.random() * likedMusic.length);
+        } while (randomIndex === currentIndex && likedMusic.length > 1);
+        handlePlay(likedMusic[randomIndex]);
+      }
+      return;
+    }
+
+    // 顺序播放和单曲循环模式：都按顺序切换到下一首
     if (currentIndex < likedMusic.length - 1) {
       handlePlay(likedMusic[currentIndex + 1]);
     } else {
       // 如果是最后一首，跳到第一首
       handlePlay(likedMusic[0]);
+    }
+  };
+
+  const togglePlayMode = () => {
+    setPlayMode((prevMode) => {
+      if (prevMode === "order") {
+        return "loop";
+      } else if (prevMode === "loop") {
+        return "random";
+      } else {
+        return "order";
+      }
+    });
+  };
+
+  const getPlayModeIcon = () => {
+    switch (playMode) {
+      case "order":
+        return <Repeat size={20} />;
+      case "loop":
+        return <Repeat1 size={20} />;
+      case "random":
+        return <Shuffle size={20} />;
+    }
+  };
+
+  const getPlayModeText = () => {
+    switch (playMode) {
+      case "order":
+        return "顺序播放";
+      case "loop":
+        return "单曲循环";
+      case "random":
+        return "随机播放";
     }
   };
 
@@ -279,9 +374,24 @@ const LikedMusic = () => {
     }
   };
 
+  // 加载喜欢的音乐列表
   useEffect(() => {
     loadLikedMusic();
   }, []);
+
+  // 从本地存储加载播放模式
+  useEffect(() => {
+    const loadPlayMode = async () => {
+      const savedMode = await getStorageValue<PlayMode>('music_play_mode', 'order');
+      setPlayMode(savedMode);
+    };
+    loadPlayMode();
+  }, []);
+
+  // 当播放模式改变时保存到本地存储
+  useEffect(() => {
+    setStorageValue('music_play_mode', playMode);
+  }, [playMode]);
 
   const handleMusicRemoved = (bvid: string) => {
     setLikedMusic((prev) => prev.filter((music) => music.bvid !== bvid));
@@ -371,6 +481,19 @@ const LikedMusic = () => {
                 title="下一首"
               >
                 <SkipForward size={24} />
+              </button>
+
+              {/* 播放模式切换按钮 */}
+              <button
+                className={`p-2 rounded-full transition-colors duration-200 ${
+                  playMode === "order"
+                    ? "hover:bg-gray-100 text-gray-600"
+                    : "bg-pink-100 text-pink-500 hover:bg-pink-200"
+                }`}
+                onClick={togglePlayMode}
+                title={getPlayModeText()}
+              >
+                {getPlayModeIcon()}
               </button>
             </div>
           </div>

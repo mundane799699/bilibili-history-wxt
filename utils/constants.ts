@@ -11,6 +11,11 @@ export const SYNC_TIME_REMAIN = "syncTimeRemain";
 
 export const UPDATE_HISTORY = [
   {
+    date: "2025-10-21",
+    version: "1.8.6",
+    changes: ["听歌页面增加随机播放和单曲循环功能"]
+  },
+  {
     date: "2025-10-16",
     version: "1.8.5",
     changes: ["修复了部分歌不能听的问题"],
