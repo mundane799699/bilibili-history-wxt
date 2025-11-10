@@ -11,14 +11,19 @@ export const SYNC_TIME_REMAIN = "syncTimeRemain";
 
 export const UPDATE_HISTORY = [
   {
+    date: "2025-11-10",
+    version: "1.8.8",
+    changes: ["同步删除：插件 -> B站, 不需要打开b站标签页"],
+  },
+  {
     date: "2025-10-22",
     version: "1.8.7",
-    changes: ["修复播放模式的bug"]
+    changes: ["修复播放模式的bug"],
   },
   {
     date: "2025-10-21",
     version: "1.8.6",
-    changes: ["听歌页面增加随机播放和单曲循环功能"]
+    changes: ["听歌页面增加随机播放和单曲循环功能"],
   },
   {
     date: "2025-10-16",

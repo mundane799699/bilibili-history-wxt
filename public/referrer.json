@@ -145,5 +145,29 @@
       "resourceTypes": ["xmlhttprequest", "media", "websocket", "script"],
       "requestMethods": ["get"]
     }
+  },
+  {
+    "id": 7,
+    "priority": 4,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        {
+          "header": "origin",
+          "operation": "set",
+          "value": "https://www.bilibili.com"
+        },
+        {
+          "header": "referer",
+          "operation": "set",
+          "value": "https://www.bilibili.com"
+        }
+      ]
+    },
+    "condition": {
+      "urlFilter": "https://api.bilibili.com/x/v2/history/delete",
+      "resourceTypes": ["xmlhttprequest"],
+      "requestMethods": ["post"]
+    }
   }
 ]

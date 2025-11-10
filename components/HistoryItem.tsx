@@ -16,33 +16,49 @@ const deleteBilibiliHistory = async (
   business: string,
   id: number
 ): Promise<void> => {
-  await new Promise((resolve, reject) => {
-    browser.tabs.query({ url: "*://*.bilibili.com/*" }, (tabs) => {
-      if (tabs.length === 0) {
-        reject(new Error("请先打开一个B站标签页或者关闭同步删除"));
-        return;
-      }
-      // 向第一个找到的B站标签页发送消息
-      browser.tabs.sendMessage(
-        tabs[0].id!,
-        {
-          action: "deleteHistory",
-          kid: `${business}_${id}`,
-        },
-        (response) => {
-          if (browser.runtime.lastError) {
-            reject(new Error(browser.runtime.lastError.message));
-            return;
-          }
-          if (response.success) {
-            resolve(response);
-          } else {
-            reject(new Error(response.error));
-          }
+  // 从background script获取cookie
+  const cookies = await new Promise<Browser.cookies.Cookie[]>(
+    (resolve, reject) => {
+      browser.runtime.sendMessage({ action: "getCookies" }, (response) => {
+        if (browser.runtime.lastError) {
+          reject(browser.runtime.lastError);
+          return;
         }
-      );
-    });
+        if (response.success) {
+          resolve(response.cookies);
+        } else {
+          reject(new Error(response.error));
+        }
+      });
+    }
+  );
+
+  const bili_jct = cookies.find((cookie) => cookie.name === "bili_jct")?.value;
+  const SESSDATA = cookies.find((cookie) => cookie.name === "SESSDATA")?.value;
+
+  if (!bili_jct || !SESSDATA) {
+    throw new Error("未找到必要的Cookie,请先登录B站");
+  }
+
+  const kid = `${business}_${id}`;
+  const response = await fetch("https://api.bilibili.com/x/v2/history/delete", {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: `kid=${kid}&csrf=${bili_jct}`,
   });
+
+  if (!response.ok) {
+    console.error("删除历史记录失败:", response.statusText);
+    return;
+  }
+
+  const data = await response.json();
+  if (data.code !== 0) {
+    console.error("删除历史记录失败:", data.message);
+  }
 };
 
 export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
