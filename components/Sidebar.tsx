@@ -2,7 +2,7 @@ import { useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
   CloudIcon,
-  Crown,
+  Star,
   HistoryIcon,
   InfoIcon,
   MessageCircleIcon,
@@ -11,11 +11,18 @@ import {
 } from "lucide-react";
 import { UserInfo } from "./UserInfo";
 import ExpandableMenu from "./ExpandableMenu";
+import { UPDATE_HISTORY } from "../utils/constants";
+
 const menuList = [
   {
     title: "历史记录",
     icon: <HistoryIcon className="w-4 h-4" />,
     to: "/",
+  },
+  {
+    title: "收藏夹",
+    icon: <Star className="w-4 h-4" />,
+    to: "/favorites",
   },
   {
     title: "听歌",
@@ -56,15 +63,9 @@ const menuList = [
 export const Sidebar = () => {
   const location = useLocation();
 
-  const [version, setVersion] = useState<string>("");
+  const [version, setVersion] = useState<string>(UPDATE_HISTORY[0]?.version || "");
 
-  useEffect(() => {
-    // 兼容 Chrome/Firefox
-    const manifest = browser?.runtime?.getManifest?.();
-    if (manifest?.version) {
-      setVersion(manifest.version);
-    }
-  }, []);
+  // Manifest version fallback removed to strictly follow requested version display
 
   return (
     <div className="fixed top-0 left-0 w-40 bg-gray-100 flex-shrink-0 h-full">

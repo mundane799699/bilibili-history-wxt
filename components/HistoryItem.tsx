@@ -91,11 +91,11 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
         className="no-underline text-inherit"
       >
         <div>
-          <div className="relative">
+          <div className="relative w-full aspect-video">
             <img
               src={`${item.cover}@760w_428h_1c.avif`}
               alt={item.title}
-              className="w-full h-40 object-cover"
+              className="w-full h-full object-cover"
             />
             {getTypeTag(item.business) !== "视频" && (
               <span className="absolute bottom-2 right-2 px-2 py-1 rounded text-xs text-white bg-[#fb7299]">

@@ -3,39 +3,65 @@ import "./App.css";
 import { Toaster } from "react-hot-toast";
 function App() {
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isSyncingFav, setIsSyncingFav] = useState(false);
   const [status, setStatus] = useState("");
   const [isFullSync, setIsFullSync] = useState(false);
 
   useEffect(() => {
     // 检查同步状态
-    browser.storage.local.get(["lastSync"], (result) => {
+    const checkSyncStatus = async () => {
+      const result = await browser.storage.local.get("lastSync");
       if (result.lastSync) {
         const lastSync = new Date(result.lastSync);
         setStatus(`上次同步时间：${lastSync.toLocaleString()}`);
       } else {
         setStatus("尚未同步过历史记录");
       }
-    });
+    };
+    checkSyncStatus();
   }, []);
 
-  const handleSync = () => {
+  const handleSync = async () => {
     setIsSyncing(true);
     setStatus("正在同步...");
 
-    browser.runtime.sendMessage(
-      {
+    try {
+      const response = await browser.runtime.sendMessage({
         action: "syncHistory",
         isFullSync: isFullSync,
-      },
-      (response) => {
-        if (response && response.success) {
-          setStatus(response.message);
-        } else {
-          setStatus("同步失败：" + (response ? response.error : "未知错误"));
-        }
-        setIsSyncing(false);
+      });
+
+      if (response && response.success) {
+        setStatus(response.message);
+      } else {
+        setStatus("同步失败：" + (response ? response.error : "未知错误"));
       }
-    );
+    } catch (error) {
+      setStatus("同步失败：" + (error instanceof Error ? error.message : "未知错误"));
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleSyncFav = async () => {
+    setIsSyncingFav(true);
+    setStatus("正在同步收藏夹...");
+
+    try {
+      const response = await browser.runtime.sendMessage({
+        action: "syncFavorites",
+      });
+
+      if (response && response.success) {
+        setStatus(response.message);
+      } else {
+        setStatus("同步收藏夹失败：" + (response ? response.error : "未知错误"));
+      }
+    } catch (error) {
+      setStatus("同步收藏夹失败：" + (error instanceof Error ? error.message : "未知错误"));
+    } finally {
+      setIsSyncingFav(false);
+    }
   };
 
   return (
@@ -61,6 +87,13 @@ function App() {
         >
           {isSyncing ? "同步中..." : "立即同步"}
         </button>
+        <button
+          className="w-full px-2 py-2 text-white bg-[#fb7299] rounded hover:bg-[#e05a80] disabled:bg-gray-300 disabled:cursor-not-allowed"
+          onClick={handleSyncFav}
+          disabled={isSyncing || isSyncingFav}
+        >
+          {isSyncingFav ? "收藏夹同步中..." : "同步收藏夹"}
+        </button>
         <div className="flex items-center gap-2">
           <input
             type="checkbox"
@@ -72,15 +105,14 @@ function App() {
           />
           <label
             htmlFor="fullSync"
-            className={`text-sm ${
-              isSyncing ? "text-gray-400" : "text-gray-700"
-            } cursor-pointer select-none`}
+            className={`text-sm ${isSyncing ? "text-gray-400" : "text-gray-700"
+              } cursor-pointer select-none`}
           >
             全量同步
           </label>
         </div>
         {status && <div className="mt-2.5 text-gray-600">{status}</div>}
-      </div>
+      </div >
     </>
   );
 }

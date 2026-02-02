@@ -3,7 +3,7 @@ import dayjs from "dayjs";
 
 const DB_CONFIG: DBConfig = {
   name: "bilibiliHistory",
-  version: 3,
+  version: 4,
   stores: {
     history: {
       keyPath: "id",
@@ -12,6 +12,14 @@ const DB_CONFIG: DBConfig = {
     likedMusic: {
       keyPath: "bvid",
       indexes: ["added_at"],
+    },
+    favFolders: {
+      keyPath: "id",
+      indexes: ["mid"],
+    },
+    favResources: {
+      keyPath: "id",
+      indexes: ["folder_id", "fav_time"],
     },
   },
 };
@@ -94,6 +102,23 @@ export const openDB = (): Promise<IDBDatabase> => {
 
         console.log("likedMusic表创建完成");
       }
+
+      if (oldVersion < 4 && newVersion >= 4) {
+        console.log("创建收藏夹相关表");
+
+        const favFoldersStore = db.createObjectStore("favFolders", {
+          keyPath: "id",
+        });
+        favFoldersStore.createIndex("mid", "mid", { unique: false });
+
+        const favResourcesStore = db.createObjectStore("favResources", {
+          keyPath: "id",
+        });
+        favResourcesStore.createIndex("folder_id", "folder_id", { unique: false });
+        favResourcesStore.createIndex("fav_time", "fav_time", { unique: false });
+
+        console.log("收藏夹相关表创建完成");
+      }
     };
   });
 };
@@ -152,13 +177,24 @@ const matchCondition = (
   item: HistoryItem,
   keyword: string,
   authorKeyword: string,
-  date: string
+  date: string,
+  businessType: string
 ) => {
   return (
     matchKeyword(item, keyword) &&
     matchAuthorKeyword(item, authorKeyword) &&
-    matchDate(item, date)
+    matchDate(item, date) &&
+    matchBusinessType(item, businessType)
   );
+};
+
+const matchBusinessType = (item: HistoryItem, businessType: string) => {
+  if (!businessType || businessType === "all") return true;
+  // 专栏有两种类型：article 和 article-list，这里统一处理
+  if (businessType === "article") {
+    return item.business === "article" || item.business === "article-list";
+  }
+  return item.business === businessType;
 };
 
 const matchDate = (item: HistoryItem, date: string) => {
@@ -206,7 +242,8 @@ export const getHistory = async (
   pageSize: number = 20,
   keyword: string = "",
   authorKeyword: string = "",
-  date: string = ""
+  date: string = "",
+  businessType: string = ""
 ): Promise<{ items: HistoryItem[]; hasMore: boolean }> => {
   const db = await openDB();
   const tx = db.transaction("history", "readonly");
@@ -232,7 +269,7 @@ export const getHistory = async (
 
         // 如果还没收集够数据，继续收集
         if (items.length < pageSize) {
-          if (matchCondition(value, keyword, authorKeyword, date)) {
+          if (matchCondition(value, keyword, authorKeyword, date, businessType)) {
             items.push(value);
           }
           cursor.continue();
@@ -700,5 +737,188 @@ export const importLikedMusic = async (musicList: LikedMusic[]): Promise<void> =
       console.error("导入喜欢音乐事务失败:", tx.error);
       reject(tx.error);
     };
+  });
+};
+
+import { FavoriteFolder, FavoriteResource } from "./types";
+
+// 收藏夹相关函数
+export const saveFavFolders = async (folders: FavoriteFolder[]): Promise<void> => {
+  const db = await openDB();
+  const tx = db.transaction("favFolders", "readwrite");
+  const store = tx.objectStore("favFolders");
+
+  return new Promise((resolve, reject) => {
+    let operationsCompleted = 0;
+    let operationsFailed = false;
+
+    if (folders.length === 0) {
+      resolve();
+      return;
+    }
+
+    folders.forEach((folder) => {
+      if (operationsFailed) return;
+      const request = store.put(folder);
+      request.onsuccess = () => operationsCompleted++;
+      request.onerror = () => {
+        if (!operationsFailed) {
+          operationsFailed = true;
+          reject(request.error);
+        }
+      };
+    });
+
+    tx.oncomplete = () => {
+      if (!operationsFailed) resolve();
+    };
+    tx.onerror = () => reject(tx.error);
+  });
+};
+
+export const getFavFolders = async (mid?: number): Promise<FavoriteFolder[]> => {
+  const db = await openDB();
+  const tx = db.transaction("favFolders", "readonly");
+  const store = tx.objectStore("favFolders");
+
+  return new Promise((resolve, reject) => {
+    let request;
+    if (mid) {
+      const index = store.index("mid");
+      request = index.getAll(mid);
+    } else {
+      request = store.getAll();
+    }
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+};
+
+export const saveFavResources = async (resources: FavoriteResource[]): Promise<void> => {
+  const db = await openDB();
+  const tx = db.transaction("favResources", "readwrite");
+  const store = tx.objectStore("favResources");
+
+  return new Promise((resolve, reject) => {
+    let operationsCompleted = 0;
+    let operationsFailed = false;
+
+    if (resources.length === 0) {
+      resolve();
+      return;
+    }
+
+    // 递归处理每一个资源，因为我们需要在put之前可能进行get操作（异步）
+    // 虽然可以在事务中并行发起请求，但为了逻辑清晰，我们使用 Promise.all 或者计数器
+
+    // 这里我们直接发起所有请求，利用IndexedDB的事务特性
+    resources.forEach((res) => {
+      if (operationsFailed) return;
+
+      // 检查是否是失效视频
+      if (res.title === "已失效视频") {
+        const getReq = store.get(res.id);
+        getReq.onsuccess = () => {
+          const oldData = getReq.result as FavoriteResource;
+          let dataToSave = res;
+
+          // 如果本地有旧数据，且旧数据是有效的（标题不是已失效视频）
+          // 那么保留旧数据的关键元数据
+          if (oldData && oldData.title !== "已失效视频") {
+            dataToSave = {
+              ...res,
+              title: oldData.title,
+              cover: oldData.cover,
+              intro: oldData.intro,
+              upper: oldData.upper,
+              ctime: oldData.ctime, // 保持创建时间
+              // 可以根据需要保留更多字段
+            };
+            console.log(`[失效保护] 保留了视频 ${oldData.id} 的元数据: ${oldData.title}`);
+          }
+
+          const putReq = store.put(dataToSave);
+          putReq.onsuccess = () => CheckComplete();
+          putReq.onerror = HandleError;
+        };
+        getReq.onerror = HandleError;
+      } else {
+        // 正常视频直接保存
+        const putReq = store.put(res);
+        putReq.onsuccess = () => CheckComplete();
+        putReq.onerror = HandleError;
+      }
+
+      function HandleError(e: Event) {
+        if (!operationsFailed) {
+          operationsFailed = true;
+          reject((e.target as IDBRequest).error);
+        }
+      }
+
+      function CheckComplete() {
+        operationsCompleted++;
+        if (operationsCompleted === resources.length && !operationsFailed) {
+          // 此时不能resolve，因为外层还有tx.oncomplete
+        }
+      }
+    });
+
+    tx.oncomplete = () => {
+      if (!operationsFailed) resolve();
+    };
+    tx.onerror = () => reject(tx.error);
+  });
+};
+
+export const getFavResources = async (folderId?: number): Promise<FavoriteResource[]> => {
+  const db = await openDB();
+  const tx = db.transaction("favResources", "readonly");
+  const store = tx.objectStore("favResources");
+
+  return new Promise((resolve, reject) => {
+    let request;
+    if (folderId) {
+      const index = store.index("folder_id");
+      request = index.getAll(folderId);
+    } else {
+      request = store.getAll();
+    }
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+};
+
+
+export const deleteFavResources = async (ids: number[]): Promise<void> => {
+  const db = await openDB();
+  const tx = db.transaction("favResources", "readwrite");
+  const store = tx.objectStore("favResources");
+
+  return new Promise((resolve, reject) => {
+    let operationsCompleted = 0;
+    let operationsFailed = false;
+
+    if (ids.length === 0) {
+      resolve();
+      return;
+    }
+
+    ids.forEach((id) => {
+      if (operationsFailed) return;
+      const request = store.delete(id);
+      request.onsuccess = () => operationsCompleted++;
+      request.onerror = () => {
+        if (!operationsFailed) {
+          operationsFailed = true;
+          reject(request.error);
+        }
+      };
+    });
+
+    tx.oncomplete = () => {
+      if (!operationsFailed) resolve();
+    };
+    tx.onerror = () => reject(tx.error);
   });
 };

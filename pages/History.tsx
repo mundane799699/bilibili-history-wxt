@@ -3,7 +3,7 @@ import { HistoryItem } from "../components/HistoryItem";
 import { getHistory, clearHistory, getTotalHistoryCount } from "../utils/db";
 import { HistoryItem as HistoryItemType } from "../utils/types";
 import { useDebounce } from "use-debounce";
-import { RefreshCwIcon } from "lucide-react";
+import { RefreshCwIcon, ChevronDownIcon } from "lucide-react";
 
 export const History: React.FC = () => {
   const [history, setHistory] = useState<HistoryItemType[]>([]);
@@ -12,6 +12,8 @@ export const History: React.FC = () => {
   const [debouncedKeyword] = useDebounce(keyword, 500);
   const [debouncedAuthorKeyword] = useDebounce(authorKeyword, 500);
   const [date, setDate] = useState("");
+  const [selectedType, setSelectedType] = useState("all");
+  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [totalHistoryCount, setTotalHistoryCount] = useState(0);
@@ -19,6 +21,15 @@ export const History: React.FC = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const isLoadingRef = useRef<boolean>(false);
+
+  const typeOptions = [
+    { value: "all", label: "全部分类" },
+    { value: "archive", label: "视频" },
+    { value: "live", label: "直播" },
+    { value: "pgc", label: "番剧" },
+    { value: "article", label: "专栏" },
+    { value: "cheese", label: "课堂" },
+  ];
 
   const loadHistory = async (isAppend: boolean = false) => {
     if (isLoadingRef.current) {
@@ -32,15 +43,15 @@ export const History: React.FC = () => {
       // 使用函数式更新来获取最新的history值
       const lastViewTime = isAppend
         ? await new Promise<number | "">((resolve) => {
-            setHistory((currentHistory) => {
-              const lastTime =
-                currentHistory.length > 0
-                  ? currentHistory[currentHistory.length - 1].view_at
-                  : "";
-              resolve(lastTime);
-              return currentHistory;
-            });
-          })
+          setHistory((currentHistory) => {
+            const lastTime =
+              currentHistory.length > 0
+                ? currentHistory[currentHistory.length - 1].view_at
+                : "";
+            resolve(lastTime);
+            return currentHistory;
+          });
+        })
         : "";
 
       const { items, hasMore } = await getHistory(
@@ -48,7 +59,8 @@ export const History: React.FC = () => {
         100,
         debouncedKeyword,
         debouncedAuthorKeyword,
-        date
+        date,
+        selectedType
       );
 
       if (isAppend) {
@@ -70,7 +82,7 @@ export const History: React.FC = () => {
   // 当debouncedKeyword或debouncedAuthorKeyword变化时重新加载数据
   useEffect(() => {
     loadHistory(false);
-  }, [debouncedKeyword, debouncedAuthorKeyword, date]);
+  }, [debouncedKeyword, debouncedAuthorKeyword, date, selectedType]);
 
   useEffect(() => {
     getTotalCount();
@@ -105,7 +117,7 @@ export const History: React.FC = () => {
         observerRef.current.disconnect();
       }
     };
-  }, [hasMore, debouncedKeyword, debouncedAuthorKeyword, date]);
+  }, [hasMore, debouncedKeyword, debouncedAuthorKeyword, date, selectedType]);
 
   const getLoadMoreText = () => {
     if (history.length === 0) {
@@ -114,18 +126,78 @@ export const History: React.FC = () => {
     return isLoading
       ? "加载中..."
       : hasMore
-      ? "向下滚动加载更多"
-      : "没有更多了";
+        ? "向下滚动加载更多"
+        : "没有更多了";
   };
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-5 sticky top-0 bg-white py-4 px-10 z-10 border-b border-gray-200">
-        <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-md">
+      <div className="flex justify-between items-center mb-5 sticky top-0 bg-white py-4 px-10 z-10 border-b border-gray-200 shadow-sm">
+        <span className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1.5 rounded-full">
           总记录数：{totalHistoryCount}
         </span>
-        <div className="flex items-center">
-          <div className="flex items-center mr-2 gap-2">
+        <div className="flex items-center gap-4">
+          <div className="relative z-20">
+            {/* 遮罩层，用于点击外部关闭下拉菜单 */}
+            {isTypeDropdownOpen && (
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setIsTypeDropdownOpen(false)}
+              ></div>
+            )}
+
+            {/* 触发按钮 */}
+            <button
+              onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
+              className={`
+                flex items-center justify-between gap-2 px-4 py-2 
+                bg-gray-50 hover:bg-gray-100 
+                border transition-all duration-200
+                text-gray-700 text-sm font-medium
+                rounded-lg min-w-[120px] outline-none
+                ${isTypeDropdownOpen
+                  ? 'border-blue-500 ring-2 ring-blue-100 bg-white'
+                  : 'border-gray-200'
+                }
+              `}
+            >
+              <span>
+                {typeOptions.find(opt => opt.value === selectedType)?.label || "全部分类"}
+              </span>
+              <ChevronDownIcon
+                className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${isTypeDropdownOpen ? 'rotate-180 text-blue-500' : ''}`}
+              />
+            </button>
+
+            {/* 下拉菜单 */}
+            {isTypeDropdownOpen && (
+              <div className="absolute top-full right-0 mt-2 w-[140px] bg-white border border-gray-100 rounded-xl shadow-xl z-30 py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+                {typeOptions.map((option) => (
+                  <div
+                    key={option.value}
+                    onClick={() => {
+                      setSelectedType(option.value);
+                      setIsTypeDropdownOpen(false);
+                    }}
+                    className={`
+                      px-4 py-2.5 text-sm cursor-pointer transition-colors
+                      flex items-center justify-between
+                      ${selectedType === option.value
+                        ? 'bg-blue-50 text-blue-600 font-medium'
+                        : 'text-gray-700 hover:bg-gray-50'
+                      }
+                    `}
+                  >
+                    {option.label}
+                    {selectedType === option.value && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
             <button
               className="px-3 py-2 border border-gray-200 rounded-l bg-gray-50 hover:bg-gray-100 disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-400"
               disabled={!date}
@@ -232,8 +304,8 @@ export const History: React.FC = () => {
           </button>
         </div>
       </div>
-      <div className="max-w-[1200px] mx-auto">
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-5">
+      <div className="w-full px-6">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-6">
           {history.map((item) => (
             <HistoryItem
               key={item.id}
