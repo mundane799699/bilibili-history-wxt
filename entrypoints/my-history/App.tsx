@@ -9,6 +9,7 @@ import Feedback from "../../pages/Feedback";
 import CloudSync from "../../pages/CloudSync";
 import SearchMusic from "../../pages/music/SearchMusic";
 import LikedMusic from "../../pages/music/LikedMusic";
+import { Favorites } from "../../pages/Favorites";
 const App = () => {
   return (
     <HashRouter>
@@ -24,6 +25,7 @@ const App = () => {
               <Route path="/settings" element={<Settings />} />
               <Route path="/feedback" element={<Feedback />} />
               <Route path="/cloud-sync" element={<CloudSync />} />
+              <Route path="/favorites" element={<Favorites />} />
               <Route path="/music/search" element={<SearchMusic />} />
               <Route path="/music/liked" element={<LikedMusic />} />
               <Route path="*" element={<Navigate to="/" replace />} />

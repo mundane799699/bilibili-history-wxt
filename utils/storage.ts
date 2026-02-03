@@ -8,11 +8,8 @@ export async function getStorageValue<T>(
   key: string,
   defaultValue?: T
 ): Promise<T> {
-  return new Promise((resolve) => {
-    browser.storage.local.get([key], (result) => {
-      resolve(result[key] ?? (defaultValue as T));
-    });
-  });
+  const result = await browser.storage.local.get(key);
+  return (result[key] as T) ?? defaultValue!;
 }
 
 /**
@@ -21,7 +18,5 @@ export async function getStorageValue<T>(
  * @param value 要存储的值
  */
 export async function setStorageValue<T>(key: string, value: T): Promise<void> {
-  return new Promise((resolve) => {
-    browser.storage.local.set({ [key]: value }, resolve);
-  });
+  await browser.storage.local.set({ [key]: value });
 }

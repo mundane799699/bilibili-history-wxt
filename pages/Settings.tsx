@@ -5,6 +5,7 @@ import {
   IS_SYNC_DELETE,
   SYNC_INTERVAL,
   IS_SYNC_DELETE_FROM_BILIBILI,
+  FAV_SYNC_INTERVAL,
 } from "../utils/constants";
 import {
   exportHistoryToCSV,
@@ -32,6 +33,7 @@ const Settings = () => {
   const [isImportingMusic, setIsImportingMusic] = useState(false);
   const [exportFormat, setExportFormat] = useState<"csv" | "json">("json");
   const [syncInterval, setSyncInterval] = useState(1);
+  const [favSyncInterval, setFavSyncInterval] = useState(1440);
 
   useEffect(() => {
     // 加载同步删除设置
@@ -42,9 +44,12 @@ const Settings = () => {
         true
       );
       const storedSyncInterval = await getStorageValue(SYNC_INTERVAL, 1);
+      const storedFavSyncInterval = await getStorageValue(FAV_SYNC_INTERVAL, 1440);
+
       setIsSyncDelete(syncDelete);
       setIsSyncDeleteFromBilibili(syncDeleteFromBilibili);
       setSyncInterval(storedSyncInterval);
+      setFavSyncInterval(storedFavSyncInterval);
     };
     loadSettings();
   }, []);
@@ -69,6 +74,13 @@ const Settings = () => {
     if (newInterval >= 1) {
       setSyncInterval(newInterval);
       await setStorageValue(SYNC_INTERVAL, newInterval);
+    }
+  };
+
+  const handleFavSyncIntervalChange = async (newInterval: number) => {
+    if (newInterval >= 10) {
+      setFavSyncInterval(newInterval);
+      await setStorageValue(FAV_SYNC_INTERVAL, newInterval);
     }
   };
 
@@ -430,57 +442,97 @@ const Settings = () => {
         </div>
       </div>
 
-      {/* 确认弹窗 */}
-      {showConfirmDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-            <h3 className="text-xl font-semibold mb-4">确认恢复出厂设置？</h3>
-            <p className="text-gray-600 mb-6">
-              此操作将删除所有本地存储的历史记录数据和用户偏好，且无法恢复。确定要继续吗？
-            </p>
-            {isResetLoading && (
-              <p className="text-blue-600 mb-4">{resetStatus}</p>
-            )}
-            <div className="flex justify-end space-x-4">
-              <button
-                onClick={() => setShowConfirmDialog(false)}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isResetLoading}
-              >
-                取消
-              </button>
-              <button
-                onClick={() => {
-                  handleReset();
-                }}
-                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isResetLoading}
-              >
-                确认
-              </button>
-            </div>
+      <div className="w-full max-w-md mb-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-300 ease-in-out">
+        <div className="flex items-center justify-between p-4">
+          <div>
+            <h3 className="text-lg font-medium text-pink-500">
+              自动同步收藏夹时间间隔
+            </h3>
+            <p className="text-sm text-gray-500">单位：分钟，最小值为10</p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => handleFavSyncIntervalChange(favSyncInterval - 10)}
+              className="px-3 py-1 text-sm text-white bg-pink-500 rounded hover:bg-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={favSyncInterval <= 10}
+            >
+              -
+            </button>
+            <input
+              type="number"
+              value={favSyncInterval}
+              onChange={(e) => {
+                const filteredValue = e.target.value.replace(/[^0-9]/g, "");
+                const numValue = parseInt(filteredValue) || 10;
+                handleFavSyncIntervalChange(Math.max(10, numValue));
+              }}
+              className="px-3 py-1 text-sm text-gray-700 bg-gray-200 rounded-md w-16 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+            <button
+              onClick={() => handleFavSyncIntervalChange(favSyncInterval + 10)}
+              className="px-3 py-1 text-sm text-white bg-pink-500 rounded hover:bg-pink-600 transition-colors"
+            >
+              +
+            </button>
           </div>
         </div>
-      )}
+      </div>
 
-      {showResetResultDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-            <p className="text-xl text-gray-600 mb-6 text-center font-medium">
-              {resetResult}
-            </p>
-            <div className="flex justify-end space-x-4">
-              <button
-                onClick={() => setShowResetResultDialog(false)}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-              >
-                确定
-              </button>
+      {/* 确认弹窗 */}
+      {
+        showConfirmDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+              <h3 className="text-xl font-semibold mb-4">确认恢复出厂设置？</h3>
+              <p className="text-gray-600 mb-6">
+                此操作将删除所有本地存储的历史记录数据和用户偏好，且无法恢复。确定要继续吗？
+              </p>
+              {isResetLoading && (
+                <p className="text-blue-600 mb-4">{resetStatus}</p>
+              )}
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => setShowConfirmDialog(false)}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isResetLoading}
+                >
+                  取消
+                </button>
+                <button
+                  onClick={() => {
+                    handleReset();
+                  }}
+                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isResetLoading}
+                >
+                  确认
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+
+      {
+        showResetResultDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+              <p className="text-xl text-gray-600 mb-6 text-center font-medium">
+                {resetResult}
+              </p>
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => setShowResetResultDialog(false)}
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                >
+                  确定
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+    </div >
   );
 };
 
