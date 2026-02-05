@@ -149,3 +149,70 @@ export const exportLikedMusicToJSON = async (): Promise<void> => {
     throw error;
   }
 };
+
+/**
+ * 将喜欢的音乐记录转换为CSV格式
+ */
+const convertLikedMusicToCSV = (items: LikedMusic[]): string => {
+  // CSV 表头
+  const headers = [
+    "标题",
+    "作者",
+    "BV号",
+    "添加时间",
+    "封面"
+  ].join(",");
+
+  // 转换每条记录为CSV行
+  const rows = items.map((item) => {
+    const addedAt = new Date(item.added_at * 1000).toLocaleString();
+    const author = item.author || ""; // LikedMusic type check
+
+    const escapeField = (field: string) => {
+      if (field.includes(",") || field.includes('"') || field.includes("\n")) {
+        return `"${field.replace(/"/g, '""')}"`;
+      }
+      return field;
+    };
+
+    return [
+      escapeField(item.title),
+      escapeField(author),
+      escapeField(item.bvid),
+      escapeField(addedAt),
+      escapeField(item.pic || ""),
+    ].join(",");
+  });
+
+  // 组合表头和数据行
+  return [headers, ...rows].join("\n");
+};
+
+/**
+ * 导出喜欢音乐为CSV文件
+ */
+export const exportLikedMusicToCSV = async (): Promise<void> => {
+  try {
+    const items = await getAllLikedMusic();
+
+    const csv = convertLikedMusicToCSV(items);
+
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+
+    const date = new Date().toISOString().split("T")[0];
+    link.download = `bilibili-liked-music-${date}.csv`;
+
+    document.body.appendChild(link);
+    link.click();
+
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("导出喜欢音乐为CSV失败:", error);
+    throw error;
+  }
+};

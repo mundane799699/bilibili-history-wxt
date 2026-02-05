@@ -13,7 +13,22 @@ export const SYNC_TIME_REMAIN = "syncTimeRemain";
 export const FAV_SYNC_INTERVAL = "favSyncInterval"; // 单位：分钟，默认 60*24 (1天)
 export const FAV_SYNC_TIME_REMAIN = "favSyncTimeRemain"; // 单位：分钟
 
+export const HIDE_USER_INFO = "hideUserInfo";
+export const HIDDEN_MENUS = "hiddenMenus"; // Array of hidden titles
+export const SYNC_PROGRESS_HISTORY = "syncProgressHistory";
+export const SYNC_PROGRESS_FAV = "syncProgressFav";
+
 export const UPDATE_HISTORY = [
+  {
+    date: "2026-02-05",
+    version: "1.9.1",
+    changes: [
+      "历史记录搜索支持BV号搜索",
+      "优化部分UI",
+      "新增可隐藏并禁用侧边栏功能",
+      "新增可视化同步进度条",
+    ],
+  },
   {
     date: "2026-02-02",
     version: "1.9.0beta",

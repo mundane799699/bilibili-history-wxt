@@ -176,14 +176,12 @@ export const saveHistory = async (history: HistoryItem[]): Promise<void> => {
 const matchCondition = (
   item: HistoryItem,
   keyword: string,
-  authorKeyword: string,
-  date: string,
+  dateRange: { start: string; end: string } | null,
   businessType: string
 ) => {
   return (
     matchKeyword(item, keyword) &&
-    matchAuthorKeyword(item, authorKeyword) &&
-    matchDate(item, date) &&
+    matchDate(item, dateRange) &&
     matchBusinessType(item, businessType)
   );
 };
@@ -197,24 +195,34 @@ const matchBusinessType = (item: HistoryItem, businessType: string) => {
   return item.business === businessType;
 };
 
-const matchDate = (item: HistoryItem, date: string) => {
-  if (!date) {
+const matchDate = (
+  item: HistoryItem,
+  dateRange: { start: string; end: string } | null
+) => {
+  if (!dateRange || !dateRange.start) {
     return true;
   }
   const ts = Number(item.view_at);
   const d = dayjs(ts * 1000);
   const dateStr = d.format("YYYY-MM-DD");
-  return dateStr === date;
+
+  if (dateRange.start && !dateRange.end) {
+    return dateStr === dateRange.start;
+  }
+  if (dateRange.start && dateRange.end) {
+    return dateStr >= dateRange.start && dateStr <= dateRange.end;
+  }
+  return true;
 };
 
 const matchKeyword = (item: HistoryItem, keyword: string) => {
-  return !keyword || item.title.toLowerCase().includes(keyword.toLowerCase());
-};
-
-const matchAuthorKeyword = (item: HistoryItem, authorKeyword: string) => {
+  if (!keyword) return true;
+  const lowerKeyword = keyword.toLowerCase();
   return (
-    !authorKeyword ||
-    item.author_name.toLowerCase().includes(authorKeyword.toLowerCase())
+    item.title.toLowerCase().includes(lowerKeyword) ||
+    item.author_name.toLowerCase().includes(lowerKeyword) ||
+    (item.bvid && item.bvid.toLowerCase().includes(lowerKeyword)) ||
+    (item.author_mid && String(item.author_mid).toLowerCase().includes(lowerKeyword))
   );
 };
 
@@ -241,8 +249,7 @@ export const getHistory = async (
   lastViewTime: any = "",
   pageSize: number = 20,
   keyword: string = "",
-  authorKeyword: string = "",
-  date: string = "",
+  dateRange: { start: string; end: string } | null = null,
   businessType: string = ""
 ): Promise<{ items: HistoryItem[]; hasMore: boolean }> => {
   const db = await openDB();
@@ -269,7 +276,7 @@ export const getHistory = async (
 
         // 如果还没收集够数据，继续收集
         if (items.length < pageSize) {
-          if (matchCondition(value, keyword, authorKeyword, date, businessType)) {
+          if (matchCondition(value, keyword, dateRange, businessType)) {
             items.push(value);
           }
           cursor.continue();
