@@ -303,29 +303,38 @@ const SearchMusic = () => {
   }, [loading, searchQuery, loadMore]); // 依赖项：当loading状态、搜索关键词或loadMore函数变化时重新创建observer
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gray-50/30">
       {/* 搜索框区域 */}
-      <div className="flex items-center gap-4 sticky p-4 top-0 bg-white z-10 border-b border-gray-200">
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="请输入关键词"
-          className="flex-1 px-4 py-3 text-lg border-2 border-gray-300 rounded-lg focus:border-pink-500 focus:outline-none"
-          disabled={loading}
-        />
-        <button
-          onClick={handleSearch}
-          disabled={loading}
-          className="px-6 py-3 bg-pink-400 text-white rounded-lg hover:bg-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? (
-            <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
-          ) : (
-            <Search />
-          )}
-        </button>
+      <div className="sticky top-0 z-20 backdrop-blur-md bg-white/70 border-b border-gray-100/50 shadow-sm transition-all duration-300">
+        <div className="max-w-4xl mx-auto p-4 md:p-6">
+          <div className="relative flex items-center gap-3 group">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-pink-500 transition-colors duration-300">
+                <Search size={20} />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="搜索你想听的歌曲..."
+                className="w-full pl-11 pr-4 py-3.5 bg-white/80 border border-gray-200 rounded-2xl text-gray-700 placeholder-gray-400 focus:bg-white focus:border-pink-500 focus:ring-4 focus:ring-pink-100 transition-all duration-300 outline-none shadow-sm hover:border-gray-300 hover:shadow-md"
+                disabled={loading}
+              />
+            </div>
+            <button
+              onClick={handleSearch}
+              disabled={loading}
+              className="px-6 py-3.5 bg-pink-500 text-white font-medium rounded-2xl hover:bg-pink-600 focus:outline-none focus:ring-4 focus:ring-pink-200 transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed transform active:scale-95 flex items-center justify-center min-w-[5rem]"
+            >
+              {loading ? (
+                <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
+              ) : (
+                "搜索"
+              )}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* 错误提示 */}

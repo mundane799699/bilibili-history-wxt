@@ -117,10 +117,10 @@ const CloudSync = () => {
   const progress =
     uploadInfo.totalCount > 0
       ? Math.round(
-          ((uploadInfo.successCount + uploadInfo.failedCount) /
-            uploadInfo.totalCount) *
-            100
-        )
+        ((uploadInfo.successCount + uploadInfo.failedCount) /
+          uploadInfo.totalCount) *
+        100
+      )
       : 0;
 
   return (
@@ -274,7 +274,7 @@ const CloudSync = () => {
                 ) : (
                   <>
                     {uploadInfo.failedCount === 0 &&
-                    uploadInfo.successCount > 0 ? (
+                      uploadInfo.successCount > 0 ? (
                       <svg
                         className="h-12 w-12 text-green-500 mx-auto"
                         xmlns="http://www.w3.org/2000/svg"
@@ -364,7 +364,7 @@ const CloudSync = () => {
                     <div className="mt-6 text-center">
                       <button
                         onClick={handleUpgrade}
-                        className="w-full px-6 py-3 bg-gradient-to-r from-orange-400 to-pink-500 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                        className="w-full px-6 py-3 bg-pink-500 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 hover:bg-pink-600"
                       >
                         升级到高级版，解锁无限上传
                       </button>

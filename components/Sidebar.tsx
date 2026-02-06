@@ -11,7 +11,8 @@ import {
 } from "lucide-react";
 import { UserInfo } from "./UserInfo";
 import ExpandableMenu from "./ExpandableMenu";
-import { UPDATE_HISTORY } from "../utils/constants";
+import { UPDATE_HISTORY, HIDE_USER_INFO, HIDDEN_MENUS } from "../utils/constants";
+import { getStorageValue } from "../utils/storage";
 
 const menuList = [
   {
@@ -64,17 +65,44 @@ export const Sidebar = () => {
   const location = useLocation();
 
   const [version, setVersion] = useState<string>(UPDATE_HISTORY[0]?.version || "");
+  const [hideUserInfo, setHideUserInfo] = useState(false);
+  const [hiddenMenus, setHiddenMenus] = useState<string[]>([]);
 
-  // Manifest version fallback removed to strictly follow requested version display
+  useEffect(() => {
+    getStorageValue(HIDE_USER_INFO, false).then(setHideUserInfo);
+    getStorageValue(HIDDEN_MENUS, []).then(setHiddenMenus);
+
+    const handleStorageChange = (
+      changes: { [key: string]: browser.storage.StorageChange },
+      areaName: string
+    ) => {
+      if (areaName === "local") {
+        if (changes[HIDE_USER_INFO]) {
+          setHideUserInfo(changes[HIDE_USER_INFO].newValue);
+        }
+        if (changes[HIDDEN_MENUS]) {
+          setHiddenMenus(changes[HIDDEN_MENUS].newValue || []);
+        }
+      }
+    };
+
+    browser.storage.onChanged.addListener(handleStorageChange);
+    return () => {
+      browser.storage.onChanged.removeListener(handleStorageChange);
+    };
+  }, []);
+
 
   return (
     <div className="fixed top-0 left-0 w-40 bg-gray-100 flex-shrink-0 h-full">
-      <UserInfo />
+      {!hideUserInfo && <UserInfo />}
 
       <nav className="space-y-2 p-4">
-        {menuList.map((item, index) => (
-          <ExpandableMenu key={index} {...item} />
-        ))}
+        {menuList
+          .filter((item) => !hiddenMenus.includes(item.title))
+          .map((item, index) => (
+            <ExpandableMenu key={index} {...item} />
+          ))}
       </nav>
 
       <p className="absolute bottom-2 left-2 text-gray-600 text-base">
