@@ -2,7 +2,7 @@
   "name": "bilibili-unlimited-history",
   "description": "manifest.json description",
   "private": true,
-  "version": "1.9.1",
+  "version": "1.9.2",
   "type": "module",
   "scripts": {
     "dev": "wxt --mode development",
@@ -17,6 +17,7 @@
   "dependencies": {
     "@types/howler": "^2.2.12",
     "axios": "^1.9.0",
+    "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
     "howler": "^2.2.4",
     "lucide-react": "^0.511.0",

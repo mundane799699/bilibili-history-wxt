@@ -9,12 +9,14 @@ interface DateRangePickerProps {
     startDate: string;
     endDate: string;
     onChange: (start: string, end: string) => void;
+    mode?: "range" | "single";
 }
 
 export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     startDate,
     endDate,
     onChange,
+    mode = "range",
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(dayjs());
@@ -41,6 +43,12 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     }, []);
 
     const handleDateClick = (dateStr: string) => {
+        if (mode === "single") {
+            onChange(dateStr, dateStr);
+            setIsOpen(false);
+            return;
+        }
+
         if (!startDate && !endDate) {
             onChange(dateStr, "");
         } else if (startDate && !endDate) {

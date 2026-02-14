@@ -33,6 +33,9 @@ export const getContentUrl = (item: HistoryItem): string => {
     case "cheese":
       return item.uri || "";
     default:
-      return `https://www.bilibili.com/video/${item.bvid}`;
+      const videoUrl = `https://www.bilibili.com/video/${item.bvid}`;
+      return item.progress && item.progress > 0
+        ? `${videoUrl}?t=${item.progress}`
+        : videoUrl;
   }
 };

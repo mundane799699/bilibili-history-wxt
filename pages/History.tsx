@@ -10,7 +10,9 @@ import {
   X,
   Filter,
 } from "lucide-react";
+import { DATE_SELECTION_MODE } from "../utils/constants";
 import { DateRangePicker } from "../components/DateRangePicker";
+import { getStorageValue } from "../utils/storage";
 
 export const History: React.FC = () => {
   const [history, setHistory] = useState<HistoryItemType[]>([]);
@@ -21,11 +23,14 @@ export const History: React.FC = () => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
+  const [searchType, setSearchType] = useState<"all" | "title" | "up" | "bvid" | "avid">("all");
+  const [isSearchKindDropdownOpen, setIsSearchKindDropdownOpen] = useState(false);
   const [selectedType, setSelectedType] = useState("all");
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [totalHistoryCount, setTotalHistoryCount] = useState(0);
+  const [dateSelectionMode, setDateSelectionMode] = useState<"range" | "single">("range");
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -35,6 +40,12 @@ export const History: React.FC = () => {
   useEffect(() => {
     historyRef.current = history;
   }, [history]);
+
+  useEffect(() => {
+    getStorageValue(DATE_SELECTION_MODE, "range").then((mode) => {
+      setDateSelectionMode(mode as "range" | "single");
+    });
+  }, []);
 
   const typeOptions = [
     { value: "all", label: "全部分类" },
@@ -46,7 +57,7 @@ export const History: React.FC = () => {
   ];
 
   const loadHistory = async (isAppend: boolean = false) => {
-    if (isLoadingRef.current) {
+    if (isAppend && isLoadingRef.current) {
       return;
     }
 
@@ -64,7 +75,8 @@ export const History: React.FC = () => {
         100,
         debouncedKeyword,
         { start: startDate, end: endDate },
-        selectedType
+        selectedType,
+        searchType
       );
 
       if (isAppend) {
@@ -85,7 +97,7 @@ export const History: React.FC = () => {
 
   useEffect(() => {
     loadHistory(false);
-  }, [debouncedKeyword, startDate, endDate, selectedType]);
+  }, [debouncedKeyword, startDate, endDate, selectedType, searchType]);
 
   useEffect(() => {
     getTotalCount();
@@ -117,7 +129,7 @@ export const History: React.FC = () => {
         observerRef.current.disconnect();
       }
     };
-  }, [hasMore, debouncedKeyword, startDate, endDate, selectedType]);
+  }, [hasMore, debouncedKeyword, startDate, endDate, selectedType, searchType]);
 
   const getLoadMoreText = () => {
     if (history.length === 0) {
@@ -181,26 +193,86 @@ export const History: React.FC = () => {
             </div>
           </div>
 
-          {/* 中间：搜索框 (二合一) */}
+          {/* 中间：搜索框 (带类型选择) */}
           <div className="flex-1 w-full md:max-w-xl px-4">
-            <div className="relative group w-full transition-all duration-300 transform hover:scale-[1.01]">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+            <div className="relative group w-full flex items-center bg-gray-50 border border-gray-200 rounded-full transition-all duration-300 shadow-sm hover:shadow-md focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400">
+
+              {/* 搜索类型下拉 */}
+              <div className="relative">
+                <button
+                  className="pl-4 pr-3 py-2 text-sm text-gray-600 font-medium cursor-pointer border-r border-gray-200 hover:text-blue-600 flex items-center gap-1 transition-colors whitespace-nowrap"
+                  onClick={() => setIsSearchKindDropdownOpen(!isSearchKindDropdownOpen)}
+                >
+                  <span>
+                    {searchType === "all" && "综合"}
+                    {searchType === "title" && "标题"}
+                    {searchType === "up" && "UP主"}
+                    {searchType === "bvid" && "BV号"}
+                    {searchType === "avid" && "AV号"}
+                  </span>
+                  <ChevronDownIcon className="w-3 h-3 text-gray-400" />
+                </button>
+
+                {isSearchKindDropdownOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setIsSearchKindDropdownOpen(false)}
+                    ></div>
+                    <div className="absolute top-full left-0 mt-2 w-28 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-20 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+                      {[
+                        { value: "all", label: "综合搜索" },
+                        { value: "title", label: "视频标题" },
+                        { value: "up", label: "UP主" },
+                        { value: "bvid", label: "视频BV号" },
+                        { value: "avid", label: "视频AV号" },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          className={`w-full text-left px-4 py-2 text-sm transition-colors ${searchType === option.value
+                            ? "bg-blue-50 text-blue-600 font-medium"
+                            : "text-gray-600 hover:bg-gray-50"
+                            }`}
+                          onClick={() => {
+                            setSearchType(option.value as any);
+                            setIsSearchKindDropdownOpen(false);
+                          }}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
+
               <input
                 type="text"
-                className="block w-full pl-10 pr-10 py-2 bg-gray-50 border border-gray-200 rounded-full text-sm placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all shadow-sm group-hover:shadow-md"
-                placeholder="搜索视频标题或UP主..."
+                className="flex-1 bg-transparent border-none focus:ring-0 pl-3 pr-10 py-2 text-sm placeholder-gray-400 focus:outline-none"
+                placeholder={
+                  searchType === "bvid"
+                    ? "输入BV号..."
+                    : searchType === "avid"
+                      ? "输入AV号..."
+                      : searchType === "up"
+                        ? "输入UP主名称或UID..."
+                        : "搜索..."
+                }
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
               />
-              {keyword && (
+
+              {keyword ? (
                 <button
                   onClick={() => setKeyword("")}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
                 >
                   <X className="h-4 w-4" />
                 </button>
+              ) : (
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <Search className="h-4 w-4 text-gray-400" />
+                </div>
               )}
             </div>
           </div>
@@ -214,6 +286,7 @@ export const History: React.FC = () => {
                 setStartDate(start);
                 setEndDate(end);
               }}
+              mode={dateSelectionMode}
             />
 
             <button
@@ -235,7 +308,14 @@ export const History: React.FC = () => {
 
       <div className="p-6 pt-2 grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-6 max-w-[1600px] mx-auto">
         {history.map((item) => (
-          <HistoryItem key={`${item.id}-${item.view_at}`} item={item} />
+          <HistoryItem
+            key={`${item.id}-${item.view_at}`}
+            item={item}
+            onDelete={() => {
+              setHistory((prev) => prev.filter((i) => i.id !== item.id));
+              setTotalHistoryCount((prev) => prev - 1);
+            }}
+          />
         ))}
         {history.length > 0 && (
           <div
@@ -253,15 +333,16 @@ export const History: React.FC = () => {
             <Search className="w-16 h-16 mx-auto opacity-50" />
           </div>
           <p className="text-gray-500 text-lg">
-            {keyword || startDate || selectedType !== 'all' ? "没有找到相关记录" : "暂无历史记录"}
+            {keyword || startDate || selectedType !== 'all' || searchType !== 'all' ? "没有找到相关记录" : "暂无历史记录"}
           </p>
-          {(keyword || startDate || selectedType !== 'all') && (
+          {(keyword || startDate || selectedType !== 'all' || searchType !== 'all') && (
             <button
               onClick={() => {
                 setKeyword("");
                 setStartDate("");
                 setEndDate("");
                 setSelectedType("all");
+                setSearchType("all");
               }}
               className="mt-4 text-blue-500 hover:text-blue-600 hover:underline text-sm"
             >

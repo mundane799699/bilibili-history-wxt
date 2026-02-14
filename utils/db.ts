@@ -177,10 +177,11 @@ const matchCondition = (
   item: HistoryItem,
   keyword: string,
   dateRange: { start: string; end: string } | null,
-  businessType: string
+  businessType: string,
+  searchType: "all" | "title" | "up" | "bvid" | "avid" = "all"
 ) => {
   return (
-    matchKeyword(item, keyword) &&
+    matchKeyword(item, keyword, searchType) &&
     matchDate(item, dateRange) &&
     matchBusinessType(item, businessType)
   );
@@ -215,15 +216,32 @@ const matchDate = (
   return true;
 };
 
-const matchKeyword = (item: HistoryItem, keyword: string) => {
+const matchKeyword = (item: HistoryItem, keyword: string, searchType: "all" | "title" | "up" | "bvid" | "avid" = "all") => {
   if (!keyword) return true;
   const lowerKeyword = keyword.toLowerCase();
-  return (
-    item.title.toLowerCase().includes(lowerKeyword) ||
-    item.author_name.toLowerCase().includes(lowerKeyword) ||
-    (item.bvid && item.bvid.toLowerCase().includes(lowerKeyword)) ||
-    (item.author_mid && String(item.author_mid).toLowerCase().includes(lowerKeyword))
-  );
+
+  switch (searchType) {
+    case "title":
+      return item.title.toLowerCase().includes(lowerKeyword);
+    case "up":
+      return (
+        item.author_name.toLowerCase().includes(lowerKeyword) ||
+        (item.author_mid && String(item.author_mid).toLowerCase().includes(lowerKeyword))
+      );
+    case "bvid":
+      return item.bvid && item.bvid.toLowerCase().includes(lowerKeyword);
+    case "avid":
+      return item.id && String(item.id).includes(lowerKeyword);
+    case "all":
+    default:
+      return (
+        item.title.toLowerCase().includes(lowerKeyword) ||
+        item.author_name.toLowerCase().includes(lowerKeyword) ||
+        (item.bvid && item.bvid.toLowerCase().includes(lowerKeyword)) ||
+        (item.author_mid && String(item.author_mid).toLowerCase().includes(lowerKeyword)) ||
+        (item.id && String(item.id).includes(lowerKeyword))
+      );
+  }
 };
 
 export const getTotalHistoryCount = async (): Promise<number> => {
@@ -250,7 +268,8 @@ export const getHistory = async (
   pageSize: number = 20,
   keyword: string = "",
   dateRange: { start: string; end: string } | null = null,
-  businessType: string = ""
+  businessType: string = "",
+  searchType: "all" | "title" | "up" | "bvid" | "avid" = "all"
 ): Promise<{ items: HistoryItem[]; hasMore: boolean }> => {
   const db = await openDB();
   const tx = db.transaction("history", "readonly");
@@ -276,7 +295,7 @@ export const getHistory = async (
 
         // 如果还没收集够数据，继续收集
         if (items.length < pageSize) {
-          if (matchCondition(value, keyword, dateRange, businessType)) {
+          if (matchCondition(value, keyword, dateRange, businessType, searchType)) {
             items.push(value);
           }
           cursor.continue();
