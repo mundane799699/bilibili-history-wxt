@@ -354,6 +354,8 @@ export default defineBackground(() => {
               uri: item.uri,
               author_name: item.author_name || "",
               author_mid: item.author_mid || "",
+              progress: item.progress,
+              duration: item.duration,
               timestamp: Date.now(),
               uploaded: false,
             });

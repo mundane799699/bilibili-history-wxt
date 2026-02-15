@@ -17,8 +17,20 @@ export const HIDE_USER_INFO = "hideUserInfo";
 export const HIDDEN_MENUS = "hiddenMenus"; // Array of hidden titles
 export const SYNC_PROGRESS_HISTORY = "syncProgressHistory";
 export const SYNC_PROGRESS_FAV = "syncProgressFav";
+export const DATE_SELECTION_MODE = "date_selection_mode";
 
 export const UPDATE_HISTORY = [
+  {
+    date: "2026-02-14",
+    version: "1.9.2",
+    changes: [
+      "历史记录页面支持AV号搜索",
+      "新增日期选择模式（范围选择/单日点击）",
+      "修复切换筛选时无法刷新的问题",
+      "添加观看进度显示",
+      "添加搜索选项选择",
+    ],
+  },
   {
     date: "2026-02-05",
     version: "1.9.1",

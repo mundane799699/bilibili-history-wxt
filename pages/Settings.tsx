@@ -10,6 +10,7 @@ import {
   HIDDEN_MENUS,
   SYNC_PROGRESS_HISTORY,
   SYNC_PROGRESS_FAV,
+  DATE_SELECTION_MODE,
 } from "../utils/constants";
 import {
   exportHistoryToCSV,
@@ -30,6 +31,7 @@ const Settings = () => {
     useState(true);
   const [isHideUserInfo, setIsHideUserInfo] = useState(false);
   const [hiddenMenus, setHiddenMenus] = useState<string[]>([]);
+  const [dateSelectionMode, setDateSelectionMode] = useState<"range" | "single">("range");
 
   // separate progress states
   const [historyProgress, setHistoryProgress] = useState<{ current: number, message: string } | null>(null);
@@ -61,6 +63,7 @@ const Settings = () => {
       const menus = await getStorageValue(HIDDEN_MENUS, []);
       const storedSyncInterval = await getStorageValue(SYNC_INTERVAL, 1);
       const storedFavSyncInterval = await getStorageValue(FAV_SYNC_INTERVAL, 15);
+      const storedDateMode = await getStorageValue(DATE_SELECTION_MODE, "range");
 
       const histProg = await getStorageValue(SYNC_PROGRESS_HISTORY, null);
       const favProg = await getStorageValue(SYNC_PROGRESS_FAV, null);
@@ -71,6 +74,7 @@ const Settings = () => {
       setHiddenMenus(menus);
       setSyncInterval(storedSyncInterval);
       setFavSyncInterval(storedFavSyncInterval);
+      setDateSelectionMode(storedDateMode as "range" | "single");
 
       setHistoryProgress(histProg);
       setFavProgress(favProg);
@@ -353,6 +357,50 @@ const Settings = () => {
                 onChange={(checked) => toggleHiddenMenu(title, checked)}
               />
             ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 界面管理 */}
+      <div className="w-full max-w-md mb-8 rounded-xl bg-white shadow-sm border border-gray-100">
+        <div className="p-5">
+          <h3 className="text-lg font-bold text-gray-800 mb-1">界面管理</h3>
+          <p className="text-sm text-gray-500 mb-6">自定义界面显示与交互</p>
+
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-3">日期选择方式</label>
+              <div className="flex gap-6">
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="dateSelectionMode"
+                    value="range"
+                    checked={dateSelectionMode === "range"}
+                    onChange={async () => {
+                      setDateSelectionMode("range");
+                      await setStorageValue(DATE_SELECTION_MODE, "range");
+                    }}
+                    className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300 transition-all cursor-pointer"
+                  />
+                  <span className="text-sm text-gray-600 group-hover:text-blue-600 transition-colors">范围选择 (起始 - 结束)</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="dateSelectionMode"
+                    value="single"
+                    checked={dateSelectionMode === "single"}
+                    onChange={async () => {
+                      setDateSelectionMode("single");
+                      await setStorageValue(DATE_SELECTION_MODE, "single");
+                    }}
+                    className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300 transition-all cursor-pointer"
+                  />
+                  <span className="text-sm text-gray-600 group-hover:text-blue-600 transition-colors">单日选择 (点选日期)</span>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
       </div>

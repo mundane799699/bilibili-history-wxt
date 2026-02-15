@@ -92,9 +92,7 @@ export const About: React.FC = () => {
             目前积压的需求有很多，比如：
           </p>
           <ul className="list-disc pl-5 mb-6 text-base text-gray-600">
-            <li>支持b站收藏的保存</li>
             <li>标签功能</li>
-            <li>在b站删除历史记录后，同步删除插件历史记录</li>
             <li>webdav同步</li>
             <li>重命名功能</li>
             <li>支持分页</li>

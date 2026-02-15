@@ -13,6 +13,8 @@ const convertToCSV = (items: HistoryItem[]): string => {
     "标题",
     "观看时间",
     "类型",
+    "观看进度(秒)",
+    "总时长(秒)",
     "链接",
     "封面",
     "作者",
@@ -27,17 +29,20 @@ const convertToCSV = (items: HistoryItem[]): string => {
     const authorUrl = `https://space.bilibili.com/${item.author_mid}`;
 
     // 处理字段中可能包含逗号的情况
-    const escapeField = (field: string) => {
-      if (field.includes(",") || field.includes('"') || field.includes("\n")) {
-        return `"${field.replace(/"/g, '""')}"`;
+    const escapeField = (field: string | number) => {
+      const fieldStr = String(field);
+      if (fieldStr.includes(",") || fieldStr.includes('"') || fieldStr.includes("\n")) {
+        return `"${fieldStr.replace(/"/g, '""')}"`;
       }
-      return field;
+      return fieldStr;
     };
 
     return [
       escapeField(item.title),
       escapeField(viewAt),
       escapeField(type),
+      escapeField(item.progress || 0),
+      escapeField(item.duration || 0),
       escapeField(url),
       escapeField(item.cover || ""),
       escapeField(item.author_name || ""),

@@ -11,6 +11,8 @@ export interface HistoryItem {
   author_mid: number;
   uri?: string;
   uploaded?: boolean;
+  progress?: number;
+  duration?: number;
 }
 
 export interface LikedMusic {
