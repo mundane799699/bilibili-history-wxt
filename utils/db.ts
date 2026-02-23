@@ -3,7 +3,7 @@ import dayjs from "dayjs";
 
 const DB_CONFIG: DBConfig = {
   name: "bilibiliHistory",
-  version: 4,
+  version: 5,
   stores: {
     history: {
       keyPath: "id",
@@ -50,11 +50,22 @@ export const openDB = (): Promise<IDBDatabase> => {
         });
         likedMusicStore.createIndex("added_at", "added_at", { unique: false });
 
-        console.log("首次创建数据库和索引");
+        const favFoldersStore = db.createObjectStore("favFolders", {
+          keyPath: "id",
+        });
+        favFoldersStore.createIndex("mid", "mid", { unique: false });
+
+        const favResourcesStore = db.createObjectStore("favResources", {
+          keyPath: "id",
+        });
+        favResourcesStore.createIndex("folder_id", "folder_id", { unique: false });
+        favResourcesStore.createIndex("fav_time", "fav_time", { unique: false });
+
+        console.log("首次创建数据库和所有表");
       }
 
-      // 从版本1升级到版本2：重命名viewTime字段为view_at
-      if (oldVersion >= 1 && oldVersion < 2 && newVersion >= 2) {
+      // 从版本1升级：重命名viewTime字段为view_at
+      if (oldVersion >= 1 && oldVersion < 2) {
         console.log("开始迁移数据：viewTime -> view_at");
 
         const store = transaction.objectStore("history");
@@ -69,8 +80,6 @@ export const openDB = (): Promise<IDBDatabase> => {
           console.log("创建新的view_at索引");
         }
 
-        // 迁移数据：将viewTime字段重命名为view_at
-        // 注意：这些操作在同一个 versionchange 事务中，是同步排队的
         const getAllRequest = store.getAll();
         getAllRequest.onsuccess = () => {
           const allRecords = getAllRequest.result;
@@ -92,36 +101,37 @@ export const openDB = (): Promise<IDBDatabase> => {
         };
       }
 
-      // 从版本2及以下升级到版本3及以上：创建likedMusic表
-      if (oldVersion >= 1 && oldVersion < 3 && newVersion >= 3) {
-        if (!db.objectStoreNames.contains("likedMusic")) {
-          console.log("创建likedMusic表");
-          const likedMusicStore = db.createObjectStore("likedMusic", {
-            keyPath: "bvid",
-          });
-          likedMusicStore.createIndex("added_at", "added_at", { unique: false });
-          console.log("likedMusic表创建完成");
-        }
+      // 兜底修复：检查并补创建所有缺失的 store
+      // 修复旧版本 else-if 互斥导致部分 store 未创建的问题
+      if (!db.objectStoreNames.contains("history")) {
+        console.log("补创建history表");
+        const historyStore = db.createObjectStore("history", { keyPath: "id" });
+        historyStore.createIndex("view_at", "view_at", { unique: false });
       }
 
-      // 从版本3及以下升级到版本4及以上：创建收藏夹相关表
-      if (oldVersion >= 1 && oldVersion < 4 && newVersion >= 4) {
-        if (!db.objectStoreNames.contains("favFolders")) {
-          console.log("创建收藏夹相关表");
-          const favFoldersStore = db.createObjectStore("favFolders", {
-            keyPath: "id",
-          });
-          favFoldersStore.createIndex("mid", "mid", { unique: false });
-        }
+      if (!db.objectStoreNames.contains("likedMusic")) {
+        console.log("补创建likedMusic表");
+        const likedMusicStore = db.createObjectStore("likedMusic", {
+          keyPath: "bvid",
+        });
+        likedMusicStore.createIndex("added_at", "added_at", { unique: false });
+      }
 
-        if (!db.objectStoreNames.contains("favResources")) {
-          const favResourcesStore = db.createObjectStore("favResources", {
-            keyPath: "id",
-          });
-          favResourcesStore.createIndex("folder_id", "folder_id", { unique: false });
-          favResourcesStore.createIndex("fav_time", "fav_time", { unique: false });
-          console.log("收藏夹相关表创建完成");
-        }
+      if (!db.objectStoreNames.contains("favFolders")) {
+        console.log("补创建favFolders表");
+        const favFoldersStore = db.createObjectStore("favFolders", {
+          keyPath: "id",
+        });
+        favFoldersStore.createIndex("mid", "mid", { unique: false });
+      }
+
+      if (!db.objectStoreNames.contains("favResources")) {
+        console.log("补创建favResources表");
+        const favResourcesStore = db.createObjectStore("favResources", {
+          keyPath: "id",
+        });
+        favResourcesStore.createIndex("folder_id", "folder_id", { unique: false });
+        favResourcesStore.createIndex("fav_time", "fav_time", { unique: false });
       }
     };
   });

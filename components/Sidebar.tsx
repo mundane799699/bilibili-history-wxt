@@ -73,15 +73,15 @@ export const Sidebar = () => {
     getStorageValue(HIDDEN_MENUS, []).then(setHiddenMenus);
 
     const handleStorageChange = (
-      changes: { [key: string]: browser.storage.StorageChange },
+      changes: { [key: string]: Browser.storage.StorageChange },
       areaName: string
     ) => {
       if (areaName === "local") {
         if (changes[HIDE_USER_INFO]) {
-          setHideUserInfo(changes[HIDE_USER_INFO].newValue);
+          setHideUserInfo(changes[HIDE_USER_INFO].newValue as boolean);
         }
         if (changes[HIDDEN_MENUS]) {
-          setHiddenMenus(changes[HIDDEN_MENUS].newValue || []);
+          setHiddenMenus((changes[HIDDEN_MENUS].newValue as string[]) || []);
         }
       }
     };

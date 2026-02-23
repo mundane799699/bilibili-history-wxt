@@ -18,8 +18,19 @@ export const HIDDEN_MENUS = "hiddenMenus"; // Array of hidden titles
 export const SYNC_PROGRESS_HISTORY = "syncProgressHistory";
 export const SYNC_PROGRESS_FAV = "syncProgressFav";
 export const DATE_SELECTION_MODE = "date_selection_mode";
+export const GRID_COLUMNS = "gridColumns";
 
 export const UPDATE_HISTORY = [
+  {
+    date: "2026-02-23",
+    version: "1.9.4",
+    changes: [
+      "修复更新插件后历史记录丢失的问题",
+      "新增历史记录列数自定义调节功能",
+      "修复多个TypeScript类型错误",
+      "修复HMR 重载后就会复现历史记录页面无法滚动的bug",
+    ],
+  },
   {
     date: "2026-02-23",
     version: "1.9.3",
