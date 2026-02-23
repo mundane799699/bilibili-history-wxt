@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { HistoryItem } from "../components/HistoryItem";
 import { getHistory, getTotalHistoryCount } from "../utils/db";
 import { HistoryItem as HistoryItemType } from "../utils/types";
@@ -9,10 +9,12 @@ import {
   Search,
   X,
   Filter,
+  Minus,
+  Plus,
 } from "lucide-react";
-import { DATE_SELECTION_MODE } from "../utils/constants";
+import { DATE_SELECTION_MODE, GRID_COLUMNS } from "../utils/constants";
 import { DateRangePicker } from "../components/DateRangePicker";
-import { getStorageValue } from "../utils/storage";
+import { getStorageValue, setStorageValue } from "../utils/storage";
 
 export const History: React.FC = () => {
   const [history, setHistory] = useState<HistoryItemType[]>([]);
@@ -36,11 +38,13 @@ export const History: React.FC = () => {
   const [dateSelectionMode, setDateSelectionMode] = useState<
     "range" | "single"
   >("range");
+  const [gridColumns, setGridColumns] = useState(4);
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const isLoadingRef = useRef<boolean>(false);
   const historyRef = useRef<HistoryItemType[]>([]);
+  const hasMoreRef = useRef(true);
 
   useEffect(() => {
     historyRef.current = history;
@@ -50,7 +54,18 @@ export const History: React.FC = () => {
     getStorageValue(DATE_SELECTION_MODE, "range").then((mode) => {
       setDateSelectionMode(mode as "range" | "single");
     });
+    getStorageValue<number>(GRID_COLUMNS, 4).then((cols) => {
+      setGridColumns(cols);
+    });
   }, []);
+
+  const handleColumnChange = (delta: number) => {
+    setGridColumns((prev) => {
+      const next = Math.max(2, Math.min(8, prev + delta));
+      setStorageValue(GRID_COLUMNS, next);
+      return next;
+    });
+  };
 
   const typeOptions = [
     { value: "all", label: "全部分类" },
@@ -93,6 +108,7 @@ export const History: React.FC = () => {
       }
 
       setHasMore(hasMore);
+      hasMoreRef.current = hasMore;
     } catch (error) {
       console.error("Failed to load history:", error);
     } finally {
@@ -100,6 +116,10 @@ export const History: React.FC = () => {
       isLoadingRef.current = false;
     }
   };
+
+  // 保持最新的 loadHistory 引用，避免 Observer 闭包陈旧
+  const loadHistoryRef = useRef(loadHistory);
+  loadHistoryRef.current = loadHistory;
 
   useEffect(() => {
     loadHistory(false);
@@ -114,18 +134,19 @@ export const History: React.FC = () => {
     setTotalHistoryCount(count);
   };
 
+  // Observer 只创建一次，通过 ref 访问最新状态
   useEffect(() => {
-    const options = {
-      threshold: 0.1,
-      rootMargin: "200px",
-    };
     observerRef.current = new IntersectionObserver((entries) => {
       const [entry] = entries;
-      if (entry.isIntersecting && hasMore && !isLoadingRef.current) {
-        loadHistory(true);
+      if (entry.isIntersecting && hasMoreRef.current && !isLoadingRef.current) {
+        loadHistoryRef.current(true);
       }
-    }, options);
+    }, {
+      threshold: 0.1,
+      rootMargin: "200px",
+    });
 
+    // callback ref 在 useEffect 之前执行，此时 loadMoreRef.current 可能已有值
     if (loadMoreRef.current) {
       observerRef.current.observe(loadMoreRef.current);
     }
@@ -135,7 +156,18 @@ export const History: React.FC = () => {
         observerRef.current.disconnect();
       }
     };
-  }, [hasMore, debouncedKeyword, startDate, endDate, selectedType, searchType]);
+  }, []);
+
+  // callback ref：loadMore div 挂载/卸载时自动 observe/unobserve
+  const loadMoreCallbackRef = useCallback((node: HTMLDivElement | null) => {
+    if (loadMoreRef.current && observerRef.current) {
+      observerRef.current.unobserve(loadMoreRef.current);
+    }
+    loadMoreRef.current = node;
+    if (node && observerRef.current) {
+      observerRef.current.observe(node);
+    }
+  }, []);
 
   const getLoadMoreText = () => {
     if (history.length === 0) {
@@ -180,11 +212,10 @@ export const History: React.FC = () => {
                     {typeOptions.map((option) => (
                       <button
                         key={option.value}
-                        className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                          selectedType === option.value
-                            ? "bg-blue-50 text-blue-600 font-medium"
-                            : "text-gray-600 hover:bg-gray-50"
-                        }`}
+                        className={`w-full text-left px-4 py-2 text-sm transition-colors ${selectedType === option.value
+                          ? "bg-blue-50 text-blue-600 font-medium"
+                          : "text-gray-600 hover:bg-gray-50"
+                          }`}
                         onClick={() => {
                           setSelectedType(option.value);
                           setIsTypeDropdownOpen(false);
@@ -236,11 +267,10 @@ export const History: React.FC = () => {
                       ].map((option) => (
                         <button
                           key={option.value}
-                          className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                            searchType === option.value
-                              ? "bg-blue-50 text-blue-600 font-medium"
-                              : "text-gray-600 hover:bg-gray-50"
-                          }`}
+                          className={`w-full text-left px-4 py-2 text-sm transition-colors ${searchType === option.value
+                            ? "bg-blue-50 text-blue-600 font-medium"
+                            : "text-gray-600 hover:bg-gray-50"
+                            }`}
                           onClick={() => {
                             setSearchType(option.value as any);
                             setIsSearchKindDropdownOpen(false);
@@ -285,7 +315,7 @@ export const History: React.FC = () => {
             </div>
           </div>
 
-          {/* 右侧：日期与刷新 */}
+          {/* 右侧：日期、列数与刷新 */}
           <div className="flex items-center gap-3 w-full md:w-auto justify-end">
             <DateRangePicker
               startDate={startDate}
@@ -297,14 +327,36 @@ export const History: React.FC = () => {
               mode={dateSelectionMode}
             />
 
+            {/* 列数调节 */}
+            <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-full px-1 py-0.5">
+              <button
+                onClick={() => handleColumnChange(-1)}
+                disabled={gridColumns <= 2}
+                className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                title="减少列数"
+              >
+                <Minus className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-xs font-medium text-gray-600 w-4 text-center tabular-nums">
+                {gridColumns}
+              </span>
+              <button
+                onClick={() => handleColumnChange(1)}
+                disabled={gridColumns >= 8}
+                className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                title="增加列数"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
             <button
               onClick={() => {
                 getTotalCount();
                 loadHistory(false);
               }}
-              className={`p-2 bg-white text-gray-500 rounded-full hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm border border-gray-200 hover:border-blue-200 hover:rotate-180 duration-500 ${
-                isLoading ? "opacity-50 cursor-not-allowed" : ""
-              }`}
+              className={`p-2 bg-white text-gray-500 rounded-full hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm border border-gray-200 hover:border-blue-200 hover:rotate-180 duration-500 ${isLoading ? "opacity-50 cursor-not-allowed" : ""
+                }`}
               disabled={isLoading}
               title="刷新"
             >
@@ -316,7 +368,10 @@ export const History: React.FC = () => {
         </div>
       </div>
 
-      <div className="p-6 pt-2 grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-5 max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto">
+      <div
+        className="p-6 pt-2 grid gap-5 mx-auto w-full"
+        style={{ gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))` }}
+      >
         {history.map((item) => (
           <HistoryItem
             key={`${item.id}-${item.view_at}`}
@@ -328,7 +383,7 @@ export const History: React.FC = () => {
           />
         ))}
         <div
-          ref={loadMoreRef}
+          ref={loadMoreCallbackRef}
           className="col-span-full py-8 text-center text-gray-500 text-sm"
         >
           {getLoadMoreText()}
@@ -342,9 +397,9 @@ export const History: React.FC = () => {
           </div>
           <p className="text-gray-500 text-lg">
             {keyword ||
-            startDate ||
-            selectedType !== "all" ||
-            searchType !== "all"
+              startDate ||
+              selectedType !== "all" ||
+              searchType !== "all"
               ? "没有找到相关记录"
               : "暂无历史记录"}
           </p>
@@ -352,19 +407,19 @@ export const History: React.FC = () => {
             startDate ||
             selectedType !== "all" ||
             searchType !== "all") && (
-            <button
-              onClick={() => {
-                setKeyword("");
-                setStartDate("");
-                setEndDate("");
-                setSelectedType("all");
-                setSearchType("all");
-              }}
-              className="mt-4 text-blue-500 hover:text-blue-600 hover:underline text-sm"
-            >
-              清除所有筛选
-            </button>
-          )}
+              <button
+                onClick={() => {
+                  setKeyword("");
+                  setStartDate("");
+                  setEndDate("");
+                  setSelectedType("all");
+                  setSearchType("all");
+                }}
+                className="mt-4 text-blue-500 hover:text-blue-600 hover:underline text-sm"
+              >
+                清除所有筛选
+              </button>
+            )}
         </div>
       )}
     </div>

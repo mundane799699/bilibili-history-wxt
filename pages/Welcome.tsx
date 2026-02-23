@@ -19,15 +19,15 @@ const Welcome = () => {
         loadProgress();
 
         const handleStorageChange = (
-            changes: { [key: string]: browser.storage.StorageChange },
+            changes: { [key: string]: Browser.storage.StorageChange },
             areaName: string
         ) => {
             if (areaName === "local") {
                 if (changes[SYNC_PROGRESS_HISTORY]) {
-                    setHistoryProgress(changes[SYNC_PROGRESS_HISTORY].newValue);
+                    setHistoryProgress(changes[SYNC_PROGRESS_HISTORY].newValue as { current: number; message: string } | null);
                 }
                 if (changes[SYNC_PROGRESS_FAV]) {
-                    setFavProgress(changes[SYNC_PROGRESS_FAV].newValue);
+                    setFavProgress(changes[SYNC_PROGRESS_FAV].newValue as { current: number; total: number; message: string } | null);
                 }
             }
         };

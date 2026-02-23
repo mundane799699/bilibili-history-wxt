@@ -12,7 +12,7 @@ function App() {
     const checkSyncStatus = async () => {
       const result = await browser.storage.local.get("lastSync");
       if (result.lastSync) {
-        const lastSync = new Date(result.lastSync);
+        const lastSync = new Date(result.lastSync as string | number);
         setStatus(`上次同步时间：${lastSync.toLocaleString()}`);
       } else {
         setStatus("尚未同步过历史记录");
