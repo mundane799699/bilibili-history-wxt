@@ -23,14 +23,19 @@ export const History: React.FC = () => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  const [searchType, setSearchType] = useState<"all" | "title" | "up" | "bvid" | "avid">("all");
-  const [isSearchKindDropdownOpen, setIsSearchKindDropdownOpen] = useState(false);
+  const [searchType, setSearchType] = useState<
+    "all" | "title" | "up" | "bvid" | "avid"
+  >("all");
+  const [isSearchKindDropdownOpen, setIsSearchKindDropdownOpen] =
+    useState(false);
   const [selectedType, setSelectedType] = useState("all");
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [totalHistoryCount, setTotalHistoryCount] = useState(0);
-  const [dateSelectionMode, setDateSelectionMode] = useState<"range" | "single">("range");
+  const [dateSelectionMode, setDateSelectionMode] = useState<
+    "range" | "single"
+  >("range");
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -67,7 +72,8 @@ export const History: React.FC = () => {
 
       let lastViewTime: number | "" = "";
       if (isAppend && historyRef.current.length > 0) {
-        lastViewTime = historyRef.current[historyRef.current.length - 1].view_at;
+        lastViewTime =
+          historyRef.current[historyRef.current.length - 1].view_at;
       }
 
       const { items, hasMore } = await getHistory(
@@ -76,7 +82,7 @@ export const History: React.FC = () => {
         debouncedKeyword,
         { start: startDate, end: endDate },
         selectedType,
-        searchType
+        searchType,
       );
 
       if (isAppend) {
@@ -146,7 +152,6 @@ export const History: React.FC = () => {
     <div>
       <div className="sticky top-0 bg-white/95 backdrop-blur-sm z-20 border-b border-gray-100 shadow-sm transition-all duration-300">
         <div className="flex flex-col md:flex-row items-center justify-between px-6 py-4 gap-4 max-w-[1600px] mx-auto">
-
           {/* 左侧：统计与筛选 */}
           <div className="flex items-center gap-4 w-full md:w-auto">
             <span className="text-sm font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full whitespace-nowrap border border-gray-100">
@@ -175,10 +180,11 @@ export const History: React.FC = () => {
                     {typeOptions.map((option) => (
                       <button
                         key={option.value}
-                        className={`w-full text-left px-4 py-2 text-sm transition-colors ${selectedType === option.value
-                          ? "bg-blue-50 text-blue-600 font-medium"
-                          : "text-gray-600 hover:bg-gray-50"
-                          }`}
+                        className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                          selectedType === option.value
+                            ? "bg-blue-50 text-blue-600 font-medium"
+                            : "text-gray-600 hover:bg-gray-50"
+                        }`}
                         onClick={() => {
                           setSelectedType(option.value);
                           setIsTypeDropdownOpen(false);
@@ -196,12 +202,13 @@ export const History: React.FC = () => {
           {/* 中间：搜索框 (带类型选择) */}
           <div className="flex-1 w-full md:max-w-xl px-4">
             <div className="relative group w-full flex items-center bg-gray-50 border border-gray-200 rounded-full transition-all duration-300 shadow-sm hover:shadow-md focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400">
-
               {/* 搜索类型下拉 */}
               <div className="relative">
                 <button
                   className="pl-4 pr-3 py-2 text-sm text-gray-600 font-medium cursor-pointer border-r border-gray-200 hover:text-blue-600 flex items-center gap-1 transition-colors whitespace-nowrap"
-                  onClick={() => setIsSearchKindDropdownOpen(!isSearchKindDropdownOpen)}
+                  onClick={() =>
+                    setIsSearchKindDropdownOpen(!isSearchKindDropdownOpen)
+                  }
                 >
                   <span>
                     {searchType === "all" && "综合"}
@@ -229,10 +236,11 @@ export const History: React.FC = () => {
                       ].map((option) => (
                         <button
                           key={option.value}
-                          className={`w-full text-left px-4 py-2 text-sm transition-colors ${searchType === option.value
-                            ? "bg-blue-50 text-blue-600 font-medium"
-                            : "text-gray-600 hover:bg-gray-50"
-                            }`}
+                          className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                            searchType === option.value
+                              ? "bg-blue-50 text-blue-600 font-medium"
+                              : "text-gray-600 hover:bg-gray-50"
+                          }`}
                           onClick={() => {
                             setSearchType(option.value as any);
                             setIsSearchKindDropdownOpen(false);
@@ -294,19 +302,21 @@ export const History: React.FC = () => {
                 getTotalCount();
                 loadHistory(false);
               }}
-              className={`p-2 bg-white text-gray-500 rounded-full hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm border border-gray-200 hover:border-blue-200 hover:rotate-180 duration-500 ${isLoading ? "opacity-50 cursor-not-allowed" : ""
-                }`}
+              className={`p-2 bg-white text-gray-500 rounded-full hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm border border-gray-200 hover:border-blue-200 hover:rotate-180 duration-500 ${
+                isLoading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
               disabled={isLoading}
               title="刷新"
             >
-              <RefreshCwIcon className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+              <RefreshCwIcon
+                className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
+              />
             </button>
           </div>
-
         </div>
       </div>
 
-      <div className="p-6 pt-2 grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-6 max-w-[1600px] mx-auto">
+      <div className="p-6 pt-2 grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-5 max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto">
         {history.map((item) => (
           <HistoryItem
             key={`${item.id}-${item.view_at}`}
@@ -317,14 +327,12 @@ export const History: React.FC = () => {
             }}
           />
         ))}
-        {history.length > 0 && (
-          <div
-            ref={loadMoreRef}
-            className="col-span-full py-8 text-center text-gray-500 text-sm"
-          >
-            {getLoadMoreText()}
-          </div>
-        )}
+        <div
+          ref={loadMoreRef}
+          className="col-span-full py-8 text-center text-gray-500 text-sm"
+        >
+          {getLoadMoreText()}
+        </div>
       </div>
 
       {history.length === 0 && !isLoading && (
@@ -333,9 +341,17 @@ export const History: React.FC = () => {
             <Search className="w-16 h-16 mx-auto opacity-50" />
           </div>
           <p className="text-gray-500 text-lg">
-            {keyword || startDate || selectedType !== 'all' || searchType !== 'all' ? "没有找到相关记录" : "暂无历史记录"}
+            {keyword ||
+            startDate ||
+            selectedType !== "all" ||
+            searchType !== "all"
+              ? "没有找到相关记录"
+              : "暂无历史记录"}
           </p>
-          {(keyword || startDate || selectedType !== 'all' || searchType !== 'all') && (
+          {(keyword ||
+            startDate ||
+            selectedType !== "all" ||
+            searchType !== "all") && (
             <button
               onClick={() => {
                 setKeyword("");
