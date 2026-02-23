@@ -21,6 +21,14 @@ export const DATE_SELECTION_MODE = "date_selection_mode";
 
 export const UPDATE_HISTORY = [
   {
+    date: "2026-02-23",
+    version: "1.9.3",
+    changes: [
+      "修复滚动加载更多却没有加载更多的bug",
+      "历史记录的列数根据屏幕适配",
+    ],
+  },
+  {
     date: "2026-02-14",
     version: "1.9.2",
     changes: [
