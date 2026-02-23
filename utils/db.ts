@@ -31,7 +31,7 @@ export const openDB = (): Promise<IDBDatabase> => {
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);
 
-    request.onupgradeneeded = async (event) => {
+    request.onupgradeneeded = (event) => {
       console.log("onupgradeneeded");
       const db = (event.target as IDBOpenDBRequest).result;
       const transaction = (event.target as IDBOpenDBRequest).transaction!;
@@ -51,24 +51,26 @@ export const openDB = (): Promise<IDBDatabase> => {
         likedMusicStore.createIndex("added_at", "added_at", { unique: false });
 
         console.log("首次创建数据库和索引");
-      } else if (oldVersion === 1 && newVersion >= 2) {
-        // 从版本1升级到版本2：重命名viewTime字段为view_at
+      }
+
+      // 从版本1升级到版本2：重命名viewTime字段为view_at
+      if (oldVersion >= 1 && oldVersion < 2 && newVersion >= 2) {
         console.log("开始迁移数据：viewTime -> view_at");
 
-        // 获取现有的对象存储
         const store = transaction.objectStore("history");
 
-        // 删除旧的viewTime索引
         if (store.indexNames.contains("viewTime")) {
           store.deleteIndex("viewTime");
           console.log("删除旧的viewTime索引");
         }
 
-        // 创建新的view_at索引
-        store.createIndex("view_at", "view_at", { unique: false });
-        console.log("创建新的view_at索引");
+        if (!store.indexNames.contains("view_at")) {
+          store.createIndex("view_at", "view_at", { unique: false });
+          console.log("创建新的view_at索引");
+        }
 
         // 迁移数据：将viewTime字段重命名为view_at
+        // 注意：这些操作在同一个 versionchange 事务中，是同步排队的
         const getAllRequest = store.getAll();
         getAllRequest.onsuccess = () => {
           const allRecords = getAllRequest.result;
@@ -76,11 +78,8 @@ export const openDB = (): Promise<IDBDatabase> => {
 
           allRecords.forEach((record: any) => {
             if (record.viewTime !== undefined) {
-              // 将viewTime重命名为view_at
               record.view_at = record.viewTime;
               delete record.viewTime;
-
-              // 更新记录
               store.put(record);
             }
           });
@@ -91,33 +90,38 @@ export const openDB = (): Promise<IDBDatabase> => {
         getAllRequest.onerror = () => {
           console.error("数据迁移失败:", getAllRequest.error);
         };
-      } else if (oldVersion <= 2 && newVersion >= 3) {
-        // 从版本2及以下升级到版本3及以上：创建likedMusic表（使用bvid作为主键）
-        console.log("创建likedMusic表");
-
-        const likedMusicStore = db.createObjectStore("likedMusic", {
-          keyPath: "bvid",
-        });
-        likedMusicStore.createIndex("added_at", "added_at", { unique: false });
-
-        console.log("likedMusic表创建完成");
       }
 
-      if (oldVersion < 4 && newVersion >= 4) {
-        console.log("创建收藏夹相关表");
+      // 从版本2及以下升级到版本3及以上：创建likedMusic表
+      if (oldVersion >= 1 && oldVersion < 3 && newVersion >= 3) {
+        if (!db.objectStoreNames.contains("likedMusic")) {
+          console.log("创建likedMusic表");
+          const likedMusicStore = db.createObjectStore("likedMusic", {
+            keyPath: "bvid",
+          });
+          likedMusicStore.createIndex("added_at", "added_at", { unique: false });
+          console.log("likedMusic表创建完成");
+        }
+      }
 
-        const favFoldersStore = db.createObjectStore("favFolders", {
-          keyPath: "id",
-        });
-        favFoldersStore.createIndex("mid", "mid", { unique: false });
+      // 从版本3及以下升级到版本4及以上：创建收藏夹相关表
+      if (oldVersion >= 1 && oldVersion < 4 && newVersion >= 4) {
+        if (!db.objectStoreNames.contains("favFolders")) {
+          console.log("创建收藏夹相关表");
+          const favFoldersStore = db.createObjectStore("favFolders", {
+            keyPath: "id",
+          });
+          favFoldersStore.createIndex("mid", "mid", { unique: false });
+        }
 
-        const favResourcesStore = db.createObjectStore("favResources", {
-          keyPath: "id",
-        });
-        favResourcesStore.createIndex("folder_id", "folder_id", { unique: false });
-        favResourcesStore.createIndex("fav_time", "fav_time", { unique: false });
-
-        console.log("收藏夹相关表创建完成");
+        if (!db.objectStoreNames.contains("favResources")) {
+          const favResourcesStore = db.createObjectStore("favResources", {
+            keyPath: "id",
+          });
+          favResourcesStore.createIndex("folder_id", "folder_id", { unique: false });
+          favResourcesStore.createIndex("fav_time", "fav_time", { unique: false });
+          console.log("收藏夹相关表创建完成");
+        }
       }
     };
   });
