@@ -12,6 +12,8 @@
     "zip": "wxt --mode production zip",
     "zip:firefox": "wxt --mode production zip -b firefox",
     "compile": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "postinstall": "wxt prepare"
   },
   "dependencies": {
@@ -34,6 +36,7 @@
     "@wxt-dev/module-react": "^1.1.3",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.3",
+    "prettier": "^3.8.1",
     "tailwindcss": "3",
     "typescript": "^5.8.3",
     "wxt": "^0.20.6"

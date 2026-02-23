@@ -105,14 +105,15 @@ function App() {
           />
           <label
             htmlFor="fullSync"
-            className={`text-sm ${isSyncing ? "text-gray-400" : "text-gray-700"
-              } cursor-pointer select-none`}
+            className={`text-sm ${
+              isSyncing ? "text-gray-400" : "text-gray-700"
+            } cursor-pointer select-none`}
           >
             全量同步
           </label>
         </div>
         {status && <div className="mt-2.5 text-gray-600">{status}</div>}
-      </div >
+      </div>
     </>
   );
 }

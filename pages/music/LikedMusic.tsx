@@ -52,9 +52,7 @@ const LikedMusic = () => {
     const url3 = obj.backup_url?.[1] || "";
 
     // 找到第一个不是https://xy 开头的url
-    const urlList = [url1, url2, url3].filter(
-      (url) => !url.startsWith("https://xy")
-    );
+    const urlList = [url1, url2, url3].filter((url) => !url.startsWith("https://xy"));
     return urlList[0] || url1;
   };
 
@@ -81,9 +79,7 @@ const LikedMusic = () => {
     }
 
     // 找到当前音乐在播放列表中的索引
-    const currentIndex = likedMusic.findIndex(
-      (music) => music.bvid === endedBvid
-    );
+    const currentIndex = likedMusic.findIndex((music) => music.bvid === endedBvid);
 
     // 随机播放模式
     if (playModeRef.current === "random") {
@@ -159,9 +155,7 @@ const LikedMusic = () => {
       setCurrentPlaying(bvid);
 
       // 获取视频信息
-      const response = await fetch(
-        `https://api.bilibili.com/x/web-interface/view?bvid=${bvid}`
-      );
+      const response = await fetch(`https://api.bilibili.com/x/web-interface/view?bvid=${bvid}`);
       const { data, code, message } = await response.json();
       if (code !== 0) {
         throw new Error(message || "获取视频信息失败");
@@ -170,13 +164,9 @@ const LikedMusic = () => {
 
       // 获取播放地址
       const response2 = await fetch(
-        `https://api.bilibili.com/x/player/playurl?fnval=16&bvid=${bvid}&cid=${cid}`
+        `https://api.bilibili.com/x/player/playurl?fnval=16&bvid=${bvid}&cid=${cid}`,
       );
-      const {
-        data: data2,
-        code: code2,
-        message: message2,
-      } = await response2.json();
+      const { data: data2, code: code2, message: message2 } = await response2.json();
       if (code2 !== 0) {
         throw new Error(message2 || "获取播放地址失败");
       }
@@ -294,9 +284,7 @@ const LikedMusic = () => {
   const handlePrevious = () => {
     if (!currentPlaying || likedMusic.length === 0) return;
 
-    const currentIndex = likedMusic.findIndex(
-      (music) => music.bvid === currentPlaying
-    );
+    const currentIndex = likedMusic.findIndex((music) => music.bvid === currentPlaying);
     if (currentIndex > 0) {
       handlePlay(likedMusic[currentIndex - 1]);
     } else {
@@ -308,9 +296,7 @@ const LikedMusic = () => {
   const handleNext = () => {
     if (!currentPlaying || likedMusic.length === 0) return;
 
-    const currentIndex = likedMusic.findIndex(
-      (music) => music.bvid === currentPlaying
-    );
+    const currentIndex = likedMusic.findIndex((music) => music.bvid === currentPlaying);
 
     // 随机播放模式：随机选择下一首
     if (playMode === "random") {
@@ -388,7 +374,7 @@ const LikedMusic = () => {
   // 从本地存储加载播放模式
   useEffect(() => {
     const loadPlayMode = async () => {
-      const savedMode = await getStorageValue<PlayMode>('music_play_mode', 'order');
+      const savedMode = await getStorageValue<PlayMode>("music_play_mode", "order");
       setPlayMode(savedMode);
     };
     loadPlayMode();
@@ -396,7 +382,7 @@ const LikedMusic = () => {
 
   // 当播放模式改变时保存到本地存储
   useEffect(() => {
-    setStorageValue('music_play_mode', playMode);
+    setStorageValue("music_play_mode", playMode);
   }, [playMode]);
 
   const handleMusicRemoved = (bvid: string) => {
@@ -432,12 +418,8 @@ const LikedMusic = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-4">
-              <h1 className="text-xl font-semibold text-gray-800">
-                我喜欢的音乐
-              </h1>
-              <span className="text-sm text-gray-500">
-                ({likedMusic.length} 首)
-              </span>
+              <h1 className="text-xl font-semibold text-gray-800">我喜欢的音乐</h1>
+              <span className="text-sm text-gray-500">({likedMusic.length} 首)</span>
             </div>
 
             {/* 音乐控制栏 */}
@@ -456,19 +438,11 @@ const LikedMusic = () => {
                   currentState?.isPlaying
                     ? "bg-pink-500 text-white hover:bg-pink-600"
                     : "bg-gray-100 hover:bg-gray-200"
-                } ${
-                  currentState?.isLoading
-                    ? "cursor-not-allowed"
-                    : "cursor-pointer"
-                }`}
+                } ${currentState?.isLoading ? "cursor-not-allowed" : "cursor-pointer"}`}
                 onClick={handlePlayPause}
                 disabled={currentState?.isLoading}
                 title={
-                  currentState?.isLoading
-                    ? "加载中..."
-                    : currentState?.isPlaying
-                    ? "暂停"
-                    : "播放"
+                  currentState?.isLoading ? "加载中..." : currentState?.isPlaying ? "暂停" : "播放"
                 }
               >
                 {currentState?.isLoading ? (

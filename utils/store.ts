@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { create } from "zustand";
 
 export type UserInfo = {
   createdAt?: string;
@@ -24,4 +24,4 @@ export const useUserStore = create<UserStore>((set) => ({
   setUserInfo: (userInfo) => set({ userInfo }),
   setIsLoading: (isLoading) => set({ isLoading }),
   clearUserInfo: () => set({ userInfo: null }),
-})); 
+}));

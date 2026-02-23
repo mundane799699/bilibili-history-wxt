@@ -2,10 +2,7 @@ export default defineUnlistedScript(() => {
   const setupFetchInterceptor = () => {
     const originalFetch = window.fetch;
     window.fetch = function (input, init) {
-      if (
-        typeof input === "string" &&
-        input.includes("api.bilibili.com/x/v2/history/delete")
-      ) {
+      if (typeof input === "string" && input.includes("api.bilibili.com/x/v2/history/delete")) {
         // kid=live_30877795&csrf=52dc2e27c3b379951a62796e3f3e824f
         // 提取body中的数字
         if (init?.body && typeof init.body === "string") {
@@ -20,7 +17,7 @@ export default defineUnlistedScript(() => {
                 action: "deleteHistoryItem",
                 id: id,
               },
-              "*"
+              "*",
             );
           }
         }

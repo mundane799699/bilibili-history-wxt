@@ -160,13 +160,7 @@ export const exportLikedMusicToJSON = async (): Promise<void> => {
  */
 const convertLikedMusicToCSV = (items: LikedMusic[]): string => {
   // CSV 表头
-  const headers = [
-    "标题",
-    "作者",
-    "BV号",
-    "添加时间",
-    "封面"
-  ].join(",");
+  const headers = ["标题", "作者", "BV号", "添加时间", "封面"].join(",");
 
   // 转换每条记录为CSV行
   const rows = items.map((item) => {

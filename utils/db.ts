@@ -161,12 +161,7 @@ export const saveHistory = async (history: HistoryItem[]): Promise<void> => {
       request.onerror = () => {
         if (!operationsFailed) {
           operationsFailed = true;
-          console.error(
-            "向 IndexedDB 中 put 项目失败:",
-            request.error,
-            "项目:",
-            item
-          );
+          console.error("向 IndexedDB 中 put 项目失败:", request.error, "项目:", item);
         }
       };
     });
@@ -192,7 +187,7 @@ const matchCondition = (
   keyword: string,
   dateRange: { start: string; end: string } | null,
   businessType: string,
-  searchType: "all" | "title" | "up" | "bvid" | "avid" = "all"
+  searchType: "all" | "title" | "up" | "bvid" | "avid" = "all",
 ) => {
   return (
     matchKeyword(item, keyword, searchType) &&
@@ -210,10 +205,7 @@ const matchBusinessType = (item: HistoryItem, businessType: string) => {
   return item.business === businessType;
 };
 
-const matchDate = (
-  item: HistoryItem,
-  dateRange: { start: string; end: string } | null
-) => {
+const matchDate = (item: HistoryItem, dateRange: { start: string; end: string } | null) => {
   if (!dateRange || !dateRange.start) {
     return true;
   }
@@ -230,7 +222,11 @@ const matchDate = (
   return true;
 };
 
-const matchKeyword = (item: HistoryItem, keyword: string, searchType: "all" | "title" | "up" | "bvid" | "avid" = "all") => {
+const matchKeyword = (
+  item: HistoryItem,
+  keyword: string,
+  searchType: "all" | "title" | "up" | "bvid" | "avid" = "all",
+) => {
   if (!keyword) return true;
   const lowerKeyword = keyword.toLowerCase();
 
@@ -283,7 +279,7 @@ export const getHistory = async (
   keyword: string = "",
   dateRange: { start: string; end: string } | null = null,
   businessType: string = "",
-  searchType: "all" | "title" | "up" | "bvid" | "avid" = "all"
+  searchType: "all" | "title" | "up" | "bvid" | "avid" = "all",
 ): Promise<{ items: HistoryItem[]; hasMore: boolean }> => {
   const db = await openDB();
   const tx = db.transaction("history", "readonly");
@@ -348,10 +344,7 @@ export const deleteDB = () => {
   });
 };
 
-export const getItem = async (
-  store: IDBObjectStore,
-  key: string
-): Promise<any> => {
+export const getItem = async (store: IDBObjectStore, key: string): Promise<any> => {
   return new Promise((resolve) => {
     const request = store.get(key);
     request.onsuccess = () => resolve(request.result);
@@ -452,9 +445,7 @@ export const getUnUploadedHistory = async (): Promise<HistoryItem[]> => {
   });
 };
 
-export const markHistoryAsUploaded = async (
-  historyItems: HistoryItem[]
-): Promise<void> => {
+export const markHistoryAsUploaded = async (historyItems: HistoryItem[]): Promise<void> => {
   const db = await openDB();
   const tx = db.transaction("history", "readwrite");
   const store = tx.objectStore("history");
@@ -482,12 +473,7 @@ export const markHistoryAsUploaded = async (
       request.onerror = () => {
         if (!operationsFailed) {
           operationsFailed = true;
-          console.error(
-            "更新 IndexedDB 中项目的uploaded状态失败:",
-            request.error,
-            "项目:",
-            item
-          );
+          console.error("更新 IndexedDB 中项目的uploaded状态失败:", request.error, "项目:", item);
         }
       };
     });
@@ -596,7 +582,7 @@ export const isLikedMusic = async (bvid: string): Promise<boolean> => {
 export const getLikedMusic = async (
   lastAddedTime: number = Date.now(),
   pageSize: number = 20,
-  keyword: string = ""
+  keyword: string = "",
 ): Promise<{ items: LikedMusic[]; hasMore: boolean }> => {
   const db = await openDB();
   const tx = db.transaction("likedMusic", "readonly");
@@ -754,12 +740,7 @@ export const importLikedMusic = async (musicList: LikedMusic[]): Promise<void> =
       request.onerror = () => {
         if (!operationsFailed) {
           operationsFailed = true;
-          console.error(
-            "向 IndexedDB 中 put 喜欢音乐项目失败:",
-            request.error,
-            "项目:",
-            music
-          );
+          console.error("向 IndexedDB 中 put 喜欢音乐项目失败:", request.error, "项目:", music);
         }
       };
     });
@@ -928,7 +909,6 @@ export const getFavResources = async (folderId?: number): Promise<FavoriteResour
     request.onerror = () => reject(request.error);
   });
 };
-
 
 export const deleteFavResources = async (ids: number[]): Promise<void> => {
   const db = await openDB();

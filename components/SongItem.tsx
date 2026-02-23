@@ -14,14 +14,7 @@ interface SongItemProps {
   onStop: () => void;
 }
 
-const SontItem = ({
-  item,
-  isPlaying,
-  isLoading,
-  error,
-  onPlay,
-  onStop,
-}: SongItemProps) => {
+const SontItem = ({ item, isPlaying, isLoading, error, onPlay, onStop }: SongItemProps) => {
   // 收藏状态管理
   const [isLiked, setIsLiked] = useState(false);
   const [likeLoading, setLikeLoading] = useState(false);
@@ -143,15 +136,11 @@ const SontItem = ({
             >
               {item.author}
             </a>
-            <span className="text-xs text-gray-400">
-              {formatDate(item.pubdate)}
-            </span>
+            <span className="text-xs text-gray-400">{formatDate(item.pubdate)}</span>
           </div>
 
           {/* 描述 */}
-          <p className="text-sm text-gray-600 mb-3 truncate">
-            {item.description}
-          </p>
+          <p className="text-sm text-gray-600 mb-3 truncate">{item.description}</p>
 
           {/* 错误提示 */}
           {error && (
@@ -173,9 +162,7 @@ const SontItem = ({
           </button>
           <button
             className={`p-2 rounded-full transition-colors duration-200 ${
-              isPlaying
-                ? "bg-pink-500 text-white hover:bg-pink-600"
-                : "hover:bg-gray-100"
+              isPlaying ? "bg-pink-500 text-white hover:bg-pink-600" : "hover:bg-gray-100"
             } ${isLoading ? "cursor-not-allowed" : "cursor-pointer"}`}
             onClick={() => onPlay(item)}
             disabled={isLoading}
@@ -191,9 +178,7 @@ const SontItem = ({
           </button>
           <button
             className={`p-2 rounded-full transition-colors duration-200 ${
-              isLiked
-                ? "bg-pink-500 text-white hover:bg-pink-600"
-                : "hover:bg-gray-100"
+              isLiked ? "bg-pink-500 text-white hover:bg-pink-600" : "hover:bg-gray-100"
             } ${likeLoading ? "cursor-not-allowed" : "cursor-pointer"}`}
             onClick={handleLike}
             disabled={likeLoading}

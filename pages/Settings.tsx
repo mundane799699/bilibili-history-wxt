@@ -28,15 +28,21 @@ import { Select } from "../components/Select";
 const Settings = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isSyncDelete, setIsSyncDelete] = useState(true);
-  const [isSyncDeleteFromBilibili, setIsSyncDeleteFromBilibili] =
-    useState(true);
+  const [isSyncDeleteFromBilibili, setIsSyncDeleteFromBilibili] = useState(true);
   const [isHideUserInfo, setIsHideUserInfo] = useState(false);
   const [hiddenMenus, setHiddenMenus] = useState<string[]>([]);
   const [dateSelectionMode, setDateSelectionMode] = useState<"range" | "single">("range");
 
   // separate progress states
-  const [historyProgress, setHistoryProgress] = useState<{ current: number, message: string } | null>(null);
-  const [favProgress, setFavProgress] = useState<{ current: number, total: number, message: string } | null>(null);
+  const [historyProgress, setHistoryProgress] = useState<{
+    current: number;
+    message: string;
+  } | null>(null);
+  const [favProgress, setFavProgress] = useState<{
+    current: number;
+    total: number;
+    message: string;
+  } | null>(null);
 
   const [showResetResultDialog, setShowResetResultDialog] = useState(false);
   const [resetResult, setResetResult] = useState("");
@@ -56,10 +62,7 @@ const Settings = () => {
     // 加载设置
     const loadSettings = async () => {
       const syncDelete = await getStorageValue(IS_SYNC_DELETE, true);
-      const syncDeleteFromBilibili = await getStorageValue(
-        IS_SYNC_DELETE_FROM_BILIBILI,
-        true
-      );
+      const syncDeleteFromBilibili = await getStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, true);
       const hideUserInfo = await getStorageValue(HIDE_USER_INFO, false);
       const menus = await getStorageValue(HIDDEN_MENUS, []);
       const storedSyncInterval = await getStorageValue(SYNC_INTERVAL, 1);
@@ -85,14 +88,22 @@ const Settings = () => {
     // 监听 storage 变化
     const handleStorageChange = (
       changes: { [key: string]: Browser.storage.StorageChange },
-      areaName: string
+      areaName: string,
     ) => {
       if (areaName === "local") {
         if (changes[SYNC_PROGRESS_HISTORY]) {
-          setHistoryProgress(changes[SYNC_PROGRESS_HISTORY].newValue as { current: number; message: string } | null);
+          setHistoryProgress(
+            changes[SYNC_PROGRESS_HISTORY].newValue as { current: number; message: string } | null,
+          );
         }
         if (changes[SYNC_PROGRESS_FAV]) {
-          setFavProgress(changes[SYNC_PROGRESS_FAV].newValue as { current: number; total: number; message: string } | null);
+          setFavProgress(
+            changes[SYNC_PROGRESS_FAV].newValue as {
+              current: number;
+              total: number;
+              message: string;
+            } | null,
+          );
         }
       }
     };
@@ -103,17 +114,13 @@ const Settings = () => {
     };
   }, []);
 
-  const handleSyncDeleteChange = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleSyncDeleteChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.checked;
     setIsSyncDelete(newValue);
     await setStorageValue(IS_SYNC_DELETE, newValue);
   };
 
-  const handleSyncDeleteFromBilibiliChange = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleSyncDeleteFromBilibiliChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.checked;
     setIsSyncDeleteFromBilibili(newValue);
     await setStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, newValue);
@@ -146,7 +153,7 @@ const Settings = () => {
       if (!hiddenMenus.includes(title)) newMenus = [...hiddenMenus, title];
       else newMenus = hiddenMenus;
     } else {
-      newMenus = hiddenMenus.filter(t => t !== title);
+      newMenus = hiddenMenus.filter((t) => t !== title);
     }
 
     setHiddenMenus(newMenus);
@@ -240,7 +247,7 @@ const Settings = () => {
 
               if (exportSource === "history") {
                 const items = JSON.parse(jsonContent) as HistoryItem[];
-                if (!Array.isArray(items) || items.some(item => typeof item.id === "undefined")) {
+                if (!Array.isArray(items) || items.some((item) => typeof item.id === "undefined")) {
                   toast.error("文件格式错误，请确保是历史记录JSON");
                   return;
                 }
@@ -249,7 +256,10 @@ const Settings = () => {
               } else {
                 // Music
                 const items = JSON.parse(jsonContent) as LikedMusic[];
-                if (!Array.isArray(items) || items.some(item => typeof item.bvid === "undefined")) {
+                if (
+                  !Array.isArray(items) ||
+                  items.some((item) => typeof item.bvid === "undefined")
+                ) {
                   toast.error("文件格式错误，请确保是音乐JSON");
                   return;
                 }
@@ -285,9 +295,7 @@ const Settings = () => {
         <div className="flex items-center justify-between p-4 ">
           <div>
             <h3 className="text-lg font-medium text-gray-800">恢复出厂设置</h3>
-            <p className="text-sm text-gray-400">
-              清空所有数据，无法恢复
-            </p>
+            <p className="text-sm text-gray-400">清空所有数据，无法恢复</p>
           </div>
           <button
             onClick={() => setShowConfirmDialog(true)}
@@ -321,22 +329,27 @@ const Settings = () => {
             <div className="flex justify-between items-center mb-2">
               <span className="font-medium text-purple-800">收藏夹同步中</span>
               <span className="text-xs text-purple-600 font-bold">
-                {favProgress.total > 0 ? `${favProgress.current} / ${favProgress.total}` : `${favProgress.current}`}
+                {favProgress.total > 0
+                  ? `${favProgress.current} / ${favProgress.total}`
+                  : `${favProgress.current}`}
               </span>
             </div>
             {favProgress.total > 0 && (
               <div className="w-full bg-purple-200 rounded-full h-2 mb-2">
                 <div
                   className="bg-purple-600 h-2 rounded-full transition-all duration-300 ease-out"
-                  style={{ width: `${Math.min(100, (favProgress.current / favProgress.total) * 100)}%` }}
+                  style={{
+                    width: `${Math.min(100, (favProgress.current / favProgress.total) * 100)}%`,
+                  }}
                 ></div>
               </div>
             )}
-            <p className="text-sm text-purple-600 truncate" title={favProgress.message}>{favProgress.message}</p>
+            <p className="text-sm text-purple-600 truncate" title={favProgress.message}>
+              {favProgress.message}
+            </p>
           </div>
         </div>
       )}
-
 
       {/* 侧边栏菜单管理 */}
       <div className="w-full max-w-md mb-8 rounded-xl bg-white shadow-sm border border-gray-100">
@@ -350,7 +363,7 @@ const Settings = () => {
               onChange={handleHideUserInfoChange}
             />
 
-            {["收藏夹", "听歌", "云同步", "关于", "反馈"].map(title => (
+            {["收藏夹", "听歌", "云同步", "关于", "反馈"].map((title) => (
               <Checkbox
                 key={title}
                 label={`隐藏${title}`}
@@ -384,7 +397,9 @@ const Settings = () => {
                     }}
                     className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300 transition-all cursor-pointer"
                   />
-                  <span className="text-sm text-gray-600 group-hover:text-blue-600 transition-colors">范围选择 (起始 - 结束)</span>
+                  <span className="text-sm text-gray-600 group-hover:text-blue-600 transition-colors">
+                    范围选择 (起始 - 结束)
+                  </span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer group">
                   <input
@@ -398,7 +413,9 @@ const Settings = () => {
                     }}
                     className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300 transition-all cursor-pointer"
                   />
-                  <span className="text-sm text-gray-600 group-hover:text-blue-600 transition-colors">单日选择 (点选日期)</span>
+                  <span className="text-sm text-gray-600 group-hover:text-blue-600 transition-colors">
+                    单日选择 (点选日期)
+                  </span>
                 </label>
               </div>
             </div>
@@ -421,7 +438,7 @@ const Settings = () => {
                   onChange={(val) => setExportSource(val as "history" | "music")}
                   options={[
                     { value: "history", label: "历史记录" },
-                    { value: "music", label: "我喜欢的音乐" }
+                    { value: "music", label: "我喜欢的音乐" },
                   ]}
                 />
               </div>
@@ -434,7 +451,7 @@ const Settings = () => {
                   onChange={(val) => setExportFormat(val as "csv" | "json")}
                   options={[
                     { value: "json", label: "JSON" },
-                    { value: "csv", label: "CSV" }
+                    { value: "csv", label: "CSV" },
                   ]}
                 />
               </div>
@@ -443,9 +460,9 @@ const Settings = () => {
             <div className="flex gap-3 justify-end pt-2">
               <button
                 onClick={handleImport}
-                disabled={isImporting || exportFormat === 'csv'}
+                disabled={isImporting || exportFormat === "csv"}
                 className="px-5 py-2.5 text-sm font-medium bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                title={exportFormat === 'csv' ? "CSV格式不支持导入" : "导入所选内容的JSON文件"}
+                title={exportFormat === "csv" ? "CSV格式不支持导入" : "导入所选内容的JSON文件"}
               >
                 {isImporting ? "导入中..." : "导入 (JSON)"}
               </button>
@@ -465,9 +482,7 @@ const Settings = () => {
         <div className="flex items-center justify-between p-5">
           <div className="pr-4">
             <h3 className="text-base font-medium text-gray-800">同步删除：插件 -&gt; B站</h3>
-            <p className="text-xs text-gray-400 mt-1">
-              删除本地记录时同步删除B站记录
-            </p>
+            <p className="text-xs text-gray-400 mt-1">删除本地记录时同步删除B站记录</p>
           </div>
           <label className="relative inline-flex items-center cursor-pointer shrink-0">
             <input
@@ -485,9 +500,7 @@ const Settings = () => {
         <div className="flex items-center justify-between p-5">
           <div className="pr-4">
             <h3 className="text-base font-medium text-gray-800">同步删除：B站 -&gt; 插件</h3>
-            <p className="text-xs text-gray-400 mt-1">
-              B站删记录时同步删除本地记录
-            </p>
+            <p className="text-xs text-gray-400 mt-1">B站删记录时同步删除本地记录</p>
           </div>
           <label className="relative inline-flex items-center cursor-pointer shrink-0">
             <input
@@ -504,9 +517,7 @@ const Settings = () => {
       <div className="w-full max-w-md mb-8 rounded-xl bg-white shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
         <div className="flex items-center justify-between p-5">
           <div>
-            <h3 className="text-base font-medium text-gray-800">
-              自动同步时间间隔
-            </h3>
+            <h3 className="text-base font-medium text-gray-800">自动同步时间间隔</h3>
             <p className="text-xs text-fuchsia-500 mt-1">单位：分钟</p>
           </div>
           <div className="flex items-center space-x-2">
@@ -542,9 +553,7 @@ const Settings = () => {
       <div className="w-full max-w-md mb-8 rounded-xl bg-white shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
         <div className="flex items-center justify-between p-5">
           <div>
-            <h3 className="text-base font-medium text-gray-800">
-              自动同步收藏夹间隔
-            </h3>
+            <h3 className="text-base font-medium text-gray-800">自动同步收藏夹间隔</h3>
             <p className="text-xs text-pink-500 mt-1">单位：分钟</p>
           </div>
           <div className="flex items-center space-x-2">
@@ -579,59 +588,54 @@ const Settings = () => {
 
       {/* 确认弹窗 */}
       {/* ... (Dialog code) ... */}
-      {
-        showConfirmDialog && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
-            <div className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full mx-4">
-              <h3 className="text-lg font-bold text-gray-900 mb-2">确认恢复出厂设置？</h3>
-              <p className="text-gray-500 mb-6 text-sm leading-relaxed">
-                此操作将<span className="text-red-600 font-medium">永久删除</span>所有本地存储的历史记录和偏好设置。
-              </p>
-              {isResetLoading && (
-                <p className="text-blue-600 mb-4 text-sm animate-pulse">{resetStatus}</p>
-              )}
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowConfirmDialog(false)}
-                  className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                  disabled={isResetLoading}
-                >
-                  取消
-                </button>
-                <button
-                  onClick={handleReset}
-                  className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm"
-                  disabled={isResetLoading}
-                >
-                  确认删除
-                </button>
-              </div>
-            </div>
-          </div>
-        )
-      }
-
-      {
-        showResetResultDialog && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full mx-4 text-center">
-              <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Check size={24} />
-              </div>
-              <p className="text-lg text-gray-800 mb-6 font-medium">
-                {resetResult}
-              </p>
+      {showConfirmDialog && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
+          <div className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full mx-4">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">确认恢复出厂设置？</h3>
+            <p className="text-gray-500 mb-6 text-sm leading-relaxed">
+              此操作将<span className="text-red-600 font-medium">永久删除</span>
+              所有本地存储的历史记录和偏好设置。
+            </p>
+            {isResetLoading && (
+              <p className="text-blue-600 mb-4 text-sm animate-pulse">{resetStatus}</p>
+            )}
+            <div className="flex justify-end space-x-3">
               <button
-                onClick={() => setShowResetResultDialog(false)}
-                className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                onClick={() => setShowConfirmDialog(false)}
+                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                disabled={isResetLoading}
               >
-                确定
+                取消
+              </button>
+              <button
+                onClick={handleReset}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+                disabled={isResetLoading}
+              >
+                确认删除
               </button>
             </div>
           </div>
-        )
-      }
-    </div >
+        </div>
+      )}
+
+      {showResetResultDialog && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full mx-4 text-center">
+            <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check size={24} />
+            </div>
+            <p className="text-lg text-gray-800 mb-6 font-medium">{resetResult}</p>
+            <button
+              onClick={() => setShowResetResultDialog(false)}
+              className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              确定
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

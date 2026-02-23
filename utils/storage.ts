@@ -4,10 +4,7 @@
  * @param defaultValue 当键不存在时返回的默认值
  * @returns 存储的值或默认值
  */
-export async function getStorageValue<T>(
-  key: string,
-  defaultValue?: T
-): Promise<T> {
+export async function getStorageValue<T>(key: string, defaultValue?: T): Promise<T> {
   const result = await browser.storage.local.get(key);
   return (result[key] as T) ?? defaultValue!;
 }

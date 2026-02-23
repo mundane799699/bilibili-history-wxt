@@ -11,7 +11,15 @@ import {
   SYNC_PROGRESS_FAV,
   HIDDEN_MENUS,
 } from "../utils/constants";
-import { openDB, getItem, deleteHistoryItem, saveFavFolders, saveFavResources, getFavResources, deleteFavResources } from "../utils/db";
+import {
+  openDB,
+  getItem,
+  deleteHistoryItem,
+  saveFavFolders,
+  saveFavResources,
+  getFavResources,
+  deleteFavResources,
+} from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
 
 export default defineBackground(() => {
@@ -38,10 +46,15 @@ export default defineBackground(() => {
         // 并行执行初始化同步
         const initHistory = async () => {
           await setStorageValue(IS_SYNCING, true);
-          await setStorageValue(SYNC_PROGRESS_HISTORY, { current: 0, message: "正在初始化同步..." });
-          try { await syncHistory(true); }
-          catch (e) { console.error("History init failed", e); }
-          finally {
+          await setStorageValue(SYNC_PROGRESS_HISTORY, {
+            current: 0,
+            message: "正在初始化同步...",
+          });
+          try {
+            await syncHistory(true);
+          } catch (e) {
+            console.error("History init failed", e);
+          } finally {
             await setStorageValue(IS_SYNCING, false);
             await setStorageValue(SYNC_PROGRESS_HISTORY, { current: 0, message: "初始化同步完成" });
           }
@@ -49,10 +62,16 @@ export default defineBackground(() => {
         const initFav = async () => {
           await setStorageValue(IS_SYNCING_FAV, true);
           // Initial placeholder
-          await setStorageValue(SYNC_PROGRESS_FAV, { current: 0, total: 0, message: "正在初始化收藏夹..." });
-          try { await syncFavorites(); }
-          catch (e) { console.error("Fav init failed", e); }
-          finally {
+          await setStorageValue(SYNC_PROGRESS_FAV, {
+            current: 0,
+            total: 0,
+            message: "正在初始化收藏夹...",
+          });
+          try {
+            await syncFavorites();
+          } catch (e) {
+            console.error("Fav init failed", e);
+          } finally {
             await setStorageValue(IS_SYNCING_FAV, false);
             // Completion state will be handled inside syncFavorites too, but good to ensure
           }
@@ -148,10 +167,7 @@ export default defineBackground(() => {
   });
 
   // 处理同步历史记录的消息
-  const handleSyncHistory = async (
-    message: any,
-    sendResponse: (response: any) => void
-  ) => {
+  const handleSyncHistory = async (message: any, sendResponse: (response: any) => void) => {
     try {
       // 检查是否正在同步
       const isSyncing = await getStorageValue(IS_SYNCING);
@@ -205,10 +221,7 @@ export default defineBackground(() => {
     }
   };
 
-  const handleSyncFavorites = async (
-    message: any,
-    sendResponse: (response: any) => void
-  ) => {
+  const handleSyncFavorites = async (message: any, sendResponse: (response: any) => void) => {
     try {
       const isSyncing = await getStorageValue(IS_SYNCING_FAV);
       if (isSyncing) {
@@ -231,15 +244,9 @@ export default defineBackground(() => {
   };
 
   // 处理删除历史记录的消息
-  const handleDeleteHistoryItem = async (
-    message: any,
-    sendResponse: (response: any) => void
-  ) => {
+  const handleDeleteHistoryItem = async (message: any, sendResponse: (response: any) => void) => {
     try {
-      const syncDeleteFromBilibili = await getStorageValue(
-        IS_SYNC_DELETE_FROM_BILIBILI,
-        true
-      );
+      const syncDeleteFromBilibili = await getStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, true);
       if (!syncDeleteFromBilibili) {
         sendResponse({ success: true, message: "同步删除未开启" });
         return;
@@ -279,9 +286,7 @@ export default defineBackground(() => {
       const cookies = await browser.cookies.getAll({
         domain: "bilibili.com",
       });
-      const SESSDATA = cookies.find(
-        (cookie) => cookie.name === "SESSDATA"
-      )?.value;
+      const SESSDATA = cookies.find((cookie) => cookie.name === "SESSDATA")?.value;
 
       if (!SESSDATA) {
         throw new Error("未找到 B 站登录信息，请先登录 B 站");
@@ -303,7 +308,7 @@ export default defineBackground(() => {
             headers: {
               Cookie: `SESSDATA=${SESSDATA}`,
             },
-          }
+          },
         );
 
         if (!response.ok) {
@@ -365,7 +370,7 @@ export default defineBackground(() => {
           // 更新同步进度
           await setStorageValue(SYNC_PROGRESS_HISTORY, {
             current: totalSynced,
-            message: `正在同步... 已获取 ${totalSynced} 条`
+            message: `正在同步... 已获取 ${totalSynced} 条`,
           });
           console.log(`同步了${data.data.list.length}条历史记录，总计：${totalSynced}`);
 
@@ -387,7 +392,10 @@ export default defineBackground(() => {
       return true;
     } catch (error) {
       console.error("同步历史记录失败:", error);
-      await setStorageValue(SYNC_PROGRESS_HISTORY, { current: 0, message: `同步失败: ${error instanceof Error ? error.message : "未知错误"}` });
+      await setStorageValue(SYNC_PROGRESS_HISTORY, {
+        current: 0,
+        message: `同步失败: ${error instanceof Error ? error.message : "未知错误"}`,
+      });
       throw error;
     }
   }
@@ -409,7 +417,7 @@ export default defineBackground(() => {
       // 2. 获取收藏夹列表
       const folderRes = await fetch(
         `https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid=${mid}`,
-        { headers: { Cookie: `SESSDATA=${SESSDATA}` } }
+        { headers: { Cookie: `SESSDATA=${SESSDATA}` } },
       );
       const folderData = await folderRes.json();
       if (folderData.code !== 0) throw new Error("获取收藏夹失败");
@@ -419,7 +427,7 @@ export default defineBackground(() => {
         // 添加 index 字段
         const foldersWithIndex = folders.map((f: any, idx: number) => ({
           ...f,
-          index: idx
+          index: idx,
         }));
         await saveFavFolders(foldersWithIndex);
         console.log(`同步了 ${folders.length} 个收藏夹`);
@@ -427,13 +435,16 @@ export default defineBackground(() => {
 
       // 3. 同步每个收藏夹的资源
       // 计算总数
-      const totalItems = folders.reduce((sum: number, folder: any) => sum + (folder.media_count || 0), 0);
+      const totalItems = folders.reduce(
+        (sum: number, folder: any) => sum + (folder.media_count || 0),
+        0,
+      );
       let currentSynced = 0;
 
       await setStorageValue(SYNC_PROGRESS_FAV, {
         current: 0,
         total: totalItems,
-        message: "开始同步收藏夹..."
+        message: "开始同步收藏夹...",
       });
 
       for (const folder of folders || []) {
@@ -447,7 +458,7 @@ export default defineBackground(() => {
         while (hasMore) {
           const res = await fetch(
             `https://api.bilibili.com/x/v3/fav/resource/list?media_id=${folder.id}&pn=${page}&ps=20`,
-            { headers: { Cookie: `SESSDATA=${SESSDATA}` } }
+            { headers: { Cookie: `SESSDATA=${SESSDATA}` } },
           );
           const data = await res.json();
           if (data.code !== 0) {
@@ -479,7 +490,7 @@ export default defineBackground(() => {
             await setStorageValue(SYNC_PROGRESS_FAV, {
               current: currentSynced,
               total: totalItems,
-              message: `正在同步: ${folder.title}`
+              message: `正在同步: ${folder.title}`,
             });
 
             hasMore = data.data.has_more;
@@ -494,12 +505,14 @@ export default defineBackground(() => {
         try {
           const localResources = await getFavResources(folder.id);
           const idsToDelete = localResources
-            .filter(item => !onlineResourceIds.has(item.id))
-            .map(item => item.id);
+            .filter((item) => !onlineResourceIds.has(item.id))
+            .map((item) => item.id);
 
           if (idsToDelete.length > 0) {
             await deleteFavResources(idsToDelete);
-            console.log(`从收藏夹 "${folder.title}" 删除了 ${idsToDelete.length} 个已取消收藏的项目`);
+            console.log(
+              `从收藏夹 "${folder.title}" 删除了 ${idsToDelete.length} 个已取消收藏的项目`,
+            );
           }
         } catch (err) {
           console.error(`清理收藏夹 "${folder.title}" 本地数据失败:`, err);
@@ -509,10 +522,8 @@ export default defineBackground(() => {
       await setStorageValue(SYNC_PROGRESS_FAV, {
         current: totalItems,
         total: totalItems,
-        message: "收藏夹同步完成"
+        message: "收藏夹同步完成",
       });
-
-
     } catch (error) {
       console.error("同步收藏夹过程出错:", error);
       throw error;

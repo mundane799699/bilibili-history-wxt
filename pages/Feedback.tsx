@@ -6,20 +6,6 @@ const Feedback = () => {
       <h2 className="text-3xl font-semibold mb-3">建议反馈</h2>
 
       <section className="mt-10">
-        <h2 className="text-xl mb-3">提交建议地址</h2>
-
-        <div className="text-center">
-          <a
-            className="text-blue-500 hover:underline text-base"
-            href="https://c1p0xw7om7n.feishu.cn/share/base/form/shrcneS0t8RdC3byY9xC5ftQgub"
-            target="_blank"
-          >
-            点击这里反馈建议
-          </a>
-        </div>
-      </section>
-
-      <section className="mt-10">
         <h2 className="text-xl mb-3">交流群</h2>
         <img src="/qrcode.jpg" alt="交流群" className="w-48 h-48 mx-auto" />
         <p className="text-center text-gray-600 text-sm mt-2">

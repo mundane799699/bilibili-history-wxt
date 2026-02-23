@@ -88,18 +88,14 @@ export const About: React.FC = () => {
           <p className="text-lg mb-6 text-amber-600">
             贡献突出者可以获得付费功能的免费使用权限。付费功能我在后续版本中会开发，比如数据云同步、AI加持等。
           </p>
-          <p className="text-gray-600 text-base">
-            目前积压的需求有很多，比如：
-          </p>
+          <p className="text-gray-600 text-base">目前积压的需求有很多，比如：</p>
           <ul className="list-disc pl-5 mb-6 text-base text-gray-600">
             <li>标签功能</li>
             <li>webdav同步</li>
             <li>重命名功能</li>
             <li>支持分页</li>
           </ul>
-          <p className="text-base text-gray-600">
-            具体需求可以在github项目地址加我微信具体沟通。
-          </p>
+          <p className="text-base text-gray-600">具体需求可以在github项目地址加我微信具体沟通。</p>
         </section>
 
         <section>

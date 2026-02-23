@@ -3,15 +3,7 @@ import { HistoryItem } from "../components/HistoryItem";
 import { getHistory, getTotalHistoryCount } from "../utils/db";
 import { HistoryItem as HistoryItemType } from "../utils/types";
 import { useDebounce } from "use-debounce";
-import {
-  RefreshCwIcon,
-  ChevronDownIcon,
-  Search,
-  X,
-  Filter,
-  Minus,
-  Plus,
-} from "lucide-react";
+import { RefreshCwIcon, ChevronDownIcon, Search, X, Filter, Minus, Plus } from "lucide-react";
 import { DATE_SELECTION_MODE, GRID_COLUMNS } from "../utils/constants";
 import { DateRangePicker } from "../components/DateRangePicker";
 import { getStorageValue, setStorageValue } from "../utils/storage";
@@ -25,19 +17,14 @@ export const History: React.FC = () => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  const [searchType, setSearchType] = useState<
-    "all" | "title" | "up" | "bvid" | "avid"
-  >("all");
-  const [isSearchKindDropdownOpen, setIsSearchKindDropdownOpen] =
-    useState(false);
+  const [searchType, setSearchType] = useState<"all" | "title" | "up" | "bvid" | "avid">("all");
+  const [isSearchKindDropdownOpen, setIsSearchKindDropdownOpen] = useState(false);
   const [selectedType, setSelectedType] = useState("all");
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [totalHistoryCount, setTotalHistoryCount] = useState(0);
-  const [dateSelectionMode, setDateSelectionMode] = useState<
-    "range" | "single"
-  >("range");
+  const [dateSelectionMode, setDateSelectionMode] = useState<"range" | "single">("range");
   const [gridColumns, setGridColumns] = useState(4);
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -87,8 +74,7 @@ export const History: React.FC = () => {
 
       let lastViewTime: number | "" = "";
       if (isAppend && historyRef.current.length > 0) {
-        lastViewTime =
-          historyRef.current[historyRef.current.length - 1].view_at;
+        lastViewTime = historyRef.current[historyRef.current.length - 1].view_at;
       }
 
       const { items, hasMore } = await getHistory(
@@ -136,15 +122,18 @@ export const History: React.FC = () => {
 
   // Observer 只创建一次，通过 ref 访问最新状态
   useEffect(() => {
-    observerRef.current = new IntersectionObserver((entries) => {
-      const [entry] = entries;
-      if (entry.isIntersecting && hasMoreRef.current && !isLoadingRef.current) {
-        loadHistoryRef.current(true);
-      }
-    }, {
-      threshold: 0.1,
-      rootMargin: "200px",
-    });
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting && hasMoreRef.current && !isLoadingRef.current) {
+          loadHistoryRef.current(true);
+        }
+      },
+      {
+        threshold: 0.1,
+        rootMargin: "200px",
+      },
+    );
 
     // callback ref 在 useEffect 之前执行，此时 loadMoreRef.current 可能已有值
     if (loadMoreRef.current) {
@@ -173,11 +162,7 @@ export const History: React.FC = () => {
     if (history.length === 0) {
       return keyword.trim() ? "没有找到匹配的历史记录" : "暂无历史记录";
     }
-    return isLoading
-      ? "加载中..."
-      : hasMore
-        ? "向下滚动加载更多"
-        : "没有更多了";
+    return isLoading ? "加载中..." : hasMore ? "向下滚动加载更多" : "没有更多了";
   };
 
   return (
@@ -196,9 +181,7 @@ export const History: React.FC = () => {
                 onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
               >
                 <Filter className="w-3.5 h-3.5 text-gray-500" />
-                <span>
-                  {typeOptions.find((opt) => opt.value === selectedType)?.label}
-                </span>
+                <span>{typeOptions.find((opt) => opt.value === selectedType)?.label}</span>
                 <ChevronDownIcon className="w-3.5 h-3.5 text-gray-400" />
               </button>
 
@@ -212,10 +195,11 @@ export const History: React.FC = () => {
                     {typeOptions.map((option) => (
                       <button
                         key={option.value}
-                        className={`w-full text-left px-4 py-2 text-sm transition-colors ${selectedType === option.value
-                          ? "bg-blue-50 text-blue-600 font-medium"
-                          : "text-gray-600 hover:bg-gray-50"
-                          }`}
+                        className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                          selectedType === option.value
+                            ? "bg-blue-50 text-blue-600 font-medium"
+                            : "text-gray-600 hover:bg-gray-50"
+                        }`}
                         onClick={() => {
                           setSelectedType(option.value);
                           setIsTypeDropdownOpen(false);
@@ -237,9 +221,7 @@ export const History: React.FC = () => {
               <div className="relative">
                 <button
                   className="pl-4 pr-3 py-2 text-sm text-gray-600 font-medium cursor-pointer border-r border-gray-200 hover:text-blue-600 flex items-center gap-1 transition-colors whitespace-nowrap"
-                  onClick={() =>
-                    setIsSearchKindDropdownOpen(!isSearchKindDropdownOpen)
-                  }
+                  onClick={() => setIsSearchKindDropdownOpen(!isSearchKindDropdownOpen)}
                 >
                   <span>
                     {searchType === "all" && "综合"}
@@ -267,10 +249,11 @@ export const History: React.FC = () => {
                       ].map((option) => (
                         <button
                           key={option.value}
-                          className={`w-full text-left px-4 py-2 text-sm transition-colors ${searchType === option.value
-                            ? "bg-blue-50 text-blue-600 font-medium"
-                            : "text-gray-600 hover:bg-gray-50"
-                            }`}
+                          className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                            searchType === option.value
+                              ? "bg-blue-50 text-blue-600 font-medium"
+                              : "text-gray-600 hover:bg-gray-50"
+                          }`}
                           onClick={() => {
                             setSearchType(option.value as any);
                             setIsSearchKindDropdownOpen(false);
@@ -337,8 +320,8 @@ export const History: React.FC = () => {
               >
                 <Minus className="w-3.5 h-3.5" />
               </button>
-              <span className="text-xs font-medium text-gray-600 w-4 text-center tabular-nums">
-                {gridColumns}
+              <span className="text-xs font-medium text-gray-600 text-center tabular-nums whitespace-nowrap">
+                列数({gridColumns})
               </span>
               <button
                 onClick={() => handleColumnChange(1)}
@@ -355,14 +338,13 @@ export const History: React.FC = () => {
                 getTotalCount();
                 loadHistory(false);
               }}
-              className={`p-2 bg-white text-gray-500 rounded-full hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm border border-gray-200 hover:border-blue-200 hover:rotate-180 duration-500 ${isLoading ? "opacity-50 cursor-not-allowed" : ""
-                }`}
+              className={`p-2 bg-white text-gray-500 rounded-full hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm border border-gray-200 hover:border-blue-200 hover:rotate-180 duration-500 ${
+                isLoading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
               disabled={isLoading}
               title="刷新"
             >
-              <RefreshCwIcon
-                className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
-              />
+              <RefreshCwIcon className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
             </button>
           </div>
         </div>
@@ -370,7 +352,9 @@ export const History: React.FC = () => {
 
       <div
         className="p-6 pt-2 grid gap-5 mx-auto w-full"
-        style={{ gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))` }}
+        style={{
+          gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
+        }}
       >
         {history.map((item) => (
           <HistoryItem
@@ -396,30 +380,24 @@ export const History: React.FC = () => {
             <Search className="w-16 h-16 mx-auto opacity-50" />
           </div>
           <p className="text-gray-500 text-lg">
-            {keyword ||
-              startDate ||
-              selectedType !== "all" ||
-              searchType !== "all"
+            {keyword || startDate || selectedType !== "all" || searchType !== "all"
               ? "没有找到相关记录"
               : "暂无历史记录"}
           </p>
-          {(keyword ||
-            startDate ||
-            selectedType !== "all" ||
-            searchType !== "all") && (
-              <button
-                onClick={() => {
-                  setKeyword("");
-                  setStartDate("");
-                  setEndDate("");
-                  setSelectedType("all");
-                  setSearchType("all");
-                }}
-                className="mt-4 text-blue-500 hover:text-blue-600 hover:underline text-sm"
-              >
-                清除所有筛选
-              </button>
-            )}
+          {(keyword || startDate || selectedType !== "all" || searchType !== "all") && (
+            <button
+              onClick={() => {
+                setKeyword("");
+                setStartDate("");
+                setEndDate("");
+                setSelectedType("all");
+                setSearchType("all");
+              }}
+              className="mt-4 text-blue-500 hover:text-blue-600 hover:underline text-sm"
+            >
+              清除所有筛选
+            </button>
+          )}
         </div>
       )}
     </div>

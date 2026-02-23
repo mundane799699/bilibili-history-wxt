@@ -98,14 +98,12 @@ const CloudSync = () => {
   };
 
   const handleViewCloudData = () => {
-    const baseUrl =
-      import.meta.env.VITE_BASE_API || "https://bilibilihistory.com";
+    const baseUrl = import.meta.env.VITE_BASE_API || "https://bilibilihistory.com";
     window.open(`${baseUrl}/dashboard`, "_blank");
   };
 
   const handleUpgrade = () => {
-    const baseUrl =
-      import.meta.env.VITE_BASE_API || "https://bilibilihistory.com";
+    const baseUrl = import.meta.env.VITE_BASE_API || "https://bilibilihistory.com";
     window.open(`${baseUrl}/pricing`, "_blank");
   };
 
@@ -117,33 +115,22 @@ const CloudSync = () => {
   const progress =
     uploadInfo.totalCount > 0
       ? Math.round(
-        ((uploadInfo.successCount + uploadInfo.failedCount) /
-          uploadInfo.totalCount) *
-        100
-      )
+          ((uploadInfo.successCount + uploadInfo.failedCount) / uploadInfo.totalCount) * 100,
+        )
       : 0;
 
   return (
     <div className="max-w-[800px] mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">云同步</h1>
-      <p className="text-gray-600 text-base mb-2">
-        云同步允许你将数据在浏览器插件和云端之间同步。
-      </p>
-      <p className="text-gray-600 text-base mb-8">
-        该功能是付费功能，免费用户最多可以上传500条。
-      </p>
+      <p className="text-gray-600 text-base mb-2">云同步允许你将数据在浏览器插件和云端之间同步。</p>
+      <p className="text-gray-600 text-base mb-8">该功能是付费功能，免费用户最多可以上传500条。</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <button
           onClick={handleUpload}
           className="flex items-center justify-center gap-3 px-6 py-3 bg-pink-400 hover:bg-pink-500 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 w-full"
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -158,12 +145,7 @@ const CloudSync = () => {
           onClick={handleViewCloudData}
           className="flex items-center justify-center gap-3 px-6 py-3 bg-blue-400 hover:bg-blue-500 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 w-full"
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -178,12 +160,7 @@ const CloudSync = () => {
           onClick={handleResetHistory}
           className="flex items-center justify-center gap-3 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 w-full"
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -199,12 +176,7 @@ const CloudSync = () => {
           disabled
           className="disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400 flex items-center justify-center gap-3 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 w-full"
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -234,9 +206,7 @@ const CloudSync = () => {
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] flex flex-col">
             {/* 弹窗标题 */}
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-800 text-center">
-                数据上传
-              </h2>
+              <h2 className="text-xl font-semibold text-gray-800 text-center">数据上传</h2>
             </div>
 
             {/* 弹窗内容 */}
@@ -267,14 +237,11 @@ const CloudSync = () => {
                     <h3 className="text-lg font-semibold text-gray-700 mt-4">
                       正在上传您的数据...
                     </h3>
-                    <p className="text-sm text-gray-500">
-                      请稍候，不要关闭此页面
-                    </p>
+                    <p className="text-sm text-gray-500">请稍候，不要关闭此页面</p>
                   </>
                 ) : (
                   <>
-                    {uploadInfo.failedCount === 0 &&
-                      uploadInfo.successCount > 0 ? (
+                    {uploadInfo.failedCount === 0 && uploadInfo.successCount > 0 ? (
                       <svg
                         className="h-12 w-12 text-green-500 mx-auto"
                         xmlns="http://www.w3.org/2000/svg"
@@ -315,12 +282,8 @@ const CloudSync = () => {
               {/* 进度条 */}
               <div className="mb-6">
                 <div className="flex justify-between mb-1">
-                  <span className="text-base font-medium text-blue-700">
-                    进度
-                  </span>
-                  <span className="text-sm font-medium text-blue-700">
-                    {progress}%
-                  </span>
+                  <span className="text-base font-medium text-blue-700">进度</span>
+                  <span className="text-sm font-medium text-blue-700">{progress}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2.5">
                   <div
@@ -334,21 +297,15 @@ const CloudSync = () => {
               <div className="grid grid-cols-3 gap-4 text-center text-sm bg-gray-50 p-4 rounded-lg">
                 <div>
                   <p className="font-semibold text-gray-700">总计</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {uploadInfo.totalCount}
-                  </p>
+                  <p className="text-2xl font-bold text-gray-900">{uploadInfo.totalCount}</p>
                 </div>
                 <div>
                   <p className="font-semibold text-green-600">成功</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {uploadInfo.successCount}
-                  </p>
+                  <p className="text-2xl font-bold text-green-600">{uploadInfo.successCount}</p>
                 </div>
                 <div>
                   <p className="font-semibold text-red-600">失败</p>
-                  <p className="text-2xl font-bold text-red-600">
-                    {uploadInfo.failedCount}
-                  </p>
+                  <p className="text-2xl font-bold text-red-600">{uploadInfo.failedCount}</p>
                 </div>
               </div>
 
@@ -359,26 +316,23 @@ const CloudSync = () => {
               )}
 
               {uploadInfo.message === FREE_LIMIT_MESSAGE ||
-                (uploadInfo.message === EXPIRED_MESSAGE &&
-                  !uploadInfo.isUploading && (
-                    <div className="mt-6 text-center">
-                      <button
-                        onClick={handleUpgrade}
-                        className="w-full px-6 py-3 bg-pink-500 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 hover:bg-pink-600"
-                      >
-                        升级到高级版，解锁无限上传
-                      </button>
-                    </div>
-                  ))}
+                (uploadInfo.message === EXPIRED_MESSAGE && !uploadInfo.isUploading && (
+                  <div className="mt-6 text-center">
+                    <button
+                      onClick={handleUpgrade}
+                      className="w-full px-6 py-3 bg-pink-500 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 hover:bg-pink-600"
+                    >
+                      升级到高级版，解锁无限上传
+                    </button>
+                  </div>
+                ))}
             </div>
 
             {/* 弹窗页脚 */}
             {!uploadInfo.isUploading && (
               <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
                 <button
-                  onClick={() =>
-                    setUploadInfo((prev) => ({ ...prev, isOpen: false }))
-                  }
+                  onClick={() => setUploadInfo((prev) => ({ ...prev, isOpen: false }))}
                   className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   关闭
@@ -390,10 +344,7 @@ const CloudSync = () => {
       )}
 
       {/* 登录提示弹窗 */}
-      <LoginModal
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-      />
+      <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
     </div>
   );
 };

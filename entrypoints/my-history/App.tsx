@@ -14,13 +14,13 @@ import Welcome from "../../pages/Welcome";
 
 const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
-  const isWelcome = location.pathname === '/welcome';
+  const isWelcome = location.pathname === "/welcome";
 
   return (
     <div className="flex h-screen bg-gray-50">
       {!isWelcome && <Sidebar />}
       {/* 主内容区域 */}
-      <div className={`${!isWelcome ? 'ml-40' : ''} w-full transition-all duration-300`}>
+      <div className={`${!isWelcome ? "ml-40" : ""} w-full transition-all duration-300`}>
         {children}
       </div>
     </div>

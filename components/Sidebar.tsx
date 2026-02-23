@@ -74,7 +74,7 @@ export const Sidebar = () => {
 
     const handleStorageChange = (
       changes: { [key: string]: Browser.storage.StorageChange },
-      areaName: string
+      areaName: string,
     ) => {
       if (areaName === "local") {
         if (changes[HIDE_USER_INFO]) {
@@ -91,7 +91,6 @@ export const Sidebar = () => {
       browser.storage.onChanged.removeListener(handleStorageChange);
     };
   }, []);
-
 
   return (
     <div className="fixed top-0 left-0 w-40 bg-gray-100 flex-shrink-0 h-full">
