@@ -22,6 +22,11 @@ export const GRID_COLUMNS = "gridColumns";
 
 export const UPDATE_HISTORY = [
   {
+    date: "2026-02-26",
+    version: "1.9.5",
+    changes: ["修复搜索音乐时搜索失败的问题"],
+  },
+  {
     date: "2026-02-23",
     version: "1.9.4",
     changes: [
