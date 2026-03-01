@@ -20,6 +20,12 @@ export const SYNC_PROGRESS_FAV = "syncProgressFav";
 export const DATE_SELECTION_MODE = "date_selection_mode";
 export const GRID_COLUMNS = "gridColumns";
 
+// WebDAV 同步相关
+export const WEBDAV_CONFIG = "webdavConfig";
+export const WEBDAV_LAST_SYNC = "webdavLastSync";
+export const WEBDAV_AUTO_SYNC_ENABLED = "webdavAutoSyncEnabled";
+export const WEBDAV_AUTO_SYNC_INTERVAL = "webdavAutoSyncInterval"; // 单位：分钟，默认 30
+
 export const UPDATE_HISTORY = [
   {
     date: "2026-02-26",
