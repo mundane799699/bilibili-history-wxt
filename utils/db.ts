@@ -942,3 +942,227 @@ export const deleteFavResources = async (ids: number[]): Promise<void> => {
     tx.onerror = () => reject(tx.error);
   });
 };
+
+// ========== 数据同步辅助函数 ==========
+
+/**
+ * 获取所有收藏夹文件夹
+ */
+export const getAllFavFolders = async (): Promise<FavoriteFolder[]> => {
+  const db = await openDB();
+  const tx = db.transaction("favFolders", "readonly");
+  const store = tx.objectStore("favFolders");
+
+  return new Promise((resolve, reject) => {
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+};
+
+/**
+ * 获取所有收藏夹资源
+ */
+export const getAllFavResources = async (): Promise<FavoriteResource[]> => {
+  const db = await openDB();
+  const tx = db.transaction("favResources", "readonly");
+  const store = tx.objectStore("favResources");
+
+  return new Promise((resolve, reject) => {
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+};
+
+/**
+ * 批量导入收藏夹文件夹（直接 upsert，无时间戳字段）
+ */
+export const importFavFolders = async (folders: FavoriteFolder[]): Promise<void> => {
+  const db = await openDB();
+  const tx = db.transaction("favFolders", "readwrite");
+  const store = tx.objectStore("favFolders");
+
+  return new Promise((resolve, reject) => {
+    if (folders.length === 0) {
+      resolve();
+      return;
+    }
+
+    folders.forEach((folder) => {
+      store.put(folder);
+    });
+
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+};
+
+/**
+ * 批量导入收藏夹资源（直接 upsert）
+ */
+export const importFavResources = async (resources: FavoriteResource[]): Promise<void> => {
+  const db = await openDB();
+  const tx = db.transaction("favResources", "readwrite");
+  const store = tx.objectStore("favResources");
+
+  return new Promise((resolve, reject) => {
+    if (resources.length === 0) {
+      resolve();
+      return;
+    }
+
+    resources.forEach((res) => {
+      store.put(res);
+    });
+
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+};
+
+/**
+ * 智能合并历史记录：按 view_at 时间戳比对，仅远端更新时覆盖
+ */
+export const smartMergeHistory = async (
+  remoteItems: HistoryItem[],
+): Promise<{ merged: number; skipped: number }> => {
+  const db = await openDB();
+  const tx = db.transaction("history", "readwrite");
+  const store = tx.objectStore("history");
+  let merged = 0;
+  let skipped = 0;
+
+  return new Promise((resolve, reject) => {
+    if (remoteItems.length === 0) {
+      resolve({ merged: 0, skipped: 0 });
+      return;
+    }
+
+    let processed = 0;
+    const total = remoteItems.length;
+
+    remoteItems.forEach((remoteItem) => {
+      const getReq = store.get(remoteItem.id);
+      getReq.onsuccess = () => {
+        const localItem = getReq.result as HistoryItem | undefined;
+
+        if (!localItem || remoteItem.view_at >= localItem.view_at) {
+          // 本地不存在或远端更新，执行覆盖
+          store.put(remoteItem);
+          merged++;
+        } else {
+          skipped++;
+        }
+
+        processed++;
+        if (processed === total) {
+          // 所有请求已提交，等待事务完成
+        }
+      };
+      getReq.onerror = () => {
+        // 获取失败时仍尝试写入
+        store.put(remoteItem);
+        merged++;
+        processed++;
+      };
+    });
+
+    tx.oncomplete = () => resolve({ merged, skipped });
+    tx.onerror = () => reject(tx.error);
+  });
+};
+
+/**
+ * 智能合并喜欢的音乐：按 added_at 时间戳比对
+ */
+export const smartMergeLikedMusic = async (
+  remoteItems: LikedMusic[],
+): Promise<{ merged: number; skipped: number }> => {
+  const db = await openDB();
+  const tx = db.transaction("likedMusic", "readwrite");
+  const store = tx.objectStore("likedMusic");
+  let merged = 0;
+  let skipped = 0;
+
+  return new Promise((resolve, reject) => {
+    if (remoteItems.length === 0) {
+      resolve({ merged: 0, skipped: 0 });
+      return;
+    }
+
+    let processed = 0;
+    const total = remoteItems.length;
+
+    remoteItems.forEach((remoteItem) => {
+      const getReq = store.get(remoteItem.bvid);
+      getReq.onsuccess = () => {
+        const localItem = getReq.result as LikedMusic | undefined;
+
+        if (!localItem || remoteItem.added_at >= localItem.added_at) {
+          store.put(remoteItem);
+          merged++;
+        } else {
+          skipped++;
+        }
+
+        processed++;
+      };
+      getReq.onerror = () => {
+        store.put(remoteItem);
+        merged++;
+        processed++;
+      };
+    });
+
+    tx.oncomplete = () => resolve({ merged, skipped });
+    tx.onerror = () => reject(tx.error);
+  });
+};
+
+/**
+ * 智能合并收藏夹资源：按 fav_time 时间戳比对
+ */
+export const smartMergeFavResources = async (
+  remoteItems: FavoriteResource[],
+): Promise<{ merged: number; skipped: number }> => {
+  const db = await openDB();
+  const tx = db.transaction("favResources", "readwrite");
+  const store = tx.objectStore("favResources");
+  let merged = 0;
+  let skipped = 0;
+
+  return new Promise((resolve, reject) => {
+    if (remoteItems.length === 0) {
+      resolve({ merged: 0, skipped: 0 });
+      return;
+    }
+
+    let processed = 0;
+    const total = remoteItems.length;
+
+    remoteItems.forEach((remoteItem) => {
+      const getReq = store.get(remoteItem.id);
+      getReq.onsuccess = () => {
+        const localItem = getReq.result as FavoriteResource | undefined;
+
+        if (!localItem || remoteItem.fav_time >= localItem.fav_time) {
+          store.put(remoteItem);
+          merged++;
+        } else {
+          skipped++;
+        }
+
+        processed++;
+      };
+      getReq.onerror = () => {
+        store.put(remoteItem);
+        merged++;
+        processed++;
+      };
+    });
+
+    tx.oncomplete = () => resolve({ merged, skipped });
+    tx.onerror = () => reject(tx.error);
+  });
+};

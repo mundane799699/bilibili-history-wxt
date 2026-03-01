@@ -8,6 +8,7 @@ import {
   MessageCircleIcon,
   MusicIcon,
   SettingsIcon,
+  HardDriveDownload,
 } from "lucide-react";
 import { UserInfo } from "./UserInfo";
 import ExpandableMenu from "./ExpandableMenu";
@@ -53,6 +54,11 @@ const menuList = [
     title: "云同步",
     icon: <CloudIcon className="w-4 h-4" />,
     to: "/cloud-sync",
+  },
+  {
+    title: "WebDAV",
+    icon: <HardDriveDownload className="w-4 h-4" />,
+    to: "/webdav-sync",
   },
   {
     title: "设置",
