@@ -291,7 +291,7 @@ const Settings = () => {
   return (
     <div className="p-4 flex flex-col container mx-auto items-center pb-20">
       {/* 恢复出厂设置 */}
-      <div className="w-full max-w-md mb-8 rounded-lg bg-gray-50 hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-all duration-300 ease-in-out">
+      <div className="w-full max-w-md mb-8 rounded-lg bg-gray-50 hover:bg-gray-100 border hover:border-gray-200 transition-all duration-300 ease-in-out">
         <div className="flex items-center justify-between p-4 ">
           <div>
             <h3 className="text-lg font-medium text-gray-800">恢复出厂设置</h3>
@@ -352,7 +352,7 @@ const Settings = () => {
       )}
 
       {/* 侧边栏菜单管理 */}
-      <div className="w-full max-w-md mb-8 rounded-xl bg-white shadow-sm border border-gray-100">
+      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 shadow-sm border border-gray-100">
         <div className="p-5">
           <h3 className="text-lg font-bold text-gray-800 mb-1">侧边栏菜单管理</h3>
           <p className="text-sm text-gray-500 mb-6">选择需要隐藏并禁用的菜单项</p>
@@ -376,7 +376,7 @@ const Settings = () => {
       </div>
 
       {/* 界面管理 */}
-      <div className="w-full max-w-md mb-8 rounded-xl bg-white shadow-sm border border-gray-100">
+      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 shadow-sm border border-gray-100">
         <div className="p-5">
           <h3 className="text-lg font-bold text-gray-800 mb-1">界面管理</h3>
           <p className="text-sm text-gray-500 mb-6">自定义界面显示与交互</p>
@@ -424,7 +424,7 @@ const Settings = () => {
       </div>
 
       {/* 数据管理 */}
-      <div className="w-full max-w-md mb-8 rounded-xl bg-white shadow-sm border border-gray-100">
+      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 shadow-sm border border-gray-100">
         <div className="p-5">
           <h3 className="text-lg font-bold text-gray-800 mb-6">数据管理</h3>
 
@@ -478,7 +478,7 @@ const Settings = () => {
         </div>
       </div>
 
-      <div className="w-full max-w-md mb-8 rounded-xl bg-white shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
+      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
         <div className="flex items-center justify-between p-5">
           <div className="pr-4">
             <h3 className="text-base font-medium text-gray-800">同步删除：插件 -&gt; B站</h3>
@@ -496,7 +496,7 @@ const Settings = () => {
         </div>
       </div>
 
-      <div className="w-full max-w-md mb-8 rounded-xl bg-white shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
+      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
         <div className="flex items-center justify-between p-5">
           <div className="pr-4">
             <h3 className="text-base font-medium text-gray-800">同步删除：B站 -&gt; 插件</h3>
@@ -514,7 +514,7 @@ const Settings = () => {
         </div>
       </div>
 
-      <div className="w-full max-w-md mb-8 rounded-xl bg-white shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
+      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
         <div className="flex items-center justify-between p-5">
           <div>
             <h3 className="text-base font-medium text-gray-800">自动同步时间间隔</h3>
@@ -550,7 +550,7 @@ const Settings = () => {
         </div>
       </div>
 
-      <div className="w-full max-w-md mb-8 rounded-xl bg-white shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
+      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
         <div className="flex items-center justify-between p-5">
           <div>
             <h3 className="text-base font-medium text-gray-800">自动同步收藏夹间隔</h3>

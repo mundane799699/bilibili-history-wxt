@@ -533,6 +533,15 @@ const WebDavSync = () => {
           <p className="text-xs text-gray-500 mt-1">
             支持坚果云、NextCloud、群晖 NAS 等 WebDAV 服务
           </p>
+          <button
+            className="text-xs text-blue-500 mt-1 cursor-pointer"
+            onClick={() => {
+              const url = browser.runtime.getURL("/webdav-tutorial.html");
+              browser.tabs.create({ url });
+            }}
+          >
+            配置教程
+          </button>
         </div>
 
         <div className="p-5 space-y-4">

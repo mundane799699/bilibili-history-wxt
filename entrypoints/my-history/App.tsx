@@ -18,7 +18,7 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const isWelcome = location.pathname === "/welcome";
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen">
       {!isWelcome && <Sidebar />}
       {/* 主内容区域 */}
       <div className={`${!isWelcome ? "ml-40" : ""} w-full transition-all duration-300`}>
