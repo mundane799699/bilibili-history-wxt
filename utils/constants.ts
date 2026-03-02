@@ -28,6 +28,11 @@ export const WEBDAV_AUTO_SYNC_INTERVAL = "webdavAutoSyncInterval"; // 单位：�
 
 export const UPDATE_HISTORY = [
   {
+    date: "2026-03-02",
+    version: "1.9.6",
+    changes: ["新增WebDAV同步功能", "优化部分UI"],
+  },
+  {
     date: "2026-02-26",
     version: "1.9.5",
     changes: ["修复搜索音乐时搜索失败的问题"],
