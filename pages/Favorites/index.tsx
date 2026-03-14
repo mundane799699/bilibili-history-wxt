@@ -68,7 +68,7 @@ export const Favorites = () => {
   const filteredResources = resources.filter((item) => {
     if (!keyword) return true;
     const lowerKeyword = keyword.toLowerCase();
-    
+
     switch (searchType) {
       case "title":
         return item.title.toLowerCase().includes(lowerKeyword);
@@ -129,7 +129,7 @@ export const Favorites = () => {
                   {filteredResources.length} 个内容
                 </span>
               </h1>
-              
+
               <div className="relative w-full md:max-w-xl group flex items-center bg-gray-50 border border-gray-200 rounded-full transition-all duration-300 shadow-sm hover:shadow-md focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400">
                 {/* 搜索类型下拉 */}
                 <div className="relative">
@@ -300,3 +300,5 @@ export const Favorites = () => {
     </div>
   );
 };
+
+export default Favorites;
