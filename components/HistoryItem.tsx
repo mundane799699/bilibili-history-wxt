@@ -1,7 +1,8 @@
 import { HistoryItem as HistoryItemType } from "../utils/types";
 import { getContentUrl } from "../utils/common";
 import { Trash2 } from "lucide-react";
-import { deleteHistoryItem } from "../utils/db";
+import { deleteHistoryItem, checkIsFavorited } from "../utils/db";
+import React, { useState, useEffect } from "react";
 import { getStorageValue } from "../utils/storage";
 import { toast } from "react-hot-toast";
 import { IS_SYNC_DELETE } from "../utils/constants";
@@ -57,6 +58,12 @@ const deleteBilibiliHistory = async (business: string, id: number): Promise<void
 };
 
 export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
+  const [isFav, setIsFav] = useState(false);
+
+  useEffect(() => {
+    checkIsFavorited(item.id).then((res) => setIsFav(res));
+  }, [item.id]);
+
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -147,10 +154,17 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
               )}
             </div>
 
-            {/* "已看完" 标签 (positioned separately at top-right) */}
+            {/* "已看完" 标签 (moved to top-left) */}
             {item.progress === -1 && (
-              <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[10px] text-white bg-black/60 backdrop-blur-sm border border-white/20">
+              <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] text-white bg-black/60 backdrop-blur-sm border border-white/20">
                 已看完
+              </span>
+            )}
+
+            {/* "已收藏" 标签 (positioned at top-right) */}
+            {isFav && (
+              <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[10px] text-white bg-black/60 backdrop-blur-sm border border-white/20">
+                已收藏
               </span>
             )}
           </div>

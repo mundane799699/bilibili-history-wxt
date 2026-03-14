@@ -9,6 +9,7 @@ import {
   MusicIcon,
   SettingsIcon,
   HardDriveDownload,
+  Sparkles,
 } from "lucide-react";
 import { UserInfo } from "./UserInfo";
 import ExpandableMenu from "./ExpandableMenu";
@@ -25,6 +26,11 @@ const menuList = [
     title: "收藏夹",
     icon: <Star className="w-4 h-4" />,
     to: "/favorites",
+  },
+  {
+    title: "AI 探索（beta）",
+    icon: <Sparkles className="w-4 h-4 text-indigo-500" />,
+    to: "/ai-search",
   },
   {
     title: "听歌",

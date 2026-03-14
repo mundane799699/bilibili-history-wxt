@@ -1,6 +1,7 @@
 import {
   IS_SYNCING,
   HAS_FULL_SYNC,
+  HAS_FULL_FAV_SYNC,
   SYNC_INTERVAL,
   SYNC_TIME_REMAIN,
   IS_SYNC_DELETE_FROM_BILIBILI,
@@ -85,7 +86,8 @@ export default defineBackground(() => {
             message: "正在初始化收藏夹...",
           });
           try {
-            await syncFavorites();
+            await syncFavorites(true);
+            await setStorageValue(HAS_FULL_FAV_SYNC, true);
           } catch (e) {
             console.error("Fav init failed", e);
           } finally {
@@ -126,6 +128,7 @@ export default defineBackground(() => {
   };
 
   const intervalFavSync = async (syncInterval: number) => {
+    let success = true;
     try {
       const isSyncing = await getStorageValue(IS_SYNCING_FAV);
       if (isSyncing) {
@@ -134,12 +137,18 @@ export default defineBackground(() => {
       }
 
       await setStorageValue(IS_SYNCING_FAV, true);
-      await syncFavorites();
+      await syncFavorites(false);
     } catch (error) {
       console.error("定时收藏夹同步失败", error);
+      success = false;
     } finally {
       await setStorageValue(IS_SYNCING_FAV, false);
-      await setStorageValue(FAV_SYNC_TIME_REMAIN, syncInterval);
+      if (success) {
+        await setStorageValue(FAV_SYNC_TIME_REMAIN, syncInterval);
+      } else {
+        console.log("收藏夹增量同步失败，1分钟后重试...");
+        await setStorageValue(FAV_SYNC_TIME_REMAIN, 1);
+      }
     }
   };
 
@@ -266,7 +275,13 @@ export default defineBackground(() => {
       }
 
       await setStorageValue(IS_SYNCING_FAV, true);
-      await syncFavorites();
+      const hasFullFavSync = await getStorageValue(HAS_FULL_FAV_SYNC, false);
+      if (!hasFullFavSync) {
+        await syncFavorites(true);
+        await setStorageValue(HAS_FULL_FAV_SYNC, true);
+      } else {
+        await syncFavorites(false);
+      }
       sendResponse({ success: true, message: "收藏夹同步成功" });
     } catch (error) {
       console.error("同步收藏夹失败:", error);
@@ -436,7 +451,7 @@ export default defineBackground(() => {
     }
   }
 
-  async function syncFavorites(): Promise<void> {
+  async function syncFavorites(isFullSync = false): Promise<void> {
     try {
       const cookies = await browser.cookies.getAll({ domain: "bilibili.com" });
       const SESSDATA = cookies.find((c) => c.name === "SESSDATA")?.value;
@@ -459,34 +474,34 @@ export default defineBackground(() => {
       if (folderData.code !== 0) throw new Error("获取收藏夹失败");
 
       const folders = folderData.data.list;
-      if (folders && folders.length > 0) {
+      const safeFolders = folders || [];
+      if (safeFolders.length > 0) {
         // 添加 index 字段
-        const foldersWithIndex = folders.map((f: any, idx: number) => ({
+        const foldersWithIndex = safeFolders.map((f: any, idx: number) => ({
           ...f,
           index: idx,
         }));
         await saveFavFolders(foldersWithIndex);
-        console.log(`同步了 ${folders.length} 个收藏夹`);
+        console.log(`同步了 ${safeFolders.length} 个收藏夹`);
       }
 
       // 3. 同步每个收藏夹的资源
-      // 计算总数
-      const totalItems = folders.reduce(
-        (sum: number, folder: any) => sum + (folder.media_count || 0),
-        0,
-      );
+      // 全量同步时计算总数用于进度展示；增量同步时总数按每个收藏夹1页(最多20)估算
+      const totalItems = isFullSync
+        ? safeFolders.reduce((sum: number, folder: any) => sum + (folder.media_count || 0), 0)
+        : safeFolders.length * 20;
       let currentSynced = 0;
 
       await setStorageValue(SYNC_PROGRESS_FAV, {
         current: 0,
         total: totalItems,
-        message: "开始同步收藏夹...",
+        message: isFullSync ? "开始全量同步收藏夹..." : "开始增量同步收藏夹(仅第一页)...",
       });
 
-      for (const folder of folders || []) {
-        console.log(`正在同步收藏夹: ${folder.title}`);
+      for (const folder of safeFolders) {
+        console.log(`正在同步收藏夹: ${folder.title} (${isFullSync ? "全量" : "仅第一页"})`);
 
-        // 用于记录本次API返回的所有资源ID，用于后续比对删除本地已取消收藏的资源
+        // 用于记录本次API返回的所有资源ID，全量同步时用于后续比对删除本地已取消收藏的资源
         const onlineResourceIds = new Set<number>();
 
         let hasMore = true;
@@ -529,8 +544,13 @@ export default defineBackground(() => {
               message: `正在同步: ${folder.title}`,
             });
 
-            hasMore = data.data.has_more;
-            page++;
+            // 非全量同步：只拉第一页，不继续翻页
+            if (!isFullSync) {
+              hasMore = false;
+            } else {
+              hasMore = data.data.has_more;
+              page++;
+            }
             await new Promise((resolve) => setTimeout(resolve, 500)); // limit rate
           } else {
             hasMore = false;
@@ -538,20 +558,23 @@ export default defineBackground(() => {
         }
 
         // 4. 清理本地存在但线上已不存在的资源 (取消收藏的)
-        try {
-          const localResources = await getFavResources(folder.id);
-          const idsToDelete = localResources
-            .filter((item) => !onlineResourceIds.has(item.id))
-            .map((item) => item.id);
+        // 仅全量同步时执行清理，增量同步只拉了第一页，无法准确判断哪些被取消收藏
+        if (isFullSync) {
+          try {
+            const localResources = await getFavResources(folder.id);
+            const idsToDelete = localResources
+              .filter((item) => !onlineResourceIds.has(item.id))
+              .map((item) => item.id);
 
-          if (idsToDelete.length > 0) {
-            await deleteFavResources(idsToDelete);
-            console.log(
-              `从收藏夹 "${folder.title}" 删除了 ${idsToDelete.length} 个已取消收藏的项目`,
-            );
+            if (idsToDelete.length > 0) {
+              await deleteFavResources(idsToDelete);
+              console.log(
+                `从收藏夹 "${folder.title}" 删除了 ${idsToDelete.length} 个已取消收藏的项目`,
+              );
+            }
+          } catch (err) {
+            console.error(`清理收藏夹 "${folder.title}" 本地数据失败:`, err);
           }
-        } catch (err) {
-          console.error(`清理收藏夹 "${folder.title}" 本地数据失败:`, err);
         }
       }
 
