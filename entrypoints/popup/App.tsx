@@ -85,7 +85,7 @@ function App() {
           onClick={handleSync}
           disabled={isSyncing}
         >
-          {isSyncing ? "同步中..." : "立即同步"}
+          {isSyncing ? "同步中..." : "同步历史记录"}
         </button>
         <button
           className="w-full px-2 py-2 text-white bg-[#fb7299] rounded hover:bg-[#e05a80] disabled:bg-gray-300 disabled:cursor-not-allowed"
