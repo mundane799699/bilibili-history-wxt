@@ -5,6 +5,7 @@ export const IS_SYNCING = "isSyncing";
 export const IS_SYNCING_FAV = "isSyncingFav";
 
 export const HAS_FULL_SYNC = "hasFullSync";
+export const HAS_FULL_FAV_SYNC = "hasFullFavSync";
 
 export const SYNC_INTERVAL = "syncInterval";
 
@@ -20,7 +21,35 @@ export const SYNC_PROGRESS_FAV = "syncProgressFav";
 export const DATE_SELECTION_MODE = "date_selection_mode";
 export const GRID_COLUMNS = "gridColumns";
 
+// WebDAV 同步相关
+export const WEBDAV_CONFIG = "webdavConfig";
+export const WEBDAV_LAST_SYNC = "webdavLastSync";
+export const WEBDAV_AUTO_SYNC_ENABLED = "webdavAutoSyncEnabled";
+export const WEBDAV_AUTO_SYNC_INTERVAL = "webdavAutoSyncInterval"; // 单位：分钟，默认 30
+
+export const DASHSCOPE_API_KEY = "dashscopeApiKey";
+
 export const UPDATE_HISTORY = [
+  {
+    date: "2026-03-14",
+    version: "1.9.7",
+    changes: [
+      "新增 AI语义探索 功能，输入API Key即可模糊寻找遗忘历史记录",
+      "优化收藏夹同步机制为增量同步（按需重试机制），大幅减少API请求",
+      "新增收藏夹界面专属深度搜索栏，支持实时检索（标题、UP主、AV/BV号等）",
+      "优化标签UI：添加“已收藏”标志并重构历史徽章位置",
+    ],
+  },
+  {
+    date: "2026-03-02",
+    version: "1.9.6",
+    changes: ["新增WebDAV同步功能", "优化部分UI"],
+  },
+  {
+    date: "2026-02-26",
+    version: "1.9.5",
+    changes: ["修复搜索音乐时搜索失败的问题"],
+  },
   {
     date: "2026-02-23",
     version: "1.9.4",
@@ -34,10 +63,7 @@ export const UPDATE_HISTORY = [
   {
     date: "2026-02-23",
     version: "1.9.3",
-    changes: [
-      "修复滚动加载更多却没有加载更多的bug",
-      "历史记录的列数根据屏幕适配",
-    ],
+    changes: ["修复滚动加载更多却没有加载更多的bug", "历史记录的列数根据屏幕适配"],
   },
   {
     date: "2026-02-14",
@@ -117,20 +143,12 @@ export const UPDATE_HISTORY = [
   {
     date: "2025-06-28",
     version: "1.7.1",
-    changes: [
-      "优化云同步功能(正式启用)",
-      "显示历史记录总数",
-      "优化关于和反馈页面",
-    ],
+    changes: ["优化云同步功能(正式启用)", "显示历史记录总数", "优化关于和反馈页面"],
   },
   {
     date: "2025-06-15",
     version: "1.7.0",
-    changes: [
-      "增加云同步功能(测试阶段)",
-      "pop中可选择增量同步或者全量同步",
-      "优化菜单项",
-    ],
+    changes: ["增加云同步功能(测试阶段)", "pop中可选择增量同步或者全量同步", "优化菜单项"],
   },
   {
     date: "2025-05-30",

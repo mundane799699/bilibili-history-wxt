@@ -64,16 +64,10 @@ export const UserInfo = () => {
         <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-300">
           {userInfo ? (
             <div className="w-full h-full bg-pink-400 flex items-center justify-center">
-              <span className="text-white font-medium text-sm">
-                {getInitial(userInfo.name)}
-              </span>
+              <span className="text-white font-medium text-sm">{getInitial(userInfo.name)}</span>
             </div>
           ) : (
-            <img
-              src="/noface.jpg"
-              alt="用户头像"
-              className="w-full h-full object-cover"
-            />
+            <img src="/noface.jpg" alt="用户头像" className="w-full h-full object-cover" />
           )}
         </div>
         <div className="flex-1 min-w-0">

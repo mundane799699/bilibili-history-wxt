@@ -1,6 +1,7 @@
 import {
   IS_SYNCING,
   HAS_FULL_SYNC,
+  HAS_FULL_FAV_SYNC,
   SYNC_INTERVAL,
   SYNC_TIME_REMAIN,
   IS_SYNC_DELETE_FROM_BILIBILI,
@@ -10,9 +11,30 @@ import {
   SYNC_PROGRESS_HISTORY,
   SYNC_PROGRESS_FAV,
   HIDDEN_MENUS,
+  WEBDAV_CONFIG,
+  WEBDAV_LAST_SYNC,
+  WEBDAV_AUTO_SYNC_ENABLED,
+  WEBDAV_AUTO_SYNC_INTERVAL,
 } from "../utils/constants";
-import { openDB, getItem, deleteHistoryItem, saveFavFolders, saveFavResources, getFavResources, deleteFavResources } from "../utils/db";
+import {
+  openDB,
+  getItem,
+  deleteHistoryItem,
+  saveFavFolders,
+  saveFavResources,
+  getFavResources,
+  deleteFavResources,
+  getAllHistory,
+  getAllLikedMusic,
+  getAllFavFolders,
+  getAllFavResources,
+  smartMergeHistory,
+  smartMergeLikedMusic,
+  smartMergeFavResources,
+  importFavFolders,
+} from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
+import { WebDavConfig, ensureDirectory, uploadFile, downloadFile } from "../utils/webdav";
 
 export default defineBackground(() => {
   console.log("Hello background!", { id: browser.runtime.id });
@@ -27,6 +49,10 @@ export default defineBackground(() => {
     browser.alarms.create("syncFavorites", {
       periodInMinutes: 1,
     });
+    // 设置每分钟检查一次 WebDAV 自动同步
+    browser.alarms.create("syncWebDav", {
+      periodInMinutes: 1,
+    });
 
     // 只在首次安装时打开设置页面并执行初始化同步
     if (details.reason === "install") {
@@ -38,10 +64,15 @@ export default defineBackground(() => {
         // 并行执行初始化同步
         const initHistory = async () => {
           await setStorageValue(IS_SYNCING, true);
-          await setStorageValue(SYNC_PROGRESS_HISTORY, { current: 0, message: "正在初始化同步..." });
-          try { await syncHistory(true); }
-          catch (e) { console.error("History init failed", e); }
-          finally {
+          await setStorageValue(SYNC_PROGRESS_HISTORY, {
+            current: 0,
+            message: "正在初始化同步...",
+          });
+          try {
+            await syncHistory(true);
+          } catch (e) {
+            console.error("History init failed", e);
+          } finally {
             await setStorageValue(IS_SYNCING, false);
             await setStorageValue(SYNC_PROGRESS_HISTORY, { current: 0, message: "初始化同步完成" });
           }
@@ -49,10 +80,17 @@ export default defineBackground(() => {
         const initFav = async () => {
           await setStorageValue(IS_SYNCING_FAV, true);
           // Initial placeholder
-          await setStorageValue(SYNC_PROGRESS_FAV, { current: 0, total: 0, message: "正在初始化收藏夹..." });
-          try { await syncFavorites(); }
-          catch (e) { console.error("Fav init failed", e); }
-          finally {
+          await setStorageValue(SYNC_PROGRESS_FAV, {
+            current: 0,
+            total: 0,
+            message: "正在初始化收藏夹...",
+          });
+          try {
+            await syncFavorites(true);
+            await setStorageValue(HAS_FULL_FAV_SYNC, true);
+          } catch (e) {
+            console.error("Fav init failed", e);
+          } finally {
             await setStorageValue(IS_SYNCING_FAV, false);
             // Completion state will be handled inside syncFavorites too, but good to ensure
           }
@@ -90,6 +128,7 @@ export default defineBackground(() => {
   };
 
   const intervalFavSync = async (syncInterval: number) => {
+    let success = true;
     try {
       const isSyncing = await getStorageValue(IS_SYNCING_FAV);
       if (isSyncing) {
@@ -98,12 +137,18 @@ export default defineBackground(() => {
       }
 
       await setStorageValue(IS_SYNCING_FAV, true);
-      await syncFavorites();
+      await syncFavorites(false);
     } catch (error) {
       console.error("定时收藏夹同步失败", error);
+      success = false;
     } finally {
       await setStorageValue(IS_SYNCING_FAV, false);
-      await setStorageValue(FAV_SYNC_TIME_REMAIN, syncInterval);
+      if (success) {
+        await setStorageValue(FAV_SYNC_TIME_REMAIN, syncInterval);
+      } else {
+        console.log("收藏夹增量同步失败，1分钟后重试...");
+        await setStorageValue(FAV_SYNC_TIME_REMAIN, 1);
+      }
     }
   };
 
@@ -144,14 +189,30 @@ export default defineBackground(() => {
         return;
       }
       intervalFavSync(syncInterval);
+    } else if (alarm.name === "syncWebDav") {
+      // WebDAV 自动同步：基于上次同步时间判断
+      const enabled = await getStorageValue(WEBDAV_AUTO_SYNC_ENABLED, false);
+      if (!enabled) return;
+
+      const syncInterval = await getStorageValue(WEBDAV_AUTO_SYNC_INTERVAL, 30);
+      const lastSyncTime = await getStorageValue<number>(WEBDAV_LAST_SYNC, 0);
+      const elapsed = Date.now() - lastSyncTime;
+      const intervalMs = syncInterval * 60 * 1000;
+
+      if (elapsed < intervalMs) {
+        console.log(
+          `WebDAV 自动同步：距上次同步仅 ${Math.round(elapsed / 60000)} 分钟，需等待 ${syncInterval} 分钟`,
+        );
+        return;
+      }
+
+      // 距离上次同步已超过设定间隔，执行备份
+      autoSyncWebDav();
     }
   });
 
   // 处理同步历史记录的消息
-  const handleSyncHistory = async (
-    message: any,
-    sendResponse: (response: any) => void
-  ) => {
+  const handleSyncHistory = async (message: any, sendResponse: (response: any) => void) => {
     try {
       // 检查是否正在同步
       const isSyncing = await getStorageValue(IS_SYNCING);
@@ -205,10 +266,7 @@ export default defineBackground(() => {
     }
   };
 
-  const handleSyncFavorites = async (
-    message: any,
-    sendResponse: (response: any) => void
-  ) => {
+  const handleSyncFavorites = async (message: any, sendResponse: (response: any) => void) => {
     try {
       const isSyncing = await getStorageValue(IS_SYNCING_FAV);
       if (isSyncing) {
@@ -217,7 +275,13 @@ export default defineBackground(() => {
       }
 
       await setStorageValue(IS_SYNCING_FAV, true);
-      await syncFavorites();
+      const hasFullFavSync = await getStorageValue(HAS_FULL_FAV_SYNC, false);
+      if (!hasFullFavSync) {
+        await syncFavorites(true);
+        await setStorageValue(HAS_FULL_FAV_SYNC, true);
+      } else {
+        await syncFavorites(false);
+      }
       sendResponse({ success: true, message: "收藏夹同步成功" });
     } catch (error) {
       console.error("同步收藏夹失败:", error);
@@ -231,15 +295,9 @@ export default defineBackground(() => {
   };
 
   // 处理删除历史记录的消息
-  const handleDeleteHistoryItem = async (
-    message: any,
-    sendResponse: (response: any) => void
-  ) => {
+  const handleDeleteHistoryItem = async (message: any, sendResponse: (response: any) => void) => {
     try {
-      const syncDeleteFromBilibili = await getStorageValue(
-        IS_SYNC_DELETE_FROM_BILIBILI,
-        true
-      );
+      const syncDeleteFromBilibili = await getStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, true);
       if (!syncDeleteFromBilibili) {
         sendResponse({ success: true, message: "同步删除未开启" });
         return;
@@ -279,9 +337,7 @@ export default defineBackground(() => {
       const cookies = await browser.cookies.getAll({
         domain: "bilibili.com",
       });
-      const SESSDATA = cookies.find(
-        (cookie) => cookie.name === "SESSDATA"
-      )?.value;
+      const SESSDATA = cookies.find((cookie) => cookie.name === "SESSDATA")?.value;
 
       if (!SESSDATA) {
         throw new Error("未找到 B 站登录信息，请先登录 B 站");
@@ -303,7 +359,7 @@ export default defineBackground(() => {
             headers: {
               Cookie: `SESSDATA=${SESSDATA}`,
             },
-          }
+          },
         );
 
         if (!response.ok) {
@@ -365,7 +421,7 @@ export default defineBackground(() => {
           // 更新同步进度
           await setStorageValue(SYNC_PROGRESS_HISTORY, {
             current: totalSynced,
-            message: `正在同步... 已获取 ${totalSynced} 条`
+            message: `正在同步... 已获取 ${totalSynced} 条`,
           });
           console.log(`同步了${data.data.list.length}条历史记录，总计：${totalSynced}`);
 
@@ -387,12 +443,15 @@ export default defineBackground(() => {
       return true;
     } catch (error) {
       console.error("同步历史记录失败:", error);
-      await setStorageValue(SYNC_PROGRESS_HISTORY, { current: 0, message: `同步失败: ${error instanceof Error ? error.message : "未知错误"}` });
+      await setStorageValue(SYNC_PROGRESS_HISTORY, {
+        current: 0,
+        message: `同步失败: ${error instanceof Error ? error.message : "未知错误"}`,
+      });
       throw error;
     }
   }
 
-  async function syncFavorites(): Promise<void> {
+  async function syncFavorites(isFullSync = false): Promise<void> {
     try {
       const cookies = await browser.cookies.getAll({ domain: "bilibili.com" });
       const SESSDATA = cookies.find((c) => c.name === "SESSDATA")?.value;
@@ -409,37 +468,40 @@ export default defineBackground(() => {
       // 2. 获取收藏夹列表
       const folderRes = await fetch(
         `https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid=${mid}`,
-        { headers: { Cookie: `SESSDATA=${SESSDATA}` } }
+        { headers: { Cookie: `SESSDATA=${SESSDATA}` } },
       );
       const folderData = await folderRes.json();
       if (folderData.code !== 0) throw new Error("获取收藏夹失败");
 
       const folders = folderData.data.list;
-      if (folders && folders.length > 0) {
+      const safeFolders = folders || [];
+      if (safeFolders.length > 0) {
         // 添加 index 字段
-        const foldersWithIndex = folders.map((f: any, idx: number) => ({
+        const foldersWithIndex = safeFolders.map((f: any, idx: number) => ({
           ...f,
-          index: idx
+          index: idx,
         }));
         await saveFavFolders(foldersWithIndex);
-        console.log(`同步了 ${folders.length} 个收藏夹`);
+        console.log(`同步了 ${safeFolders.length} 个收藏夹`);
       }
 
       // 3. 同步每个收藏夹的资源
-      // 计算总数
-      const totalItems = folders.reduce((sum: number, folder: any) => sum + (folder.media_count || 0), 0);
+      // 全量同步时计算总数用于进度展示；增量同步时总数按每个收藏夹1页(最多20)估算
+      const totalItems = isFullSync
+        ? safeFolders.reduce((sum: number, folder: any) => sum + (folder.media_count || 0), 0)
+        : safeFolders.length * 20;
       let currentSynced = 0;
 
       await setStorageValue(SYNC_PROGRESS_FAV, {
         current: 0,
         total: totalItems,
-        message: "开始同步收藏夹..."
+        message: isFullSync ? "开始全量同步收藏夹..." : "开始增量同步收藏夹(仅第一页)...",
       });
 
-      for (const folder of folders || []) {
-        console.log(`正在同步收藏夹: ${folder.title}`);
+      for (const folder of safeFolders) {
+        console.log(`正在同步收藏夹: ${folder.title} (${isFullSync ? "全量" : "仅第一页"})`);
 
-        // 用于记录本次API返回的所有资源ID，用于后续比对删除本地已取消收藏的资源
+        // 用于记录本次API返回的所有资源ID，全量同步时用于后续比对删除本地已取消收藏的资源
         const onlineResourceIds = new Set<number>();
 
         let hasMore = true;
@@ -447,7 +509,7 @@ export default defineBackground(() => {
         while (hasMore) {
           const res = await fetch(
             `https://api.bilibili.com/x/v3/fav/resource/list?media_id=${folder.id}&pn=${page}&ps=20`,
-            { headers: { Cookie: `SESSDATA=${SESSDATA}` } }
+            { headers: { Cookie: `SESSDATA=${SESSDATA}` } },
           );
           const data = await res.json();
           if (data.code !== 0) {
@@ -479,11 +541,16 @@ export default defineBackground(() => {
             await setStorageValue(SYNC_PROGRESS_FAV, {
               current: currentSynced,
               total: totalItems,
-              message: `正在同步: ${folder.title}`
+              message: `正在同步: ${folder.title}`,
             });
 
-            hasMore = data.data.has_more;
-            page++;
+            // 非全量同步：只拉第一页，不继续翻页
+            if (!isFullSync) {
+              hasMore = false;
+            } else {
+              hasMore = data.data.has_more;
+              page++;
+            }
             await new Promise((resolve) => setTimeout(resolve, 500)); // limit rate
           } else {
             hasMore = false;
@@ -491,31 +558,99 @@ export default defineBackground(() => {
         }
 
         // 4. 清理本地存在但线上已不存在的资源 (取消收藏的)
-        try {
-          const localResources = await getFavResources(folder.id);
-          const idsToDelete = localResources
-            .filter(item => !onlineResourceIds.has(item.id))
-            .map(item => item.id);
+        // 仅全量同步时执行清理，增量同步只拉了第一页，无法准确判断哪些被取消收藏
+        if (isFullSync) {
+          try {
+            const localResources = await getFavResources(folder.id);
+            const idsToDelete = localResources
+              .filter((item) => !onlineResourceIds.has(item.id))
+              .map((item) => item.id);
 
-          if (idsToDelete.length > 0) {
-            await deleteFavResources(idsToDelete);
-            console.log(`从收藏夹 "${folder.title}" 删除了 ${idsToDelete.length} 个已取消收藏的项目`);
+            if (idsToDelete.length > 0) {
+              await deleteFavResources(idsToDelete);
+              console.log(
+                `从收藏夹 "${folder.title}" 删除了 ${idsToDelete.length} 个已取消收藏的项目`,
+              );
+            }
+          } catch (err) {
+            console.error(`清理收藏夹 "${folder.title}" 本地数据失败:`, err);
           }
-        } catch (err) {
-          console.error(`清理收藏夹 "${folder.title}" 本地数据失败:`, err);
         }
       }
 
       await setStorageValue(SYNC_PROGRESS_FAV, {
         current: totalItems,
         total: totalItems,
-        message: "收藏夹同步完成"
+        message: "收藏夹同步完成",
       });
-
-
     } catch (error) {
       console.error("同步收藏夹过程出错:", error);
       throw error;
+    }
+  }
+
+  // WebDAV 自动双向同步：拉取 → 合并 → 推送
+  async function autoSyncWebDav(): Promise<void> {
+    try {
+      const config = await getStorageValue<WebDavConfig | null>(WEBDAV_CONFIG, null);
+      if (!config || !config.serverUrl) {
+        console.log("WebDAV 未配置，跳过自动同步");
+        return;
+      }
+
+      console.log("开始 WebDAV 双向同步...");
+      await ensureDirectory(config);
+
+      // ===== 第一步：拉取远端数据并合并到本地 =====
+      console.log("[WebDAV 同步] 步骤 1/2：拉取并合并远端数据...");
+
+      const historyData = await downloadFile(config, "history.json");
+      if (historyData) {
+        const items = JSON.parse(historyData);
+        await smartMergeHistory(items);
+      }
+
+      const musicData = await downloadFile(config, "likedMusic.json");
+      if (musicData) {
+        const items = JSON.parse(musicData);
+        await smartMergeLikedMusic(items);
+      }
+
+      const foldersData = await downloadFile(config, "favFolders.json");
+      if (foldersData) {
+        const items = JSON.parse(foldersData);
+        await importFavFolders(items);
+      }
+
+      const resourcesData = await downloadFile(config, "favResources.json");
+      if (resourcesData) {
+        const items = JSON.parse(resourcesData);
+        await smartMergeFavResources(items);
+      }
+
+      // ===== 第二步：将合并后的最新本地数据推送到远端 =====
+      console.log("[WebDAV 同步] 步骤 2/2：推送本地数据到远端...");
+
+      const history = await getAllHistory();
+      await uploadFile(config, "history.json", JSON.stringify(history));
+
+      const music = await getAllLikedMusic();
+      await uploadFile(config, "likedMusic.json", JSON.stringify(music));
+
+      const folders = await getAllFavFolders();
+      await uploadFile(config, "favFolders.json", JSON.stringify(folders));
+
+      const resources = await getAllFavResources();
+      await uploadFile(config, "favResources.json", JSON.stringify(resources));
+
+      // 同步完成，记录时间戳
+      await setStorageValue(WEBDAV_LAST_SYNC, Date.now());
+
+      console.log(
+        `WebDAV 双向同步完成：历史 ${history.length}，音乐 ${music.length}，收藏夹 ${folders.length}，收藏 ${resources.length}`,
+      );
+    } catch (error) {
+      console.error("WebDAV 双向同步失败:", error);
     }
   }
 });

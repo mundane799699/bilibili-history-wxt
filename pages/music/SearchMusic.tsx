@@ -42,8 +42,7 @@ const SearchMusic = () => {
   const howlRef = useRef<Howl | null>(null);
 
   // 音频播放状态管理
-  const [currentPlayingItem, setCurrentPlayingItem] =
-    useState<SearchResultItem | null>(null);
+  const [currentPlayingItem, setCurrentPlayingItem] = useState<SearchResultItem | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
@@ -64,9 +63,7 @@ const SearchMusic = () => {
     const url3 = obj.backup_url?.[1] || "";
 
     // 找到第一个不是https://xy 开头的url
-    const urlList = [url1, url2, url3].filter(
-      (url) => !url.startsWith("https://xy")
-    );
+    const urlList = [url1, url2, url3].filter((url) => !url.startsWith("https://xy"));
     return urlList[0] || url1;
   };
 
@@ -102,7 +99,7 @@ const SearchMusic = () => {
 
       // 获取音频URL
       const response = await fetch(
-        `https://api.bilibili.com/x/web-interface/view?bvid=${item.bvid}`
+        `https://api.bilibili.com/x/web-interface/view?bvid=${item.bvid}`,
       );
       const { data, code, message } = await response.json();
       if (code !== 0) {
@@ -111,13 +108,9 @@ const SearchMusic = () => {
       const { cid } = data;
 
       const response2 = await fetch(
-        `https://api.bilibili.com/x/player/playurl?fnval=16&bvid=${item.bvid}&cid=${cid}`
+        `https://api.bilibili.com/x/player/playurl?fnval=16&bvid=${item.bvid}&cid=${cid}`,
       );
-      const {
-        data: data2,
-        code: code2,
-        message: message2,
-      } = await response2.json();
+      const { data: data2, code: code2, message: message2 } = await response2.json();
       if (code2 !== 0) {
         throw new Error(message2 || "获取播放地址失败");
       }
@@ -216,7 +209,7 @@ const SearchMusic = () => {
     try {
       // https://api.bilibili.com/x/web-interface/search/type?page=1&page_size=42&platform=pc&highlight=1&keyword=brave+heart&search_type=video&preload=true&com2co=true
       const response = await fetch(
-        `https://api.bilibili.com/x/web-interface/search/type?page=${pageRef.current}&page_size=42&platform=pc&highlight=1&keyword=${searchQuery}&search_type=video&preload=true&com2co=true`
+        `https://api.bilibili.com/x/web-interface/search/type?page=${pageRef.current}&page_size=42&platform=pc&highlight=1&keyword=${searchQuery}&search_type=video&preload=true&com2co=true`,
       );
       const {
         data: { result, next, numPages },
@@ -234,11 +227,7 @@ const SearchMusic = () => {
   };
 
   const loadMore = async () => {
-    if (
-      loading ||
-      pageRef.current > numPagesRef.current ||
-      !searchQuery.trim()
-    ) {
+    if (loading || pageRef.current > numPagesRef.current || !searchQuery.trim()) {
       return;
     }
 
@@ -247,7 +236,7 @@ const SearchMusic = () => {
 
     try {
       const response = await fetch(
-        `https://api.bilibili.com/x/web-interface/search/type?page=${pageRef.current}&page_size=42&platform=pc&highlight=1&keyword=${searchQuery}&search_type=video&preload=true&com2co=true`
+        `https://api.bilibili.com/x/web-interface/search/type?page=${pageRef.current}&page_size=42&platform=pc&highlight=1&keyword=${searchQuery}&search_type=video&preload=true&com2co=true`,
       );
       const {
         data: { result, next, numPages },
@@ -292,7 +281,7 @@ const SearchMusic = () => {
       {
         rootMargin: "100px", // 提前100px开始加载
         threshold: 0.1,
-      }
+      },
     );
 
     observer.observe(loadMoreElement);
@@ -354,9 +343,7 @@ const SearchMusic = () => {
                 item={item}
                 isPlaying={currentPlayingItem?.bvid === item.bvid && isPlaying}
                 isLoading={currentPlayingItem?.bvid === item.bvid && isLoading}
-                error={
-                  currentPlayingItem?.bvid === item.bvid ? audioError : null
-                }
+                error={currentPlayingItem?.bvid === item.bvid ? audioError : null}
                 onPlay={handlePlay}
                 onStop={handleStop}
               />

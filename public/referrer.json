@@ -169,5 +169,29 @@
       "resourceTypes": ["xmlhttprequest"],
       "requestMethods": ["post"]
     }
+  },
+  {
+    "id": 8,
+    "priority": 4,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        {
+          "header": "origin",
+          "operation": "set",
+          "value": "https://search.bilibili.com"
+        },
+        {
+          "header": "referer",
+          "operation": "set",
+          "value": "https://search.bilibili.com"
+        }
+      ]
+    },
+    "condition": {
+      "urlFilter": "https://api.bilibili.com/x/web-interface/search",
+      "resourceTypes": ["xmlhttprequest"],
+      "requestMethods": ["get"]
+    }
   }
 ]

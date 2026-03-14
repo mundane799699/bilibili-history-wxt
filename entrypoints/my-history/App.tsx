@@ -7,20 +7,22 @@ import ScrollToTopButton from "../../components/ScrollToTopButton";
 import { Toaster } from "react-hot-toast";
 import Feedback from "../../pages/Feedback";
 import CloudSync from "../../pages/CloudSync";
+import WebDavSync from "../../pages/WebDavSync";
 import SearchMusic from "../../pages/music/SearchMusic";
 import LikedMusic from "../../pages/music/LikedMusic";
 import { Favorites } from "../../pages/Favorites";
 import Welcome from "../../pages/Welcome";
+import AISearch from "../../pages/AISearch";
 
 const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
-  const isWelcome = location.pathname === '/welcome';
+  const isWelcome = location.pathname === "/welcome";
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen">
       {!isWelcome && <Sidebar />}
       {/* 主内容区域 */}
-      <div className={`${!isWelcome ? 'ml-40' : ''} w-full transition-all duration-300`}>
+      <div className={`${!isWelcome ? "ml-40" : ""} w-full transition-all duration-300`}>
         {children}
       </div>
     </div>
@@ -40,7 +42,9 @@ const App = () => {
             <Route path="/settings" element={<Settings />} />
             <Route path="/feedback" element={<Feedback />} />
             <Route path="/cloud-sync" element={<CloudSync />} />
+            <Route path="/webdav-sync" element={<WebDavSync />} />
             <Route path="/favorites" element={<Favorites />} />
+            <Route path="/ai-search" element={<AISearch />} />
             <Route path="/music/search" element={<SearchMusic />} />
             <Route path="/music/liked" element={<LikedMusic />} />
             <Route path="*" element={<Navigate to="/" replace />} />

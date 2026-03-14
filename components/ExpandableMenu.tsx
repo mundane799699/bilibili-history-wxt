@@ -24,11 +24,7 @@ const ExpandableMenu = ({
   const [isOpen, setIsOpen] = useState(initialIsOpen);
   const location = useLocation();
 
-  const handleClick = (
-    to: string | undefined,
-    e: React.MouseEvent,
-    isSubMenu: boolean
-  ) => {
+  const handleClick = (to: string | undefined, e: React.MouseEvent, isSubMenu: boolean) => {
     // 阻止事件冒泡，避免影响其他点击事件
     e.preventDefault();
     e.stopPropagation();
@@ -77,9 +73,7 @@ const ExpandableMenu = ({
               <Link
                 to={item.to}
                 className={`py-4 flex items-center pl-6 hover:text-pink-500 text-sm ${
-                  location.pathname === item.to
-                    ? "text-pink-500"
-                    : "text-slate-600"
+                  location.pathname === item.to ? "text-pink-500" : "text-slate-600"
                 }`}
               >
                 <span className="ml-6 text-xs">{item.title}</span>

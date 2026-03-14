@@ -127,9 +127,7 @@ const LikedMusicItem = ({
             >
               {music.author}
             </a>
-            <span className="text-xs text-gray-400">
-              收藏于 {formatDate(music.added_at)}
-            </span>
+            <span className="text-xs text-gray-400">收藏于 {formatDate(music.added_at)}</span>
           </div>
 
           {/* 错误提示 */}
@@ -151,11 +149,7 @@ const LikedMusicItem = ({
             disabled={removing}
             title={removing ? "处理中..." : "取消收藏"}
           >
-            {removing ? (
-              <Loader2 size={20} className="animate-spin" />
-            ) : (
-              <Trash2 size={20} />
-            )}
+            {removing ? <Loader2 size={20} className="animate-spin" /> : <Trash2 size={20} />}
           </button>
         </div>
       </div>

@@ -8,6 +8,8 @@ import {
   MessageCircleIcon,
   MusicIcon,
   SettingsIcon,
+  HardDriveDownload,
+  Sparkles,
 } from "lucide-react";
 import { UserInfo } from "./UserInfo";
 import ExpandableMenu from "./ExpandableMenu";
@@ -24,6 +26,11 @@ const menuList = [
     title: "收藏夹",
     icon: <Star className="w-4 h-4" />,
     to: "/favorites",
+  },
+  {
+    title: "AI 探索（beta）",
+    icon: <Sparkles className="w-4 h-4 text-indigo-500" />,
+    to: "/ai-search",
   },
   {
     title: "听歌",
@@ -55,6 +62,11 @@ const menuList = [
     to: "/cloud-sync",
   },
   {
+    title: "WebDAV",
+    icon: <HardDriveDownload className="w-4 h-4" />,
+    to: "/webdav-sync",
+  },
+  {
     title: "设置",
     icon: <SettingsIcon className="w-4 h-4" />,
     to: "/settings",
@@ -74,7 +86,7 @@ export const Sidebar = () => {
 
     const handleStorageChange = (
       changes: { [key: string]: Browser.storage.StorageChange },
-      areaName: string
+      areaName: string,
     ) => {
       if (areaName === "local") {
         if (changes[HIDE_USER_INFO]) {
@@ -91,7 +103,6 @@ export const Sidebar = () => {
       browser.storage.onChanged.removeListener(handleStorageChange);
     };
   }, []);
-
 
   return (
     <div className="fixed top-0 left-0 w-40 bg-gray-100 flex-shrink-0 h-full">

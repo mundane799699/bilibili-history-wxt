@@ -1,7 +1,8 @@
 import { HistoryItem as HistoryItemType } from "../utils/types";
 import { getContentUrl } from "../utils/common";
 import { Trash2 } from "lucide-react";
-import { deleteHistoryItem } from "../utils/db";
+import { deleteHistoryItem, checkIsFavorited } from "../utils/db";
+import React, { useState, useEffect } from "react";
 import { getStorageValue } from "../utils/storage";
 import { toast } from "react-hot-toast";
 import { IS_SYNC_DELETE } from "../utils/constants";
@@ -12,26 +13,21 @@ interface HistoryItemProps {
   onDelete?: () => void;
 }
 
-const deleteBilibiliHistory = async (
-  business: string,
-  id: number
-): Promise<void> => {
+const deleteBilibiliHistory = async (business: string, id: number): Promise<void> => {
   // 从background script获取cookie
-  const cookies = await new Promise<Browser.cookies.Cookie[]>(
-    (resolve, reject) => {
-      browser.runtime.sendMessage({ action: "getCookies" }, (response) => {
-        if (browser.runtime.lastError) {
-          reject(browser.runtime.lastError);
-          return;
-        }
-        if (response.success) {
-          resolve(response.cookies);
-        } else {
-          reject(new Error(response.error));
-        }
-      });
-    }
-  );
+  const cookies = await new Promise<Browser.cookies.Cookie[]>((resolve, reject) => {
+    browser.runtime.sendMessage({ action: "getCookies" }, (response) => {
+      if (browser.runtime.lastError) {
+        reject(browser.runtime.lastError);
+        return;
+      }
+      if (response.success) {
+        resolve(response.cookies);
+      } else {
+        reject(new Error(response.error));
+      }
+    });
+  });
 
   const bili_jct = cookies.find((cookie) => cookie.name === "bili_jct")?.value;
   const SESSDATA = cookies.find((cookie) => cookie.name === "SESSDATA")?.value;
@@ -62,6 +58,12 @@ const deleteBilibiliHistory = async (
 };
 
 export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
+  const [isFav, setIsFav] = useState(false);
+
+  useEffect(() => {
+    checkIsFavorited(item.id).then((res) => setIsFav(res));
+  }, [item.id]);
+
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -88,16 +90,21 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
     const m = Math.floor((seconds % 3600) / 60);
     const s = Math.floor(seconds % 60);
     if (h > 0) {
-      return `${h}:${m.toString().padStart(2, "0")}:${s
-        .toString()
-        .padStart(2, "0")}`;
+      return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
     }
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
   const getProgressText = () => {
     if (item.progress === -1) return "100%"; // Should not be called if progress is -1 for this text
-    if (item.progress === undefined || item.duration === undefined || item.progress === null || item.duration === null || item.duration === 0) return "";
+    if (
+      item.progress === undefined ||
+      item.duration === undefined ||
+      item.progress === null ||
+      item.duration === null ||
+      item.duration === 0
+    )
+      return "";
     const percentage = Math.round((item.progress / item.duration) * 100);
     return `${formatDuration(item.progress)} / ${formatDuration(item.duration)} · ${percentage}%`;
   };
@@ -123,7 +130,9 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/30">
                 <div
                   className="h-full bg-[#fb7299]"
-                  style={{ width: `${Math.min(100, ((item.progress || 0) / (item.duration || 1)) * 100)}%` }}
+                  style={{
+                    width: `${Math.min(100, ((item.progress || 0) / (item.duration || 1)) * 100)}%`,
+                  }}
                 />
               </div>
             )}
@@ -134,8 +143,10 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
                 <span className="text-[10px] text-white bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded border border-white/10">
                   {getProgressText()}
                 </span>
-              ) : <span></span>} {/* Empty span to maintain flex spacing if no progress text */}
-
+              ) : (
+                <span></span>
+              )}{" "}
+              {/* Empty span to maintain flex spacing if no progress text */}
               {getTypeTag(item.business) !== "视频" && (
                 <span className="px-2 py-1 rounded text-xs text-white bg-[#fb7299]">
                   {getTypeTag(item.business)}
@@ -143,10 +154,17 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
               )}
             </div>
 
-            {/* "已看完" 标签 (positioned separately at top-right) */}
+            {/* "已看完" 标签 (moved to top-left) */}
             {item.progress === -1 && (
-              <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[10px] text-white bg-black/60 backdrop-blur-sm border border-white/20">
+              <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] text-white bg-black/60 backdrop-blur-sm border border-white/20">
                 已看完
+              </span>
+            )}
+
+            {/* "已收藏" 标签 (positioned at top-right) */}
+            {isFav && (
+              <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[10px] text-white bg-black/60 backdrop-blur-sm border border-white/20">
+                已收藏
               </span>
             )}
           </div>
@@ -167,10 +185,7 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  window.open(
-                    `https://space.bilibili.com/${item.author_mid}`,
-                    "_blank"
-                  );
+                  window.open(`https://space.bilibili.com/${item.author_mid}`, "_blank");
                 }}
                 className="hover:text-[#fb7299] transition-colors cursor-pointer"
               >

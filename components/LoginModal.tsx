@@ -40,9 +40,7 @@ export const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
                 />
               </svg>
             </div>
-            <p className="text-gray-600 mb-6">
-              您还未登录，无法使用云同步功能。请先登录后再试。
-            </p>
+            <p className="text-gray-600 mb-6">您还未登录，无法使用云同步功能。请先登录后再试。</p>
           </div>
         </div>
 
@@ -64,4 +62,4 @@ export const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
       </div>
     </div>
   );
-}; 
+};

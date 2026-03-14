@@ -47,7 +47,6 @@ export interface DBConfig {
   };
 }
 
-
 export interface SyncResponse {
   code: number;
   message: string;
@@ -94,4 +93,3 @@ export interface FavoriteResource {
   folder_id: number; // 关联的收藏夹ID
   index: number; // 在收藏夹中的顺序
 }
-
