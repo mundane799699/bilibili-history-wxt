@@ -13,6 +13,7 @@ export interface HistoryItem {
   uploaded?: boolean;
   progress?: number;
   duration?: number;
+  is_fav?: boolean;
 }
 
 export interface LikedMusic {

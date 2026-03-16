@@ -58,11 +58,12 @@ const deleteBilibiliHistory = async (business: string, id: number): Promise<void
 };
 
 export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
-  const [isFav, setIsFav] = useState(false);
+  const [isFav, setIsFav] = useState(item.is_fav === true);
 
   useEffect(() => {
+    if (item.is_fav === true) return;
     checkIsFavorited(item.id).then((res) => setIsFav(res));
-  }, [item.id]);
+  }, [item.id, item.is_fav]);
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();

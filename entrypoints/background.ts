@@ -412,6 +412,7 @@ export default defineBackground(() => {
               author_mid: item.author_mid || "",
               progress: item.progress,
               duration: item.duration,
+              is_fav: item.is_fav === 1, // 保存是否收藏字段
               timestamp: Date.now(),
               uploaded: false,
             });
@@ -507,10 +508,36 @@ export default defineBackground(() => {
         let hasMore = true;
         let page = 1;
         while (hasMore) {
-          const res = await fetch(
-            `https://api.bilibili.com/x/v3/fav/resource/list?media_id=${folder.id}&pn=${page}&ps=20`,
-            { headers: { Cookie: `SESSDATA=${SESSDATA}` } },
-          );
+          let res;
+          let fetchSuccess = false;
+          let retries = 0;
+          
+          while (!fetchSuccess && retries < 2) {
+            try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时重试
+              
+              res = await fetch(
+                `https://api.bilibili.com/x/v3/fav/resource/list?media_id=${folder.id}&pn=${page}&ps=20`,
+                { 
+                  headers: { Cookie: `SESSDATA=${SESSDATA}` },
+                  signal: controller.signal
+                },
+              );
+              clearTimeout(timeoutId);
+              fetchSuccess = true;
+            } catch (err) {
+              console.warn(`请求收藏夹 ${folder.title} 第 ${page} 页超时或失败，正在重试 (${retries + 1}/2)...`);
+              retries++;
+              await new Promise(r => setTimeout(r, 2000));
+            }
+          }
+
+          if (!res || !res.ok) {
+            console.error(`获取收藏夹 ${folder.title} 彻底失败，跳过本页`);
+            break;
+          }
+
           const data = await res.json();
           if (data.code !== 0) {
             console.error(`获取收藏夹 ${folder.title} 资源失败:`, data.message);

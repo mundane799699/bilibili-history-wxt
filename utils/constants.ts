@@ -28,6 +28,7 @@ export const WEBDAV_AUTO_SYNC_ENABLED = "webdavAutoSyncEnabled";
 export const WEBDAV_AUTO_SYNC_INTERVAL = "webdavAutoSyncInterval"; // 单位：分钟，默认 30
 
 export const DASHSCOPE_API_KEY = "dashscopeApiKey";
+export const AI_SEARCH_HISTORY = "aiSearchHistory";
 
 export const UPDATE_HISTORY = [
   {

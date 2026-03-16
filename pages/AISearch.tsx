@@ -1,8 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Folder, Search, Loader2, KeyRound, Sparkles } from "lucide-react";
+import { Search, Loader2, KeyRound, Sparkles, Clock, Trash2, ChevronRight } from "lucide-react";
 import { getAllHistory } from "../utils/db";
-import { DASHSCOPE_API_KEY } from "../utils/constants";
+import { DASHSCOPE_API_KEY, AI_SEARCH_HISTORY } from "../utils/constants";
 import { getStorageValue, setStorageValue } from "../utils/storage";
+
+export interface AISearchRecord {
+  id: string;
+  query: string;
+  reasoning: string;
+  content: string;
+  timestamp: number;
+}
 
 export const AISearch: React.FC = () => {
   const [apiKey, setApiKey] = useState("");
@@ -14,12 +22,15 @@ export const AISearch: React.FC = () => {
   const [isAnswering, setIsAnswering] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [errorObj, setErrorObj] = useState<string | null>(null);
-  
   const [searchCount, setSearchCount] = useState(1000); // 默认搜最近1000条
+  const [historyLogs, setHistoryLogs] = useState<AISearchRecord[]>([]);
 
   useEffect(() => {
     getStorageValue(DASHSCOPE_API_KEY, "").then((key) => {
       setApiKey(key as string);
+    });
+    getStorageValue(AI_SEARCH_HISTORY, []).then((logs) => {
+      setHistoryLogs(logs as AISearchRecord[]);
     });
   }, []);
 
@@ -41,6 +52,9 @@ export const AISearch: React.FC = () => {
     setContent("");
     setIsAnswering(false);
     setErrorObj(null);
+
+    let finalContent = "";
+    let finalReasoning = "";
 
     try {
       // 1. 获取本地历史记录，使用限制条数防止阻塞 UI
@@ -109,12 +123,14 @@ ${historyTextStr}
                 if (delta) {
                   // 处理思考过程
                   if (delta.reasoning_content) {
+                    finalReasoning += delta.reasoning_content;
                     setReasoning((prev) => prev + delta.reasoning_content);
                   }
                   
                   // 处理完整的回复
                   if (delta.content) {
                     setIsAnswering(true);
+                    finalContent += delta.content;
                     setContent((prev) => prev + delta.content);
                   }
                 }
@@ -126,6 +142,21 @@ ${historyTextStr}
         }
       }
 
+      if (finalContent) {
+        const newRecord: AISearchRecord = {
+          id: Date.now().toString(),
+          query: query,
+          reasoning: finalReasoning,
+          content: finalContent,
+          timestamp: Date.now(),
+        };
+        setHistoryLogs((prev) => {
+          const updated = [newRecord, ...prev].slice(0, 50); // 最多保存50条
+          setStorageValue(AI_SEARCH_HISTORY, updated);
+          return updated;
+        });
+      }
+
     } catch (err: any) {
       console.error("AI Search Error:", err);
       setErrorObj(err.message || "请求发生未知错误");
@@ -134,13 +165,77 @@ ${historyTextStr}
     }
   };
 
+  const loadHistoryItem = (item: AISearchRecord) => {
+    setQuery(item.query);
+    setReasoning(item.reasoning);
+    setContent(item.content);
+    setIsAnswering(true);
+    setHasStarted(true);
+    setErrorObj(null);
+  };
+
+  const deleteHistoryItem = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setHistoryLogs((prev) => {
+      const updated = prev.filter(log => log.id !== id);
+      setStorageValue(AI_SEARCH_HISTORY, updated);
+      return updated;
+    });
+  };
+
+  const clearCurrent = () => {
+    setQuery("");
+    setHasStarted(false);
+    setReasoning("");
+    setContent("");
+    setErrorObj(null);
+  };
+
   return (
-    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden">
-      <div className="bg-white border-b px-6 py-4 flex-shrink-0 flex items-center justify-between shadow-sm z-10">
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-indigo-500" />
-          AI 语义搜索
-        </h1>
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
+      
+      {/* 侧边历史记录栏 */}
+      <div className="w-64 bg-white border-r flex flex-col hidden md:flex flex-shrink-0 z-10">
+        <div className="p-4 border-b flex items-center justify-between">
+          <h2 className="text-[15px] font-bold flex items-center gap-2 text-gray-800">
+            <Clock className="w-4 h-4 text-indigo-500" />
+            探索历史
+          </h2>
+        </div>
+        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          {historyLogs.length === 0 ? (
+            <div className="text-center text-xs text-gray-400 mt-6">暂无搜索历史</div>
+          ) : (
+            historyLogs.map((log) => (
+              <div 
+                key={log.id}
+                onClick={() => loadHistoryItem(log)}
+                className="group p-3 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors border border-transparent hover:border-gray-100 flex flex-col gap-1 relative"
+              >
+                <div className="text-sm font-medium text-gray-700 truncate pr-6 leading-tight">
+                  {log.query}
+                </div>
+                <div className="text-[10px] text-gray-400">
+                  {new Date(log.timestamp).toLocaleString()}
+                </div>
+                <button
+                  onClick={(e) => deleteHistoryItem(e, log.id)}
+                  className="absolute right-2 top-3 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-opacity p-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        <div className="bg-white border-b px-6 py-4 flex-shrink-0 flex items-center justify-between shadow-sm z-10">
+          <h1 className="text-xl font-bold flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-indigo-500" />
+            AI 语义搜索
+          </h1>
         
         <div className="flex items-center gap-3">
           <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus-within:ring-2 focus-within:ring-indigo-100 focus-within:border-indigo-400 focus-within:bg-white transition-all">
@@ -169,9 +264,17 @@ ${historyTextStr}
       <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center">
         <div className="w-full max-w-4xl flex flex-col gap-6">
           
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h2 className="text-lg font-medium text-gray-800 mb-4 flex items-center gap-2">
-              🤔 你在找什么？
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative">
+            <h2 className="text-lg font-medium text-gray-800 mb-4 flex items-center justify-between">
+              <span className="flex items-center gap-2">🤔 你在找什么？</span>
+              {hasStarted && (
+                <button 
+                  onClick={clearCurrent}
+                  className="text-xs text-gray-500 hover:text-indigo-500 flex items-center transition-colors"
+                >
+                  开启新探索 <ChevronRight className="w-3 h-3 ml-0.5" />
+                </button>
+              )}
             </h2>
             <div className="flex gap-3">
               <input
@@ -198,48 +301,54 @@ ${historyTextStr}
             )}
           </div>
 
-          {hasStarted && (
-            <div className="space-y-4">
-              {/* 思考过程卡片 */}
+        {hasStarted && (
+            <div className="flex flex-col lg:flex-row gap-6 items-stretch w-full">
+              
+              {/* 左侧：思考过程卡片 */}
               {reasoning && (
-                <div className="bg-blue-50/50 rounded-2xl border border-blue-100 overflow-hidden">
-                  <div className="px-5 py-3 bg-blue-50/80 border-b border-blue-100 font-medium text-blue-800 flex items-center gap-2 text-sm">
-                    {isAnswering ? '💡 思考完毕' : <><Loader2 className="w-3.5 h-3.5 animate-spin" /> 深度思考中...</>}
+                <div className="flex-1 bg-blue-50/50 rounded-2xl border border-blue-100 flex flex-col overflow-hidden min-h-[300px]">
+                  <div className="px-5 py-3 bg-blue-50/80 border-b border-blue-100 font-medium text-blue-800 flex items-center justify-between gap-2 text-sm shrink-0">
+                    <div className="flex items-center gap-2">
+                      {isAnswering ? '💡 思考完毕' : <><Loader2 className="w-3.5 h-3.5 animate-spin" /> 深度思考中...</>}
+                    </div>
                   </div>
-                  <div className="p-5 text-sm text-gray-600 font-serif leading-relaxed whitespace-pre-wrap">
+                  <div className="p-5 text-sm text-gray-600 font-serif leading-relaxed whitespace-pre-wrap flex-1 overflow-y-auto max-h-[600px]">
                     {reasoning}
                   </div>
                 </div>
               )}
 
-              {/* 回复内容卡片 */}
-              {(isAnswering || content) && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                  <div className="px-5 py-3 bg-indigo-50 border-b border-indigo-100 font-medium text-indigo-900 text-sm">
-                    🎯 搜索结果
+              {/* 右侧：回复内容卡片 */}
+              <div className="flex-1 flex flex-col gap-4">
+                {(isAnswering || content) && (
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden min-h-[300px]">
+                    <div className="px-5 py-3 bg-indigo-50 border-b border-indigo-100 font-medium text-indigo-900 text-sm shrink-0">
+                      🎯 搜索结果
+                    </div>
+                    <div className="p-5 text-gray-800 text-[15px] leading-relaxed whitespace-pre-wrap flex-1 overflow-y-auto max-h-[600px]">
+                      {content}
+                    </div>
                   </div>
-                  <div className="p-5 text-gray-800 text-[15px] leading-relaxed whitespace-pre-wrap">
-                    {content}
-                  </div>
-                </div>
-              )}
+                )}
 
-              {/* 错误提示卡片 */}
-              {errorObj && (
-                <div className="bg-red-50 rounded-2xl shadow-sm border border-red-200 overflow-hidden">
-                  <div className="px-5 py-3 bg-red-100 border-b border-red-200 font-medium text-red-900 text-sm">
-                    ❌ 搜索出错
+                {/* 错误提示卡片 */}
+                {errorObj && (
+                  <div className="bg-red-50 rounded-2xl shadow-sm border border-red-200 overflow-hidden shrink-0">
+                    <div className="px-5 py-3 bg-red-100 border-b border-red-200 font-medium text-red-900 text-sm">
+                      ❌ 搜索出错
+                    </div>
+                    <div className="p-5 text-red-800 text-[15px] leading-relaxed whitespace-pre-wrap">
+                      {errorObj}
+                    </div>
                   </div>
-                  <div className="p-5 text-red-800 text-[15px] leading-relaxed whitespace-pre-wrap">
-                    {errorObj}
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
 
         </div>
       </div>
+    </div>
     </div>
   );
 };
