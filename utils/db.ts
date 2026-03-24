@@ -391,7 +391,7 @@ export const deleteHistoryItem = async (id: number): Promise<void> => {
   });
 };
 
-export const getAllHistory = async (): Promise<HistoryItem[]> => {
+export const getAllHistory = async (limit?: number): Promise<HistoryItem[]> => {
   const db = await openDB();
   const tx = db.transaction("history", "readonly");
   const store = tx.objectStore("history");
@@ -406,7 +406,11 @@ export const getAllHistory = async (): Promise<HistoryItem[]> => {
 
       if (cursor) {
         items.push(cursor.value as HistoryItem);
-        cursor.continue();
+        if (limit && items.length >= limit) {
+          resolve(items);
+        } else {
+          cursor.continue();
+        }
       } else {
         resolve(items);
       }
@@ -889,6 +893,22 @@ export const saveFavResources = async (resources: FavoriteResource[]): Promise<v
       if (!operationsFailed) resolve();
     };
     tx.onerror = () => reject(tx.error);
+  });
+};
+
+export const checkIsFavorited = async (id: number): Promise<boolean> => {
+  const db = await openDB();
+  const tx = db.transaction("favResources", "readonly");
+  const store = tx.objectStore("favResources");
+
+  return new Promise((resolve) => {
+    const request = store.get(id);
+    request.onsuccess = () => {
+      resolve(!!request.result);
+    };
+    request.onerror = () => {
+      resolve(false);
+    };
   });
 };
 

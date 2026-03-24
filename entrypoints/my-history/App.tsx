@@ -12,6 +12,7 @@ import SearchMusic from "../../pages/music/SearchMusic";
 import LikedMusic from "../../pages/music/LikedMusic";
 import { Favorites } from "../../pages/Favorites";
 import Welcome from "../../pages/Welcome";
+import AISearch from "../../pages/AISearch";
 
 const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -43,6 +44,7 @@ const App = () => {
             <Route path="/cloud-sync" element={<CloudSync />} />
             <Route path="/webdav-sync" element={<WebDavSync />} />
             <Route path="/favorites" element={<Favorites />} />
+            <Route path="/ai-search" element={<AISearch />} />
             <Route path="/music/search" element={<SearchMusic />} />
             <Route path="/music/liked" element={<LikedMusic />} />
             <Route path="*" element={<Navigate to="/" replace />} />

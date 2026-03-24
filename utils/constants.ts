@@ -5,6 +5,7 @@ export const IS_SYNCING = "isSyncing";
 export const IS_SYNCING_FAV = "isSyncingFav";
 
 export const HAS_FULL_SYNC = "hasFullSync";
+export const HAS_FULL_FAV_SYNC = "hasFullFavSync";
 
 export const SYNC_INTERVAL = "syncInterval";
 
@@ -26,7 +27,20 @@ export const WEBDAV_LAST_SYNC = "webdavLastSync";
 export const WEBDAV_AUTO_SYNC_ENABLED = "webdavAutoSyncEnabled";
 export const WEBDAV_AUTO_SYNC_INTERVAL = "webdavAutoSyncInterval"; // 单位：分钟，默认 30
 
+export const DASHSCOPE_API_KEY = "dashscopeApiKey";
+export const AI_SEARCH_HISTORY = "aiSearchHistory";
+
 export const UPDATE_HISTORY = [
+  {
+    date: "2026-03-14",
+    version: "1.9.7",
+    changes: [
+      "新增 AI语义探索 功能，输入API Key即可模糊寻找遗忘历史记录",
+      "优化收藏夹同步机制为增量同步（按需重试机制），大幅减少API请求",
+      "新增收藏夹界面专属深度搜索栏，支持实时检索（标题、UP主、AV/BV号等）",
+      "优化标签UI：添加“已收藏”标志并重构历史徽章位置",
+    ],
+  },
   {
     date: "2026-03-02",
     version: "1.9.6",

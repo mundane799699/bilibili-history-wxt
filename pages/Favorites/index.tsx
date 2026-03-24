@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { getFavFolders, getFavResources } from "../../utils/db";
 import { FavoriteFolder, FavoriteResource } from "../../utils/types";
-import { Folder, Video } from "lucide-react";
+import { Folder, Video, Search, X, ChevronDownIcon } from "lucide-react";
 import { Pagination } from "../../components/Pagination";
 
 export const Favorites = () => {
@@ -10,6 +10,9 @@ export const Favorites = () => {
   const [resources, setResources] = useState<FavoriteResource[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [keyword, setKeyword] = useState("");
+  const [searchType, setSearchType] = useState<"all" | "title" | "up" | "bvid" | "avid">("all");
+  const [isSearchKindDropdownOpen, setIsSearchKindDropdownOpen] = useState(false);
   const pageSize = 50;
 
   const contentRef = useRef<HTMLDivElement>(null);
@@ -46,6 +49,7 @@ export const Favorites = () => {
       const sortedList = list.sort((a, b) => (a.index || 0) - (b.index || 0));
       setResources(sortedList);
       setCurrentPage(1);
+      setKeyword("");
     } catch (error) {
       console.error("加载收藏资源失败", error);
     } finally {
@@ -61,8 +65,32 @@ export const Favorites = () => {
     }
   };
 
+  const filteredResources = resources.filter((item) => {
+    if (!keyword) return true;
+    const lowerKeyword = keyword.toLowerCase();
+
+    switch (searchType) {
+      case "title":
+        return item.title.toLowerCase().includes(lowerKeyword);
+      case "up":
+        return item.upper?.name.toLowerCase().includes(lowerKeyword);
+      case "bvid":
+        return item.bvid && item.bvid.toLowerCase().includes(lowerKeyword);
+      case "avid":
+        return item.id && String(item.id).includes(lowerKeyword);
+      case "all":
+      default:
+        return (
+          item.title.toLowerCase().includes(lowerKeyword) ||
+          item.upper?.name.toLowerCase().includes(lowerKeyword) ||
+          (item.bvid && item.bvid.toLowerCase().includes(lowerKeyword)) ||
+          (item.id && String(item.id).includes(lowerKeyword))
+        );
+    }
+  });
+
   const startIndex = (currentPage - 1) * pageSize;
-  const currentResources = resources.slice(startIndex, startIndex + pageSize);
+  const currentResources = filteredResources.slice(startIndex, startIndex + pageSize);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -94,10 +122,99 @@ export const Favorites = () => {
       <div className="flex-1 overflow-y-auto" ref={contentRef}>
         <div className="p-6">
           {selectedFolderId && (
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold">
+            <div className="mb-6 flex flex-col md:flex-row justify-between md:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+              <h1 className="text-xl font-bold flex items-center gap-2">
                 {folders.find((f) => f.id === selectedFolderId)?.title}
+                <span className="text-sm font-normal text-gray-500 bg-gray-50 px-2 py-1 rounded-full border border-gray-100 whitespace-nowrap">
+                  {filteredResources.length} 个内容
+                </span>
               </h1>
+
+              <div className="relative w-full md:max-w-xl group flex items-center bg-gray-50 border border-gray-200 rounded-full transition-all duration-300 shadow-sm hover:shadow-md focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400">
+                {/* 搜索类型下拉 */}
+                <div className="relative">
+                  <button
+                    className="pl-4 pr-3 py-2 text-sm text-gray-600 font-medium cursor-pointer border-r border-gray-200 hover:text-blue-600 flex items-center gap-1 transition-colors whitespace-nowrap"
+                    onClick={() => setIsSearchKindDropdownOpen(!isSearchKindDropdownOpen)}
+                  >
+                    <span>
+                      {searchType === "all" && "综合"}
+                      {searchType === "title" && "标题"}
+                      {searchType === "up" && "UP主"}
+                      {searchType === "bvid" && "BV号"}
+                      {searchType === "avid" && "AV号"}
+                    </span>
+                    <ChevronDownIcon className="w-3 h-3 text-gray-400" />
+                  </button>
+
+                  {isSearchKindDropdownOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setIsSearchKindDropdownOpen(false)}
+                      ></div>
+                      <div className="absolute top-full left-0 mt-2 w-28 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-20 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+                        {[
+                          { value: "all", label: "综合搜索" },
+                          { value: "title", label: "视频标题" },
+                          { value: "up", label: "UP主" },
+                          { value: "bvid", label: "视频BV号" },
+                          { value: "avid", label: "视频AV号" },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                              searchType === option.value
+                                ? "bg-blue-50 text-blue-600 font-medium"
+                                : "text-gray-600 hover:bg-gray-50"
+                            }`}
+                            onClick={() => {
+                              setSearchType(option.value as any);
+                              setIsSearchKindDropdownOpen(false);
+                            }}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <input
+                  type="text"
+                  className="flex-1 bg-transparent border-none focus:ring-0 pl-4 pr-10 py-2 text-sm placeholder-gray-400 focus:outline-none"
+                  placeholder={
+                    searchType === "bvid"
+                      ? "输入BV号..."
+                      : searchType === "avid"
+                        ? "输入AV号..."
+                        : searchType === "up"
+                          ? "输入UP主名称..."
+                          : "搜索..."
+                  }
+                  value={keyword}
+                  onChange={(e) => {
+                    setKeyword(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                />
+                {keyword ? (
+                  <button
+                    onClick={() => {
+                      setKeyword("");
+                      setCurrentPage(1);
+                    }}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <Search className="h-4 w-4 text-gray-400" />
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -170,7 +287,7 @@ export const Favorites = () => {
                 <div className="mt-8">
                   <Pagination
                     currentPage={currentPage}
-                    totalItems={resources.length}
+                    totalItems={filteredResources.length}
                     pageSize={pageSize}
                     onPageChange={handlePageChange}
                   />
@@ -183,3 +300,5 @@ export const Favorites = () => {
     </div>
   );
 };
+
+export default Favorites;
