@@ -74,7 +74,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         return (
           <span
             key={`ellipsis-${index}`}
-            className="w-8 h-8 flex items-center justify-center text-gray-400"
+            className="w-8 h-8 flex items-center justify-center text-gray-400 dark:text-neutral-500"
           >
             ...
           </span>
@@ -93,7 +93,7 @@ export const Pagination: React.FC<PaginationProps> = ({
             ${
               isActive
                 ? "bg-[#00aeec] text-white"
-                : "bg-white border border-gray-200 text-gray-600 hover:border-[#00aeec] hover:text-[#00aeec]"
+                : "bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-600 dark:text-neutral-300 hover:border-[#00aeec] hover:text-[#00aeec] dark:hover:border-[#00aeec] dark:hover:text-[#00aeec]"
             }
           `}
         >
@@ -111,7 +111,7 @@ export const Pagination: React.FC<PaginationProps> = ({
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="h-8 px-3 border border-gray-200 rounded-md bg-white text-gray-600 text-sm hover:border-[#00aeec] hover:text-[#00aeec] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:text-gray-600 hidden sm:flex items-center"
+        className="h-8 px-3 border border-gray-200 dark:border-neutral-800 rounded-md bg-white dark:bg-neutral-900 text-gray-600 dark:text-neutral-300 text-sm hover:border-[#00aeec] hover:text-[#00aeec] dark:hover:border-[#00aeec] dark:hover:text-[#00aeec] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 dark:disabled:hover:border-neutral-800 disabled:hover:text-gray-600 dark:disabled:hover:text-neutral-300 hidden sm:flex items-center"
       >
         <ChevronLeft className="w-4 h-4 mr-1" />
         上一页
@@ -124,20 +124,20 @@ export const Pagination: React.FC<PaginationProps> = ({
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="h-8 px-3 border border-gray-200 rounded-md bg-white text-gray-600 text-sm hover:border-[#00aeec] hover:text-[#00aeec] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:text-gray-600 flex items-center"
+        className="h-8 px-3 border border-gray-200 dark:border-neutral-800 rounded-md bg-white dark:bg-neutral-900 text-gray-600 dark:text-neutral-300 text-sm hover:border-[#00aeec] hover:text-[#00aeec] dark:hover:border-[#00aeec] dark:hover:text-[#00aeec] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 dark:disabled:hover:border-neutral-800 disabled:hover:text-gray-600 dark:disabled:hover:text-neutral-300 flex items-center"
       >
         下一页
         <ChevronRight className="w-4 h-4 ml-1" />
       </button>
 
       {/* 统计信息 */}
-      <span className="text-sm text-gray-500 ml-4">
+      <span className="text-sm text-gray-500 dark:text-neutral-400 ml-4">
         共 {totalPages} 页 / {totalItems} 个
       </span>
 
       {/* 跳转 */}
       <div className="flex items-center gap-2 ml-2">
-        <span className="text-sm text-gray-500">跳至</span>
+        <span className="text-sm text-gray-500 dark:text-neutral-400">跳至</span>
         <input
           type="number"
           min={1}
@@ -151,9 +151,9 @@ export const Pagination: React.FC<PaginationProps> = ({
               onPageChange(page);
             }
           }}
-          className="w-12 h-8 border border-gray-200 rounded-md text-center text-sm outline-none focus:border-[#00aeec] transition-colors"
+          className="w-12 h-8 border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-gray-700 dark:text-neutral-100 rounded-md text-center text-sm outline-none focus:border-[#00aeec] dark:focus:border-[#00aeec] transition-colors"
         />
-        <span className="text-sm text-gray-500">页</span>
+        <span className="text-sm text-gray-500 dark:text-neutral-400">页</span>
       </div>
     </div>
   );

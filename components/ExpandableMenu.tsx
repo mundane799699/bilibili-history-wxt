@@ -39,7 +39,7 @@ const ExpandableMenu = ({
     <div className="cursor-pointer">
       <div
         className={`py-4 flex items-center  pl-6 hover:text-pink-500 text-sm ${
-          location.pathname === to ? "text-pink-500" : "text-slate-600"
+          location.pathname === to ? "text-pink-500" : "text-slate-600 dark:text-neutral-300"
         }`}
         onClick={(e) => {
           // 如果有子菜单，切换展开状态
@@ -73,7 +73,9 @@ const ExpandableMenu = ({
               <Link
                 to={item.to}
                 className={`py-4 flex items-center pl-6 hover:text-pink-500 text-sm ${
-                  location.pathname === item.to ? "text-pink-500" : "text-slate-600"
+                  location.pathname === item.to
+                    ? "text-pink-500"
+                    : "text-slate-600 dark:text-neutral-400"
                 }`}
               >
                 <span className="ml-6 text-xs">{item.title}</span>

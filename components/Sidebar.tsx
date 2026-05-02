@@ -10,11 +10,14 @@ import {
   SettingsIcon,
   HardDriveDownload,
   Sparkles,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { UserInfo } from "./UserInfo";
 import ExpandableMenu from "./ExpandableMenu";
-import { UPDATE_HISTORY, HIDE_USER_INFO, HIDDEN_MENUS } from "../utils/constants";
+import { UPDATE_HISTORY, HIDE_USER_INFO, HIDDEN_MENUS, THEME_MODE } from "../utils/constants";
 import { getStorageValue } from "../utils/storage";
+import { setTheme, type ThemeMode } from "../utils/theme";
 
 const menuList = [
   {
@@ -79,10 +82,14 @@ export const Sidebar = () => {
   const [version, setVersion] = useState<string>(UPDATE_HISTORY[0]?.version || "");
   const [hideUserInfo, setHideUserInfo] = useState(false);
   const [hiddenMenus, setHiddenMenus] = useState<string[]>([]);
+  const [themeMode, setThemeMode] = useState<ThemeMode>("light");
 
   useEffect(() => {
     getStorageValue(HIDE_USER_INFO, false).then(setHideUserInfo);
     getStorageValue(HIDDEN_MENUS, []).then(setHiddenMenus);
+    getStorageValue<ThemeMode>(THEME_MODE, "light").then((m) =>
+      setThemeMode(m === "dark" ? "dark" : "light"),
+    );
 
     const handleStorageChange = (
       changes: { [key: string]: Browser.storage.StorageChange },
@@ -95,6 +102,10 @@ export const Sidebar = () => {
         if (changes[HIDDEN_MENUS]) {
           setHiddenMenus((changes[HIDDEN_MENUS].newValue as string[]) || []);
         }
+        if (changes[THEME_MODE]) {
+          const next = changes[THEME_MODE].newValue as ThemeMode | undefined;
+          setThemeMode(next === "dark" ? "dark" : "light");
+        }
       }
     };
 
@@ -104,8 +115,14 @@ export const Sidebar = () => {
     };
   }, []);
 
+  const handleToggleTheme = () => {
+    setTheme(themeMode === "dark" ? "light" : "dark");
+  };
+
+  const isDark = themeMode === "dark";
+
   return (
-    <div className="fixed top-0 left-0 w-40 bg-gray-100 flex-shrink-0 h-full">
+    <div className="fixed top-0 left-0 w-40 bg-gray-100 dark:bg-[#141414] dark:text-neutral-100 flex-shrink-0 h-full">
       {!hideUserInfo && <UserInfo />}
 
       <nav className="space-y-2 p-4">
@@ -116,9 +133,20 @@ export const Sidebar = () => {
           ))}
       </nav>
 
-      <p className="absolute bottom-2 left-2 text-gray-600 text-base">
-        {version ? `v${version}` : ""}
-      </p>
+      <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+        <p className="text-gray-600 dark:text-neutral-400 text-base leading-none">
+          {version ? `v${version}` : ""}
+        </p>
+        <button
+          type="button"
+          onClick={handleToggleTheme}
+          title={isDark ? "切换到白天模式" : "切换到黑夜模式"}
+          aria-label={isDark ? "切换到白天模式" : "切换到黑夜模式"}
+          className="inline-flex items-center justify-center w-8 h-8 rounded-md text-gray-600 hover:bg-gray-200 dark:text-neutral-300 dark:hover:bg-neutral-800 transition-colors"
+        >
+          {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        </button>
+      </div>
     </div>
   );
 };

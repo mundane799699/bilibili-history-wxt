@@ -61,9 +61,9 @@ export const UserInfo = () => {
   return (
     <div className="py-2 px-4">
       <div className="flex items-center space-x-3">
-        <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-300">
+        <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-300 dark:bg-neutral-700">
           {userInfo ? (
-            <div className="w-full h-full bg-pink-400 flex items-center justify-center">
+            <div className="w-full h-full bg-pink-400 dark:bg-pink-700 flex items-center justify-center">
               <span className="text-white font-medium text-sm">{getInitial(userInfo.name)}</span>
             </div>
           ) : (
@@ -72,7 +72,7 @@ export const UserInfo = () => {
         </div>
         <div className="flex-1 min-w-0">
           <p
-            className={`text-sm font-medium text-gray-900 truncate cursor-pointer hover:text-pink-400`}
+            className={`text-sm font-medium text-gray-900 dark:text-neutral-100 truncate cursor-pointer hover:text-pink-400`}
             onClick={handleUserNameClick}
           >
             {isLoading ? "加载中..." : userInfo ? userInfo.name : "未登录"}

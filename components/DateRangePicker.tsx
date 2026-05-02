@@ -94,17 +94,17 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   return (
     <div className="relative" ref={containerRef}>
       <div
-        className="group relative flex items-center bg-gray-50 hover:bg-white border border-gray-200 rounded-lg transition-all focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 focus-within:bg-white shadow-sm cursor-pointer"
+        className="group relative flex items-center bg-gray-50 dark:bg-neutral-900 hover:bg-white dark:hover:bg-neutral-800 border border-gray-200 dark:border-neutral-800 rounded-lg transition-all focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-500/20 focus-within:border-blue-400 dark:focus-within:border-blue-500 focus-within:bg-white dark:focus-within:bg-neutral-900 shadow-sm cursor-pointer"
         onClick={() => setIsOpen(!isOpen)}
       >
         <div className="pl-3 flex items-center pointer-events-none">
-          <CalendarIcon className="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
+          <CalendarIcon className="h-4 w-4 text-gray-400 dark:text-neutral-500 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors" />
         </div>
         <input
           type="text"
           readOnly
           placeholder="yyyy/mm/dd"
-          className="bg-transparent border-none text-sm text-gray-600 focus:ring-0 py-1.5 pl-2 pr-1 outline-none w-[180px] cursor-pointer"
+          className="bg-transparent border-none text-sm text-gray-600 dark:text-neutral-200 placeholder-gray-400 dark:placeholder-neutral-500 focus:ring-0 py-1.5 pl-2 pr-1 outline-none w-[180px] cursor-pointer"
           value={displayText}
         />
         {displayText && (
@@ -113,7 +113,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               e.stopPropagation();
               onChange("", "");
             }}
-            className="pr-2 text-gray-400 hover:text-red-500 transition-colors z-10"
+            className="pr-2 text-gray-400 dark:text-neutral-500 hover:text-red-500 dark:hover:text-red-400 transition-colors z-10"
             title="清除日期"
           >
             <X className="h-3.5 w-3.5" />
@@ -122,22 +122,30 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       </div>
 
       {isOpen && (
-        <div className="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-100 p-4 z-50 w-[320px] animate-in fade-in zoom-in-95 duration-200 select-none">
+        <div className="absolute top-full right-0 mt-2 bg-white dark:bg-neutral-900 rounded-lg shadow-xl border border-gray-100 dark:border-neutral-800 p-4 z-50 w-[320px] animate-in fade-in zoom-in-95 duration-200 select-none">
           <div className="flex justify-between items-center mb-4">
-            <span className="font-medium text-gray-700">{currentMonth.format("YYYY年MM月")}</span>
+            <span className="font-medium text-gray-700 dark:text-neutral-200">
+              {currentMonth.format("YYYY年MM月")}
+            </span>
             <div className="flex gap-2">
-              <button onClick={prevMonth} className="p-1 hover:bg-gray-100 rounded">
-                <ChevronLeft className="w-4 h-4 text-gray-500" />
+              <button
+                onClick={prevMonth}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded"
+              >
+                <ChevronLeft className="w-4 h-4 text-gray-500 dark:text-neutral-400" />
               </button>
-              <button onClick={nextMonth} className="p-1 hover:bg-gray-100 rounded">
-                <ChevronRight className="w-4 h-4 text-gray-500" />
+              <button
+                onClick={nextMonth}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded"
+              >
+                <ChevronRight className="w-4 h-4 text-gray-500 dark:text-neutral-400" />
               </button>
             </div>
           </div>
 
           <div className="grid grid-cols-7 mb-2">
             {weekDays.map((d) => (
-              <div key={d} className="text-center text-xs text-gray-400 py-1">
+              <div key={d} className="text-center text-xs text-gray-400 dark:text-neutral-500 py-1">
                 {d}
               </div>
             ))}
@@ -156,9 +164,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               const isEnd = endDate === dateStr;
               const isInRange = startDate && endDate && dateStr > startDate && dateStr < endDate;
 
-              let bgClass = "hover:bg-blue-50 text-gray-700";
+              let bgClass =
+                "hover:bg-blue-50 dark:hover:bg-blue-500/10 text-gray-700 dark:text-neutral-200";
               if (isStart || isEnd) bgClass = "bg-blue-500 text-white hover:bg-blue-600";
-              else if (isInRange) bgClass = "bg-blue-50 text-blue-600";
+              else if (isInRange)
+                bgClass = "bg-blue-50 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400";
 
               // Handle "picking" state visual cue (optional, kept simple for now)
 
@@ -177,10 +187,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             })}
           </div>
 
-          <div className="flex justify-between mt-4 border-t pt-3">
+          <div className="flex justify-between mt-4 border-t border-gray-200 dark:border-neutral-800 pt-3">
             <button
               onClick={() => onChange("", "")}
-              className="text-xs text-gray-500 hover:text-red-500"
+              className="text-xs text-gray-500 dark:text-neutral-400 hover:text-red-500 dark:hover:text-red-400"
             >
               清除
             </button>
@@ -189,7 +199,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 const today = dayjs().format("YYYY-MM-DD");
                 onChange(today, today);
               }}
-              className="text-xs text-blue-500 hover:text-blue-600"
+              className="text-xs text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300"
             >
               今天
             </button>

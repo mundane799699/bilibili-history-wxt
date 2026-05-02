@@ -511,25 +511,27 @@ export default defineBackground(() => {
           let res;
           let fetchSuccess = false;
           let retries = 0;
-          
+
           while (!fetchSuccess && retries < 2) {
             try {
               const controller = new AbortController();
               const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时重试
-              
+
               res = await fetch(
                 `https://api.bilibili.com/x/v3/fav/resource/list?media_id=${folder.id}&pn=${page}&ps=20`,
-                { 
+                {
                   headers: { Cookie: `SESSDATA=${SESSDATA}` },
-                  signal: controller.signal
+                  signal: controller.signal,
                 },
               );
               clearTimeout(timeoutId);
               fetchSuccess = true;
             } catch (err) {
-              console.warn(`请求收藏夹 ${folder.title} 第 ${page} 页超时或失败，正在重试 (${retries + 1}/2)...`);
+              console.warn(
+                `请求收藏夹 ${folder.title} 第 ${page} 页超时或失败，正在重试 (${retries + 1}/2)...`,
+              );
               retries++;
-              await new Promise(r => setTimeout(r, 2000));
+              await new Promise((r) => setTimeout(r, 2000));
             }
           }
 

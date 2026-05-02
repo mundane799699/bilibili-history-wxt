@@ -30,6 +30,9 @@ export const WEBDAV_AUTO_SYNC_INTERVAL = "webdavAutoSyncInterval"; // 单位：�
 export const DASHSCOPE_API_KEY = "dashscopeApiKey";
 export const AI_SEARCH_HISTORY = "aiSearchHistory";
 
+// "light" | "dark"
+export const THEME_MODE = "themeMode";
+
 export const UPDATE_HISTORY = [
   {
     date: "2026-03-14",

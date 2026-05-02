@@ -16,7 +16,7 @@ export const AISearch: React.FC = () => {
   const [apiKey, setApiKey] = useState("");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
-  
+
   const [reasoning, setReasoning] = useState("");
   const [content, setContent] = useState("");
   const [isAnswering, setIsAnswering] = useState(false);
@@ -59,10 +59,13 @@ export const AISearch: React.FC = () => {
     try {
       // 1. 获取本地历史记录，使用限制条数防止阻塞 UI
       const recentHistory = await getAllHistory(searchCount);
-      
-      const historyTextStr = recentHistory.map(h => 
-        `[${new Date(h.view_at * 1000).toLocaleString()}] ${h.title} (UP主: ${h.author_name}) - 链接: https://www.bilibili.com/video/${h.bvid}`
-      ).join('\n');
+
+      const historyTextStr = recentHistory
+        .map(
+          (h) =>
+            `[${new Date(h.view_at * 1000).toLocaleString()}] ${h.title} (UP主: ${h.author_name}) - 链接: https://www.bilibili.com/video/${h.bvid}`,
+        )
+        .join("\n");
 
       const systemPrompt = `你是一个深度的B站历史记录搜索助手。
 用户因为忘记了具体的内容名字或者UP主名字，希望能用模糊的语义或零碎的回忆找到这段视频。
@@ -74,23 +77,26 @@ ${historyTextStr}
 `;
 
       // 2. 调阿里云接口 SSE 流式读取
-      const res = await fetch("https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "Accept": "text/event-stream"
+      const res = await fetch(
+        "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            Accept: "text/event-stream",
+          },
+          body: JSON.stringify({
+            model: "qwen3.5-plus",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: query },
+            ],
+            stream: true,
+            enable_thinking: true,
+          }),
         },
-        body: JSON.stringify({
-          model: "qwen3.5-plus", 
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: query }
-          ],
-          stream: true,
-          enable_thinking: true
-        })
-      });
+      );
 
       if (!res.ok) {
         throw new Error("HTTP " + res.status + ": " + (await res.text()));
@@ -119,14 +125,14 @@ ${historyTextStr}
               try {
                 const payload = JSON.parse(dataStr);
                 const delta = payload.choices?.[0]?.delta;
-                
+
                 if (delta) {
                   // 处理思考过程
                   if (delta.reasoning_content) {
                     finalReasoning += delta.reasoning_content;
                     setReasoning((prev) => prev + delta.reasoning_content);
                   }
-                  
+
                   // 处理完整的回复
                   if (delta.content) {
                     setIsAnswering(true);
@@ -156,7 +162,6 @@ ${historyTextStr}
           return updated;
         });
       }
-
     } catch (err: any) {
       console.error("AI Search Error:", err);
       setErrorObj(err.message || "请求发生未知错误");
@@ -177,7 +182,7 @@ ${historyTextStr}
   const deleteHistoryItem = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     setHistoryLogs((prev) => {
-      const updated = prev.filter(log => log.id !== id);
+      const updated = prev.filter((log) => log.id !== id);
       setStorageValue(AI_SEARCH_HISTORY, updated);
       return updated;
     });
@@ -193,7 +198,6 @@ ${historyTextStr}
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
-      
       {/* 侧边历史记录栏 */}
       <div className="w-64 bg-white border-r flex flex-col hidden md:flex flex-shrink-0 z-10">
         <div className="p-4 border-b flex items-center justify-between">
@@ -207,7 +211,7 @@ ${historyTextStr}
             <div className="text-center text-xs text-gray-400 mt-6">暂无搜索历史</div>
           ) : (
             historyLogs.map((log) => (
-              <div 
+              <div
                 key={log.id}
                 onClick={() => loadHistoryItem(log)}
                 className="group p-3 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors border border-transparent hover:border-gray-100 flex flex-col gap-1 relative"
@@ -236,119 +240,126 @@ ${historyTextStr}
             <Sparkles className="w-5 h-5 text-indigo-500" />
             AI 语义搜索
           </h1>
-        
-        <div className="flex items-center gap-3">
-          <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus-within:ring-2 focus-within:ring-indigo-100 focus-within:border-indigo-400 focus-within:bg-white transition-all">
-            <KeyRound className="w-4 h-4 text-gray-400 mr-2" />
-            <input
-              type="password"
-              className="bg-transparent border-none focus:ring-0 text-sm w-48 p-0"
-              placeholder="DashScope API Key"
-              value={apiKey}
-              onChange={(e) => saveApiKey(e.target.value)}
-            />
-          </div>
-          <select 
-            value={searchCount}
-            onChange={(e) => setSearchCount(Number(e.target.value))}
-            className="text-sm bg-gray-50 border border-gray-200 rounded-lg py-1.5 px-2 outline-none text-gray-600 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
-          >
-            <option value={500}>最近 500 条</option>
-            <option value={1000}>最近 1000 条</option>
-            <option value={3000}>最近 3000 条</option>
-            <option value={5000}>最近 5000 条</option>
-          </select>
-        </div>
-      </div>
 
-      <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center">
-        <div className="w-full max-w-4xl flex flex-col gap-6">
-          
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative">
-            <h2 className="text-lg font-medium text-gray-800 mb-4 flex items-center justify-between">
-              <span className="flex items-center gap-2">🤔 你在找什么？</span>
-              {hasStarted && (
-                <button 
-                  onClick={clearCurrent}
-                  className="text-xs text-gray-500 hover:text-indigo-500 flex items-center transition-colors"
-                >
-                  开启新探索 <ChevronRight className="w-3 h-3 ml-0.5" />
-                </button>
-              )}
-            </h2>
-            <div className="flex gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus-within:ring-2 focus-within:ring-indigo-100 focus-within:border-indigo-400 focus-within:bg-white transition-all">
+              <KeyRound className="w-4 h-4 text-gray-400 mr-2" />
               <input
-                type="text"
-                className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all"
-                placeholder="例如：那个讲量子力学把爱情解释得很搞笑的UP主..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && startSearch()}
+                type="password"
+                className="bg-transparent border-none focus:ring-0 text-sm w-48 p-0"
+                placeholder="DashScope API Key"
+                value={apiKey}
+                onChange={(e) => saveApiKey(e.target.value)}
               />
-              <button
-                onClick={startSearch}
-                disabled={loading || !query}
-                className="bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl font-medium flex items-center gap-2 transition-colors shadow-sm"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                {loading ? "搜索中" : "开始搜索"}
-              </button>
             </div>
-            {!apiKey && (
-              <p className="text-xs text-red-500 mt-3 ml-1">
-                * 首次使用请先在右上角配置阿里云百炼(DashScope) API Key 才能调用大模型。
-              </p>
+            <select
+              value={searchCount}
+              onChange={(e) => setSearchCount(Number(e.target.value))}
+              className="text-sm bg-gray-50 border border-gray-200 rounded-lg py-1.5 px-2 outline-none text-gray-600 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+            >
+              <option value={500}>最近 500 条</option>
+              <option value={1000}>最近 1000 条</option>
+              <option value={3000}>最近 3000 条</option>
+              <option value={5000}>最近 5000 条</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center">
+          <div className="w-full max-w-4xl flex flex-col gap-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative">
+              <h2 className="text-lg font-medium text-gray-800 mb-4 flex items-center justify-between">
+                <span className="flex items-center gap-2">🤔 你在找什么？</span>
+                {hasStarted && (
+                  <button
+                    onClick={clearCurrent}
+                    className="text-xs text-gray-500 hover:text-indigo-500 flex items-center transition-colors"
+                  >
+                    开启新探索 <ChevronRight className="w-3 h-3 ml-0.5" />
+                  </button>
+                )}
+              </h2>
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all"
+                  placeholder="例如：那个讲量子力学把爱情解释得很搞笑的UP主..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && startSearch()}
+                />
+                <button
+                  onClick={startSearch}
+                  disabled={loading || !query}
+                  className="bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl font-medium flex items-center gap-2 transition-colors shadow-sm"
+                >
+                  {loading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Search className="w-4 h-4" />
+                  )}
+                  {loading ? "搜索中" : "开始搜索"}
+                </button>
+              </div>
+              {!apiKey && (
+                <p className="text-xs text-red-500 mt-3 ml-1">
+                  * 首次使用请先在右上角配置阿里云百炼(DashScope) API Key 才能调用大模型。
+                </p>
+              )}
+            </div>
+
+            {hasStarted && (
+              <div className="flex flex-col lg:flex-row gap-6 items-stretch w-full">
+                {/* 左侧：思考过程卡片 */}
+                {reasoning && (
+                  <div className="flex-1 bg-blue-50/50 rounded-2xl border border-blue-100 flex flex-col overflow-hidden min-h-[300px]">
+                    <div className="px-5 py-3 bg-blue-50/80 border-b border-blue-100 font-medium text-blue-800 flex items-center justify-between gap-2 text-sm shrink-0">
+                      <div className="flex items-center gap-2">
+                        {isAnswering ? (
+                          "💡 思考完毕"
+                        ) : (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" /> 深度思考中...
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-5 text-sm text-gray-600 font-serif leading-relaxed whitespace-pre-wrap flex-1 overflow-y-auto max-h-[600px]">
+                      {reasoning}
+                    </div>
+                  </div>
+                )}
+
+                {/* 右侧：回复内容卡片 */}
+                <div className="flex-1 flex flex-col gap-4">
+                  {(isAnswering || content) && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden min-h-[300px]">
+                      <div className="px-5 py-3 bg-indigo-50 border-b border-indigo-100 font-medium text-indigo-900 text-sm shrink-0">
+                        🎯 搜索结果
+                      </div>
+                      <div className="p-5 text-gray-800 text-[15px] leading-relaxed whitespace-pre-wrap flex-1 overflow-y-auto max-h-[600px]">
+                        {content}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 错误提示卡片 */}
+                  {errorObj && (
+                    <div className="bg-red-50 rounded-2xl shadow-sm border border-red-200 overflow-hidden shrink-0">
+                      <div className="px-5 py-3 bg-red-100 border-b border-red-200 font-medium text-red-900 text-sm">
+                        ❌ 搜索出错
+                      </div>
+                      <div className="p-5 text-red-800 text-[15px] leading-relaxed whitespace-pre-wrap">
+                        {errorObj}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
-
-        {hasStarted && (
-            <div className="flex flex-col lg:flex-row gap-6 items-stretch w-full">
-              
-              {/* 左侧：思考过程卡片 */}
-              {reasoning && (
-                <div className="flex-1 bg-blue-50/50 rounded-2xl border border-blue-100 flex flex-col overflow-hidden min-h-[300px]">
-                  <div className="px-5 py-3 bg-blue-50/80 border-b border-blue-100 font-medium text-blue-800 flex items-center justify-between gap-2 text-sm shrink-0">
-                    <div className="flex items-center gap-2">
-                      {isAnswering ? '💡 思考完毕' : <><Loader2 className="w-3.5 h-3.5 animate-spin" /> 深度思考中...</>}
-                    </div>
-                  </div>
-                  <div className="p-5 text-sm text-gray-600 font-serif leading-relaxed whitespace-pre-wrap flex-1 overflow-y-auto max-h-[600px]">
-                    {reasoning}
-                  </div>
-                </div>
-              )}
-
-              {/* 右侧：回复内容卡片 */}
-              <div className="flex-1 flex flex-col gap-4">
-                {(isAnswering || content) && (
-                  <div className="bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden min-h-[300px]">
-                    <div className="px-5 py-3 bg-indigo-50 border-b border-indigo-100 font-medium text-indigo-900 text-sm shrink-0">
-                      🎯 搜索结果
-                    </div>
-                    <div className="p-5 text-gray-800 text-[15px] leading-relaxed whitespace-pre-wrap flex-1 overflow-y-auto max-h-[600px]">
-                      {content}
-                    </div>
-                  </div>
-                )}
-
-                {/* 错误提示卡片 */}
-                {errorObj && (
-                  <div className="bg-red-50 rounded-2xl shadow-sm border border-red-200 overflow-hidden shrink-0">
-                    <div className="px-5 py-3 bg-red-100 border-b border-red-200 font-medium text-red-900 text-sm">
-                      ❌ 搜索出错
-                    </div>
-                    <div className="p-5 text-red-800 text-[15px] leading-relaxed whitespace-pre-wrap">
-                      {errorObj}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
         </div>
       </div>
-    </div>
     </div>
   );
 };

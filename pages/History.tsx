@@ -167,22 +167,22 @@ export const History: React.FC = () => {
 
   return (
     <div>
-      <div className="sticky top-0 bg-white/95 backdrop-blur-sm z-20 border-b border-gray-100 shadow-sm transition-all duration-300">
+      <div className="sticky top-0 bg-white/95 dark:bg-[#0a0a0a]/95 backdrop-blur-sm z-20 border-b border-gray-100 dark:border-neutral-800 shadow-sm transition-all duration-300">
         <div className="flex flex-col md:flex-row items-center justify-between px-6 py-4 gap-4 max-w-[1600px] mx-auto">
           {/* 左侧：统计与筛选 */}
           <div className="flex items-center gap-4 w-full md:w-auto">
-            <span className="text-sm font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full whitespace-nowrap border border-gray-100">
+            <span className="text-sm font-medium text-gray-500 dark:text-neutral-400 bg-gray-50 dark:bg-neutral-900 px-3 py-1.5 rounded-full whitespace-nowrap border border-gray-100 dark:border-neutral-800">
               {totalHistoryCount} 条记录
             </span>
 
             <div className="relative">
               <button
-                className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm text-gray-700 transition-colors border border-gray-200/50"
+                className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-neutral-900 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg text-sm text-gray-700 dark:text-neutral-200 transition-colors border border-gray-200/50 dark:border-neutral-800"
                 onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
               >
-                <Filter className="w-3.5 h-3.5 text-gray-500" />
+                <Filter className="w-3.5 h-3.5 text-gray-500 dark:text-neutral-400" />
                 <span>{typeOptions.find((opt) => opt.value === selectedType)?.label}</span>
-                <ChevronDownIcon className="w-3.5 h-3.5 text-gray-400" />
+                <ChevronDownIcon className="w-3.5 h-3.5 text-gray-400 dark:text-neutral-500" />
               </button>
 
               {isTypeDropdownOpen && (
@@ -191,14 +191,14 @@ export const History: React.FC = () => {
                     className="fixed inset-0 z-10"
                     onClick={() => setIsTypeDropdownOpen(false)}
                   ></div>
-                  <div className="absolute top-full left-0 mt-1 w-32 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-20 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="absolute top-full left-0 mt-1 w-32 bg-white dark:bg-neutral-900 rounded-lg shadow-lg border border-gray-100 dark:border-neutral-800 py-1 z-20 animate-in fade-in zoom-in-95 duration-200">
                     {typeOptions.map((option) => (
                       <button
                         key={option.value}
                         className={`w-full text-left px-4 py-2 text-sm transition-colors ${
                           selectedType === option.value
-                            ? "bg-blue-50 text-blue-600 font-medium"
-                            : "text-gray-600 hover:bg-gray-50"
+                            ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium"
+                            : "text-gray-600 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-800"
                         }`}
                         onClick={() => {
                           setSelectedType(option.value);
@@ -216,11 +216,11 @@ export const History: React.FC = () => {
 
           {/* 中间：搜索框 (带类型选择) */}
           <div className="flex-1 w-full md:max-w-xl px-4">
-            <div className="relative group w-full flex items-center bg-gray-50 border border-gray-200 rounded-full transition-all duration-300 shadow-sm hover:shadow-md focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400">
+            <div className="relative group w-full flex items-center bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-full transition-all duration-300 shadow-sm hover:shadow-md focus-within:bg-white dark:focus-within:bg-neutral-900 focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-500/20 focus-within:border-blue-400 dark:focus-within:border-blue-500">
               {/* 搜索类型下拉 */}
               <div className="relative">
                 <button
-                  className="pl-4 pr-3 py-2 text-sm text-gray-600 font-medium cursor-pointer border-r border-gray-200 hover:text-blue-600 flex items-center gap-1 transition-colors whitespace-nowrap"
+                  className="pl-4 pr-3 py-2 text-sm text-gray-600 dark:text-neutral-300 font-medium cursor-pointer border-r border-gray-200 dark:border-neutral-800 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1 transition-colors whitespace-nowrap"
                   onClick={() => setIsSearchKindDropdownOpen(!isSearchKindDropdownOpen)}
                 >
                   <span>
@@ -230,7 +230,7 @@ export const History: React.FC = () => {
                     {searchType === "bvid" && "BV号"}
                     {searchType === "avid" && "AV号"}
                   </span>
-                  <ChevronDownIcon className="w-3 h-3 text-gray-400" />
+                  <ChevronDownIcon className="w-3 h-3 text-gray-400 dark:text-neutral-500" />
                 </button>
 
                 {isSearchKindDropdownOpen && (
@@ -239,7 +239,7 @@ export const History: React.FC = () => {
                       className="fixed inset-0 z-10"
                       onClick={() => setIsSearchKindDropdownOpen(false)}
                     ></div>
-                    <div className="absolute top-full left-0 mt-2 w-28 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-20 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+                    <div className="absolute top-full left-0 mt-2 w-28 bg-white dark:bg-neutral-900 rounded-lg shadow-lg border border-gray-100 dark:border-neutral-800 py-1 z-20 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
                       {[
                         { value: "all", label: "综合搜索" },
                         { value: "title", label: "视频标题" },
@@ -251,8 +251,8 @@ export const History: React.FC = () => {
                           key={option.value}
                           className={`w-full text-left px-4 py-2 text-sm transition-colors ${
                             searchType === option.value
-                              ? "bg-blue-50 text-blue-600 font-medium"
-                              : "text-gray-600 hover:bg-gray-50"
+                              ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium"
+                              : "text-gray-600 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-800"
                           }`}
                           onClick={() => {
                             setSearchType(option.value as any);
@@ -269,7 +269,7 @@ export const History: React.FC = () => {
 
               <input
                 type="text"
-                className="flex-1 bg-transparent border-none focus:ring-0 pl-3 pr-10 py-2 text-sm placeholder-gray-400 focus:outline-none"
+                className="flex-1 bg-transparent border-none focus:ring-0 pl-3 pr-10 py-2 text-sm text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 focus:outline-none"
                 placeholder={
                   searchType === "bvid"
                     ? "输入BV号..."
@@ -286,13 +286,13 @@ export const History: React.FC = () => {
               {keyword ? (
                 <button
                   onClick={() => setKeyword("")}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 dark:text-neutral-500 hover:text-gray-600 dark:hover:text-neutral-300 transition-colors"
                 >
                   <X className="h-4 w-4" />
                 </button>
               ) : (
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-gray-400" />
+                  <Search className="h-4 w-4 text-gray-400 dark:text-neutral-500" />
                 </div>
               )}
             </div>
@@ -311,22 +311,22 @@ export const History: React.FC = () => {
             />
 
             {/* 列数调节 */}
-            <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-full px-1 py-0.5">
+            <div className="flex items-center gap-1 bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-full px-1 py-0.5">
               <button
                 onClick={() => handleColumnChange(-1)}
                 disabled={gridColumns <= 2}
-                className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="p-1 text-gray-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 title="减少列数"
               >
                 <Minus className="w-3.5 h-3.5" />
               </button>
-              <span className="text-xs font-medium text-gray-600 text-center tabular-nums whitespace-nowrap">
+              <span className="text-xs font-medium text-gray-600 dark:text-neutral-300 text-center tabular-nums whitespace-nowrap">
                 列数({gridColumns})
               </span>
               <button
                 onClick={() => handleColumnChange(1)}
                 disabled={gridColumns >= 8}
-                className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="p-1 text-gray-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 title="增加列数"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -338,7 +338,7 @@ export const History: React.FC = () => {
                 getTotalCount();
                 loadHistory(false);
               }}
-              className={`p-2 bg-white text-gray-500 rounded-full hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm border border-gray-200 hover:border-blue-200 hover:rotate-180 duration-500 ${
+              className={`p-2 bg-white dark:bg-neutral-900 text-gray-500 dark:text-neutral-400 rounded-full hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm border border-gray-200 dark:border-neutral-800 hover:border-blue-200 dark:hover:border-blue-500/30 hover:rotate-180 duration-500 ${
                 isLoading ? "opacity-50 cursor-not-allowed" : ""
               }`}
               disabled={isLoading}
@@ -368,7 +368,7 @@ export const History: React.FC = () => {
         ))}
         <div
           ref={loadMoreCallbackRef}
-          className="col-span-full py-8 text-center text-gray-500 text-sm"
+          className="col-span-full py-8 text-center text-gray-500 dark:text-neutral-400 text-sm"
         >
           {getLoadMoreText()}
         </div>
@@ -376,10 +376,10 @@ export const History: React.FC = () => {
 
       {history.length === 0 && !isLoading && (
         <div className="text-center py-20">
-          <div className="text-gray-300 mb-4">
+          <div className="text-gray-300 dark:text-neutral-700 mb-4">
             <Search className="w-16 h-16 mx-auto opacity-50" />
           </div>
-          <p className="text-gray-500 text-lg">
+          <p className="text-gray-500 dark:text-neutral-400 text-lg">
             {keyword || startDate || selectedType !== "all" || searchType !== "all"
               ? "没有找到相关记录"
               : "暂无历史记录"}
@@ -393,7 +393,7 @@ export const History: React.FC = () => {
                 setSelectedType("all");
                 setSearchType("all");
               }}
-              className="mt-4 text-blue-500 hover:text-blue-600 hover:underline text-sm"
+              className="mt-4 text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 hover:underline text-sm"
             >
               清除所有筛选
             </button>

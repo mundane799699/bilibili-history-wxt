@@ -111,7 +111,7 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
   };
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
+    <div className="border border-gray-200 dark:border-neutral-800 dark:bg-neutral-900 rounded-lg overflow-hidden">
       <a
         href={getContentUrl(item)}
         target="_blank"
@@ -175,13 +175,13 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
                 {item.title}
               </h3>
               <button
-                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-1 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-full transition-colors"
                 onClick={handleDelete}
               >
-                <Trash2 className="w-4 h-4 text-gray-500" />
+                <Trash2 className="w-4 h-4 text-gray-500 dark:text-neutral-400" />
               </button>
             </div>
-            <div className="flex justify-between items-center text-gray-500 text-xs mt-1">
+            <div className="flex justify-between items-center text-gray-500 dark:text-neutral-400 text-xs mt-1">
               <span
                 onClick={(e) => {
                   e.preventDefault();
