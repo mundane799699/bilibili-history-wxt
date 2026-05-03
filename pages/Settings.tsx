@@ -289,17 +289,19 @@ const Settings = () => {
   };
 
   return (
-    <div className="p-4 flex flex-col container mx-auto items-center pb-20">
+    <div className="p-4 flex flex-col container mx-auto items-center pb-20 min-h-screen bg-gray-50/30 dark:bg-[#0a0a0a] text-gray-900 dark:text-neutral-100">
       {/* 恢复出厂设置 */}
-      <div className="w-full max-w-md mb-8 rounded-lg bg-gray-50 hover:bg-gray-100 border hover:border-gray-200 transition-all duration-300 ease-in-out">
+      <div className="w-full max-w-md mb-8 rounded-lg bg-gray-50 dark:bg-neutral-900 hover:bg-gray-100 dark:hover:bg-neutral-800 border border-transparent dark:border-neutral-800 hover:border-gray-200 dark:hover:border-neutral-700 transition-all duration-300 ease-in-out">
         <div className="flex items-center justify-between p-4 ">
           <div>
-            <h3 className="text-lg font-medium text-gray-800">恢复出厂设置</h3>
-            <p className="text-sm text-gray-400">清空所有数据，无法恢复</p>
+            <h3 className="text-lg font-medium text-gray-800 dark:text-neutral-100">
+              恢复出厂设置
+            </h3>
+            <p className="text-sm text-gray-400 dark:text-neutral-500">清空所有数据，无法恢复</p>
           </div>
           <button
             onClick={() => setShowConfirmDialog(true)}
-            className="px-4 py-2 text-sm text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-sm text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 border border-red-200 dark:border-red-500/20 rounded-lg transition-colors disabled:opacity-50"
             disabled={isResetLoading}
           >
             恢复出厂
@@ -309,33 +311,33 @@ const Settings = () => {
 
       {/* 历史记录同同进度显示 */}
       {historyProgress && historyProgress.message && (
-        <div className="w-full max-w-md mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg animate-in fade-in duration-300">
+        <div className="w-full max-w-md mb-4 p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg animate-in fade-in duration-300">
           <div>
             <div className="flex justify-between items-center mb-1">
-              <span className="font-medium text-blue-800">历史记录同步中</span>
-              <span className="text-xs text-blue-600 font-mono">
+              <span className="font-medium text-blue-800 dark:text-blue-300">历史记录同步中</span>
+              <span className="text-xs text-blue-600 dark:text-blue-300 font-mono">
                 {historyProgress.current > 0 ? `${historyProgress.current} 条` : ""}
               </span>
             </div>
-            <p className="text-sm text-blue-600">{historyProgress.message}</p>
+            <p className="text-sm text-blue-600 dark:text-blue-300">{historyProgress.message}</p>
           </div>
         </div>
       )}
 
       {/* 收藏夹同步进度显示 */}
       {favProgress && favProgress.message && (
-        <div className="w-full max-w-md mb-8 p-4 bg-purple-50 border border-purple-200 rounded-lg animate-in fade-in duration-300">
+        <div className="w-full max-w-md mb-8 p-4 bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 rounded-lg animate-in fade-in duration-300">
           <div>
             <div className="flex justify-between items-center mb-2">
-              <span className="font-medium text-purple-800">收藏夹同步中</span>
-              <span className="text-xs text-purple-600 font-bold">
+              <span className="font-medium text-purple-800 dark:text-purple-300">收藏夹同步中</span>
+              <span className="text-xs text-purple-600 dark:text-purple-300 font-bold">
                 {favProgress.total > 0
                   ? `${favProgress.current} / ${favProgress.total}`
                   : `${favProgress.current}`}
               </span>
             </div>
             {favProgress.total > 0 && (
-              <div className="w-full bg-purple-200 rounded-full h-2 mb-2">
+              <div className="w-full bg-purple-200 dark:bg-purple-500/20 rounded-full h-2 mb-2">
                 <div
                   className="bg-purple-600 h-2 rounded-full transition-all duration-300 ease-out"
                   style={{
@@ -344,7 +346,10 @@ const Settings = () => {
                 ></div>
               </div>
             )}
-            <p className="text-sm text-purple-600 truncate" title={favProgress.message}>
+            <p
+              className="text-sm text-purple-600 dark:text-purple-300 truncate"
+              title={favProgress.message}
+            >
               {favProgress.message}
             </p>
           </div>
@@ -352,10 +357,14 @@ const Settings = () => {
       )}
 
       {/* 侧边栏菜单管理 */}
-      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 shadow-sm border border-gray-100">
+      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800">
         <div className="p-5">
-          <h3 className="text-lg font-bold text-gray-800 mb-1">侧边栏菜单管理</h3>
-          <p className="text-sm text-gray-500 mb-6">选择需要隐藏并禁用的菜单项</p>
+          <h3 className="text-lg font-bold text-gray-800 dark:text-neutral-100 mb-1">
+            侧边栏菜单管理
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-neutral-400 mb-6">
+            选择需要隐藏并禁用的菜单项
+          </p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-3">
             <Checkbox
               label="隐藏用户信息"
@@ -376,14 +385,16 @@ const Settings = () => {
       </div>
 
       {/* 界面管理 */}
-      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 shadow-sm border border-gray-100">
+      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800">
         <div className="p-5">
-          <h3 className="text-lg font-bold text-gray-800 mb-1">界面管理</h3>
-          <p className="text-sm text-gray-500 mb-6">自定义界面显示与交互</p>
+          <h3 className="text-lg font-bold text-gray-800 dark:text-neutral-100 mb-1">界面管理</h3>
+          <p className="text-sm text-gray-500 dark:text-neutral-400 mb-6">自定义界面显示与交互</p>
 
           <div className="flex flex-col gap-4">
             <div>
-              <label className="text-sm font-medium text-gray-700 block mb-3">日期选择方式</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-neutral-300 block mb-3">
+                日期选择方式
+              </label>
               <div className="flex gap-6">
                 <label className="flex items-center gap-2 cursor-pointer group">
                   <input
@@ -395,9 +406,9 @@ const Settings = () => {
                       setDateSelectionMode("range");
                       await setStorageValue(DATE_SELECTION_MODE, "range");
                     }}
-                    className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300 transition-all cursor-pointer"
+                    className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-neutral-700 transition-all cursor-pointer"
                   />
-                  <span className="text-sm text-gray-600 group-hover:text-blue-600 transition-colors">
+                  <span className="text-sm text-gray-600 dark:text-neutral-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                     范围选择 (起始 - 结束)
                   </span>
                 </label>
@@ -411,9 +422,9 @@ const Settings = () => {
                       setDateSelectionMode("single");
                       await setStorageValue(DATE_SELECTION_MODE, "single");
                     }}
-                    className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300 transition-all cursor-pointer"
+                    className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-neutral-700 transition-all cursor-pointer"
                   />
-                  <span className="text-sm text-gray-600 group-hover:text-blue-600 transition-colors">
+                  <span className="text-sm text-gray-600 dark:text-neutral-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                     单日选择 (点选日期)
                   </span>
                 </label>
@@ -424,9 +435,9 @@ const Settings = () => {
       </div>
 
       {/* 数据管理 */}
-      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 shadow-sm border border-gray-100">
+      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800">
         <div className="p-5">
-          <h3 className="text-lg font-bold text-gray-800 mb-6">数据管理</h3>
+          <h3 className="text-lg font-bold text-gray-800 dark:text-neutral-100 mb-6">数据管理</h3>
 
           <div className="flex flex-col gap-5">
             <div className="flex flex-col sm:flex-row gap-4">
@@ -461,7 +472,7 @@ const Settings = () => {
               <button
                 onClick={handleImport}
                 disabled={isImporting || exportFormat === "csv"}
-                className="px-5 py-2.5 text-sm font-medium bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-5 py-2.5 text-sm font-medium bg-white dark:bg-neutral-900 text-gray-700 dark:text-neutral-300 border border-gray-300 dark:border-neutral-700 rounded-lg hover:bg-gray-50 dark:hover:bg-neutral-800 transition-all hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 title={exportFormat === "csv" ? "CSV格式不支持导入" : "导入所选内容的JSON文件"}
               >
                 {isImporting ? "导入中..." : "导入 (JSON)"}
@@ -478,11 +489,15 @@ const Settings = () => {
         </div>
       </div>
 
-      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
+      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800 hover:border-gray-200 dark:hover:border-neutral-700 transition-colors">
         <div className="flex items-center justify-between p-5">
           <div className="pr-4">
-            <h3 className="text-base font-medium text-gray-800">同步删除：插件 -&gt; B站</h3>
-            <p className="text-xs text-gray-400 mt-1">删除本地记录时同步删除B站记录</p>
+            <h3 className="text-base font-medium text-gray-800 dark:text-neutral-100">
+              同步删除：插件 -&gt; B站
+            </h3>
+            <p className="text-xs text-gray-400 dark:text-neutral-500 mt-1">
+              删除本地记录时同步删除B站记录
+            </p>
           </div>
           <label className="relative inline-flex items-center cursor-pointer shrink-0">
             <input
@@ -491,16 +506,20 @@ const Settings = () => {
               checked={isSyncDelete}
               onChange={handleSyncDeleteChange}
             />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            <div className="w-11 h-6 bg-gray-200 dark:bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-neutral-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
           </label>
         </div>
       </div>
 
-      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
+      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800 hover:border-gray-200 dark:hover:border-neutral-700 transition-colors">
         <div className="flex items-center justify-between p-5">
           <div className="pr-4">
-            <h3 className="text-base font-medium text-gray-800">同步删除：B站 -&gt; 插件</h3>
-            <p className="text-xs text-gray-400 mt-1">B站删记录时同步删除本地记录</p>
+            <h3 className="text-base font-medium text-gray-800 dark:text-neutral-100">
+              同步删除：B站 -&gt; 插件
+            </h3>
+            <p className="text-xs text-gray-400 dark:text-neutral-500 mt-1">
+              B站删记录时同步删除本地记录
+            </p>
           </div>
           <label className="relative inline-flex items-center cursor-pointer shrink-0">
             <input
@@ -509,21 +528,23 @@ const Settings = () => {
               checked={isSyncDeleteFromBilibili}
               onChange={handleSyncDeleteFromBilibiliChange}
             />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            <div className="w-11 h-6 bg-gray-200 dark:bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-neutral-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
           </label>
         </div>
       </div>
 
-      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
+      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800 hover:border-gray-200 dark:hover:border-neutral-700 transition-colors">
         <div className="flex items-center justify-between p-5">
           <div>
-            <h3 className="text-base font-medium text-gray-800">自动同步时间间隔</h3>
+            <h3 className="text-base font-medium text-gray-800 dark:text-neutral-100">
+              自动同步时间间隔
+            </h3>
             <p className="text-xs text-fuchsia-500 mt-1">单位：分钟</p>
           </div>
           <div className="flex items-center space-x-2">
             <button
               onClick={() => handleSyncIntervalChange(Number(syncInterval) - 1)}
-              className="w-8 h-8 flex items-center justify-center text-gray-500 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors disabled:opacity-50"
+              className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-neutral-300 bg-gray-100 dark:bg-neutral-800 rounded-full hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors disabled:opacity-50"
               disabled={Number(syncInterval) <= 1}
             >
               -
@@ -538,7 +559,7 @@ const Settings = () => {
                   handleSyncIntervalChange(1);
                 }
               }}
-              className="w-16 text-center text-lg text-gray-700 font-mono font-medium bg-transparent border-b border-transparent hover:border-gray-300 focus:border-fuchsia-500 outline-none transition-colors"
+              className="w-16 text-center text-lg text-gray-700 dark:text-neutral-100 font-mono font-medium bg-transparent border-b border-transparent hover:border-gray-300 dark:hover:border-neutral-600 focus:border-fuchsia-500 outline-none transition-colors"
             />
             <button
               onClick={() => handleSyncIntervalChange(Number(syncInterval) + 1)}
@@ -550,16 +571,18 @@ const Settings = () => {
         </div>
       </div>
 
-      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
+      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800 hover:border-gray-200 dark:hover:border-neutral-700 transition-colors">
         <div className="flex items-center justify-between p-5">
           <div>
-            <h3 className="text-base font-medium text-gray-800">自动同步收藏夹间隔</h3>
+            <h3 className="text-base font-medium text-gray-800 dark:text-neutral-100">
+              自动同步收藏夹间隔
+            </h3>
             <p className="text-xs text-pink-500 mt-1">单位：分钟</p>
           </div>
           <div className="flex items-center space-x-2">
             <button
               onClick={() => handleFavSyncIntervalChange(Number(favSyncInterval) - 5)}
-              className="w-8 h-8 flex items-center justify-center text-gray-500 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors disabled:opacity-50"
+              className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-neutral-300 bg-gray-100 dark:bg-neutral-800 rounded-full hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors disabled:opacity-50"
               disabled={Number(favSyncInterval) <= 5}
             >
               -
@@ -574,7 +597,7 @@ const Settings = () => {
                   handleFavSyncIntervalChange(15);
                 }
               }}
-              className="w-16 text-center text-lg text-gray-700 font-mono font-medium bg-transparent border-b border-transparent hover:border-gray-300 focus:border-pink-500 outline-none transition-colors"
+              className="w-16 text-center text-lg text-gray-700 dark:text-neutral-100 font-mono font-medium bg-transparent border-b border-transparent hover:border-gray-300 dark:hover:border-neutral-600 focus:border-pink-500 outline-none transition-colors"
             />
             <button
               onClick={() => handleFavSyncIntervalChange(Number(favSyncInterval) + 5)}
@@ -590,9 +613,11 @@ const Settings = () => {
       {/* ... (Dialog code) ... */}
       {showConfirmDialog && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
-          <div className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full mx-4">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">确认恢复出厂设置？</h3>
-            <p className="text-gray-500 mb-6 text-sm leading-relaxed">
+          <div className="bg-white dark:bg-neutral-900 p-6 rounded-xl shadow-xl max-w-sm w-full mx-4 border border-transparent dark:border-neutral-800">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100 mb-2">
+              确认恢复出厂设置？
+            </h3>
+            <p className="text-gray-500 dark:text-neutral-400 mb-6 text-sm leading-relaxed">
               此操作将<span className="text-red-600 font-medium">永久删除</span>
               所有本地存储的历史记录和偏好设置。
             </p>
@@ -602,7 +627,7 @@ const Settings = () => {
             <div className="flex justify-end space-x-3">
               <button
                 onClick={() => setShowConfirmDialog(false)}
-                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="px-4 py-2 text-sm text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
                 disabled={isResetLoading}
               >
                 取消
@@ -621,11 +646,13 @@ const Settings = () => {
 
       {showResetResultDialog && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full mx-4 text-center">
-            <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="bg-white dark:bg-neutral-900 p-6 rounded-xl shadow-xl max-w-sm w-full mx-4 text-center border border-transparent dark:border-neutral-800">
+            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check size={24} />
             </div>
-            <p className="text-lg text-gray-800 mb-6 font-medium">{resetResult}</p>
+            <p className="text-lg text-gray-800 dark:text-neutral-100 mb-6 font-medium">
+              {resetResult}
+            </p>
             <button
               onClick={() => setShowResetResultDialog(false)}
               className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"

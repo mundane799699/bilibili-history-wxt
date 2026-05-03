@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from "react";
-import { getFavFolders, getFavResources } from "../../utils/db";
-import { FavoriteFolder, FavoriteResource } from "../../utils/types";
+import { getFavFolders, getFavResources } from "../utils/db";
+import { FavoriteFolder, FavoriteResource } from "../utils/types";
 import { Folder, Video, Search, X, ChevronDownIcon } from "lucide-react";
-import { Pagination } from "../../components/Pagination";
+import { Pagination } from "../components/Pagination";
 
 export const Favorites = () => {
   const [folders, setFolders] = useState<FavoriteFolder[]>([]);

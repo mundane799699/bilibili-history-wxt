@@ -292,13 +292,13 @@ const SearchMusic = () => {
   }, [loading, searchQuery, loadMore]); // 依赖项：当loading状态、搜索关键词或loadMore函数变化时重新创建observer
 
   return (
-    <div className="min-h-screen bg-gray-50/30">
+    <div className="min-h-screen bg-gray-50/30 dark:bg-[#0a0a0a]">
       {/* 搜索框区域 */}
-      <div className="sticky top-0 z-20 backdrop-blur-md bg-white/70 border-b border-gray-100/50 shadow-sm transition-all duration-300">
+      <div className="sticky top-0 z-20 backdrop-blur-md bg-white/70 dark:bg-[#0a0a0a]/80 border-b border-gray-100/50 dark:border-neutral-800 shadow-sm transition-all duration-300">
         <div className="max-w-4xl mx-auto p-4 md:p-6">
           <div className="relative flex items-center gap-3 group">
             <div className="relative flex-1">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-pink-500 transition-colors duration-300">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 dark:text-neutral-500 group-focus-within:text-pink-500 dark:group-focus-within:text-pink-400 transition-colors duration-300">
                 <Search size={20} />
               </div>
               <input
@@ -307,14 +307,14 @@ const SearchMusic = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="搜索你想听的歌曲..."
-                className="w-full pl-11 pr-4 py-3.5 bg-white/80 border border-gray-200 rounded-2xl text-gray-700 placeholder-gray-400 focus:bg-white focus:border-pink-500 focus:ring-4 focus:ring-pink-100 transition-all duration-300 outline-none shadow-sm hover:border-gray-300 hover:shadow-md"
+                className="w-full pl-11 pr-4 py-3.5 bg-white/80 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-2xl text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 focus:bg-white dark:focus:bg-neutral-900 focus:border-pink-500 dark:focus:border-pink-500 focus:ring-4 focus:ring-pink-100 dark:focus:ring-pink-500/20 transition-all duration-300 outline-none shadow-sm hover:border-gray-300 dark:hover:border-neutral-700 hover:shadow-md disabled:opacity-70 disabled:cursor-not-allowed"
                 disabled={loading}
               />
             </div>
             <button
               onClick={handleSearch}
               disabled={loading}
-              className="px-6 py-3.5 bg-pink-500 text-white font-medium rounded-2xl hover:bg-pink-600 focus:outline-none focus:ring-4 focus:ring-pink-200 transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed transform active:scale-95 flex items-center justify-center min-w-[5rem]"
+              className="px-6 py-3.5 bg-pink-500 text-white font-medium rounded-2xl hover:bg-pink-600 focus:outline-none focus:ring-4 focus:ring-pink-200 dark:focus:ring-pink-500/25 transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed transform active:scale-95 flex items-center justify-center min-w-[5rem]"
             >
               {loading ? (
                 <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
@@ -328,14 +328,14 @@ const SearchMusic = () => {
 
       {/* 错误提示 */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+        <div className="max-w-6xl mx-auto mt-6 bg-red-50 dark:bg-red-500/5 border border-red-200 dark:border-red-500/20 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg mb-6">
           {error}
         </div>
       )}
 
       {/* 搜索结果 */}
       {searchResults.length > 0 && (
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-6xl py-2">
           <div className="space-y-4">
             {searchResults.map((item) => (
               <SongItem
@@ -352,7 +352,7 @@ const SearchMusic = () => {
         </div>
       )}
 
-      <div ref={loadMoreRef} className="text-center py-8 text-gray-500">
+      <div ref={loadMoreRef} className="text-center py-8 text-gray-500 dark:text-neutral-400">
         {getLoadMoreText()}
       </div>
     </div>

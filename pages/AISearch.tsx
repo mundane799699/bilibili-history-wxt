@@ -197,34 +197,36 @@ ${historyTextStr}
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-gray-50 dark:bg-[#0a0a0a] overflow-hidden">
       {/* 侧边历史记录栏 */}
-      <div className="w-64 bg-white border-r flex flex-col hidden md:flex flex-shrink-0 z-10">
-        <div className="p-4 border-b flex items-center justify-between">
-          <h2 className="text-[15px] font-bold flex items-center gap-2 text-gray-800">
+      <div className="w-64 bg-white dark:bg-neutral-900 border-r border-gray-200 dark:border-neutral-800 flex flex-col hidden md:flex flex-shrink-0 z-10">
+        <div className="p-4 border-b border-gray-200 dark:border-neutral-800 flex items-center justify-between">
+          <h2 className="text-[15px] font-bold flex items-center gap-2 text-gray-800 dark:text-neutral-100">
             <Clock className="w-4 h-4 text-indigo-500" />
             探索历史
           </h2>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {historyLogs.length === 0 ? (
-            <div className="text-center text-xs text-gray-400 mt-6">暂无搜索历史</div>
+            <div className="text-center text-xs text-gray-400 dark:text-neutral-500 mt-6">
+              暂无搜索历史
+            </div>
           ) : (
             historyLogs.map((log) => (
               <div
                 key={log.id}
                 onClick={() => loadHistoryItem(log)}
-                className="group p-3 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors border border-transparent hover:border-gray-100 flex flex-col gap-1 relative"
+                className="group p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-neutral-800 cursor-pointer transition-colors border border-transparent hover:border-gray-100 dark:hover:border-neutral-700 flex flex-col gap-1 relative"
               >
-                <div className="text-sm font-medium text-gray-700 truncate pr-6 leading-tight">
+                <div className="text-sm font-medium text-gray-700 dark:text-neutral-200 truncate pr-6 leading-tight">
                   {log.query}
                 </div>
-                <div className="text-[10px] text-gray-400">
+                <div className="text-[10px] text-gray-400 dark:text-neutral-500">
                   {new Date(log.timestamp).toLocaleString()}
                 </div>
                 <button
                   onClick={(e) => deleteHistoryItem(e, log.id)}
-                  className="absolute right-2 top-3 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-opacity p-1"
+                  className="absolute right-2 top-3 opacity-0 group-hover:opacity-100 text-gray-400 dark:text-neutral-500 hover:text-red-500 dark:hover:text-red-400 transition-opacity p-1"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -235,18 +237,18 @@ ${historyTextStr}
       </div>
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        <div className="bg-white border-b px-6 py-4 flex-shrink-0 flex items-center justify-between shadow-sm z-10">
-          <h1 className="text-xl font-bold flex items-center gap-2">
+        <div className="bg-white dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-neutral-800 px-6 py-4 flex-shrink-0 flex items-center justify-between shadow-sm z-10">
+          <h1 className="text-xl font-bold flex items-center gap-2 text-gray-900 dark:text-neutral-100">
             <Sparkles className="w-5 h-5 text-indigo-500" />
             AI 语义搜索
           </h1>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus-within:ring-2 focus-within:ring-indigo-100 focus-within:border-indigo-400 focus-within:bg-white transition-all">
-              <KeyRound className="w-4 h-4 text-gray-400 mr-2" />
+            <div className="flex items-center bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-lg px-3 py-1.5 focus-within:ring-2 focus-within:ring-indigo-100 dark:focus-within:ring-indigo-500/20 focus-within:border-indigo-400 dark:focus-within:border-indigo-500 focus-within:bg-white dark:focus-within:bg-neutral-900 transition-all">
+              <KeyRound className="w-4 h-4 text-gray-400 dark:text-neutral-500 mr-2" />
               <input
                 type="password"
-                className="bg-transparent border-none focus:ring-0 text-sm w-48 p-0"
+                className="bg-transparent border-none focus:ring-0 text-sm w-48 p-0 text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 focus:outline-none"
                 placeholder="DashScope API Key"
                 value={apiKey}
                 onChange={(e) => saveApiKey(e.target.value)}
@@ -255,7 +257,7 @@ ${historyTextStr}
             <select
               value={searchCount}
               onChange={(e) => setSearchCount(Number(e.target.value))}
-              className="text-sm bg-gray-50 border border-gray-200 rounded-lg py-1.5 px-2 outline-none text-gray-600 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+              className="text-sm bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-lg py-1.5 px-2 outline-none text-gray-600 dark:text-neutral-200 focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-500/20"
             >
               <option value={500}>最近 500 条</option>
               <option value={1000}>最近 1000 条</option>
@@ -267,13 +269,13 @@ ${historyTextStr}
 
         <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center">
           <div className="w-full max-w-4xl flex flex-col gap-6">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative">
-              <h2 className="text-lg font-medium text-gray-800 mb-4 flex items-center justify-between">
+            <div className="bg-white dark:bg-neutral-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-800 relative">
+              <h2 className="text-lg font-medium text-gray-800 dark:text-neutral-100 mb-4 flex items-center justify-between">
                 <span className="flex items-center gap-2">🤔 你在找什么？</span>
                 {hasStarted && (
                   <button
                     onClick={clearCurrent}
-                    className="text-xs text-gray-500 hover:text-indigo-500 flex items-center transition-colors"
+                    className="text-xs text-gray-500 dark:text-neutral-400 hover:text-indigo-500 dark:hover:text-indigo-400 flex items-center transition-colors"
                   >
                     开启新探索 <ChevronRight className="w-3 h-3 ml-0.5" />
                   </button>
@@ -282,7 +284,7 @@ ${historyTextStr}
               <div className="flex gap-3">
                 <input
                   type="text"
-                  className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all"
+                  className="flex-1 bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl px-4 py-3 text-sm text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 focus:bg-white dark:focus:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-500/20 focus:border-indigo-400 dark:focus:border-indigo-500 transition-all"
                   placeholder="例如：那个讲量子力学把爱情解释得很搞笑的UP主..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -291,7 +293,7 @@ ${historyTextStr}
                 <button
                   onClick={startSearch}
                   disabled={loading || !query}
-                  className="bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl font-medium flex items-center gap-2 transition-colors shadow-sm"
+                  className="bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-300 dark:disabled:bg-neutral-700 disabled:cursor-not-allowed disabled:text-white dark:disabled:text-neutral-400 text-white px-6 py-3 rounded-xl font-medium flex items-center gap-2 transition-colors shadow-sm"
                 >
                   {loading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -302,7 +304,7 @@ ${historyTextStr}
                 </button>
               </div>
               {!apiKey && (
-                <p className="text-xs text-red-500 mt-3 ml-1">
+                <p className="text-xs text-red-500 dark:text-red-400 mt-3 ml-1">
                   * 首次使用请先在右上角配置阿里云百炼(DashScope) API Key 才能调用大模型。
                 </p>
               )}
@@ -312,8 +314,8 @@ ${historyTextStr}
               <div className="flex flex-col lg:flex-row gap-6 items-stretch w-full">
                 {/* 左侧：思考过程卡片 */}
                 {reasoning && (
-                  <div className="flex-1 bg-blue-50/50 rounded-2xl border border-blue-100 flex flex-col overflow-hidden min-h-[300px]">
-                    <div className="px-5 py-3 bg-blue-50/80 border-b border-blue-100 font-medium text-blue-800 flex items-center justify-between gap-2 text-sm shrink-0">
+                  <div className="flex-1 bg-blue-50/50 dark:bg-blue-500/5 rounded-2xl border border-blue-100 dark:border-blue-500/20 flex flex-col overflow-hidden min-h-[300px]">
+                    <div className="px-5 py-3 bg-blue-50/80 dark:bg-blue-500/10 border-b border-blue-100 dark:border-blue-500/20 font-medium text-blue-800 dark:text-blue-300 flex items-center justify-between gap-2 text-sm shrink-0">
                       <div className="flex items-center gap-2">
                         {isAnswering ? (
                           "💡 思考完毕"
@@ -324,7 +326,7 @@ ${historyTextStr}
                         )}
                       </div>
                     </div>
-                    <div className="p-5 text-sm text-gray-600 font-serif leading-relaxed whitespace-pre-wrap flex-1 overflow-y-auto max-h-[600px]">
+                    <div className="p-5 text-sm text-gray-600 dark:text-neutral-300 font-serif leading-relaxed whitespace-pre-wrap flex-1 overflow-y-auto max-h-[600px]">
                       {reasoning}
                     </div>
                   </div>
@@ -333,11 +335,11 @@ ${historyTextStr}
                 {/* 右侧：回复内容卡片 */}
                 <div className="flex-1 flex flex-col gap-4">
                   {(isAnswering || content) && (
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden min-h-[300px]">
-                      <div className="px-5 py-3 bg-indigo-50 border-b border-indigo-100 font-medium text-indigo-900 text-sm shrink-0">
+                    <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-sm border border-gray-200 dark:border-neutral-800 flex flex-col overflow-hidden min-h-[300px]">
+                      <div className="px-5 py-3 bg-indigo-50 dark:bg-indigo-500/10 border-b border-indigo-100 dark:border-indigo-500/20 font-medium text-indigo-900 dark:text-indigo-300 text-sm shrink-0">
                         🎯 搜索结果
                       </div>
-                      <div className="p-5 text-gray-800 text-[15px] leading-relaxed whitespace-pre-wrap flex-1 overflow-y-auto max-h-[600px]">
+                      <div className="p-5 text-gray-800 dark:text-neutral-100 text-[15px] leading-relaxed whitespace-pre-wrap flex-1 overflow-y-auto max-h-[600px]">
                         {content}
                       </div>
                     </div>
@@ -345,11 +347,11 @@ ${historyTextStr}
 
                   {/* 错误提示卡片 */}
                   {errorObj && (
-                    <div className="bg-red-50 rounded-2xl shadow-sm border border-red-200 overflow-hidden shrink-0">
-                      <div className="px-5 py-3 bg-red-100 border-b border-red-200 font-medium text-red-900 text-sm">
+                    <div className="bg-red-50 dark:bg-red-500/5 rounded-2xl shadow-sm border border-red-200 dark:border-red-500/20 overflow-hidden shrink-0">
+                      <div className="px-5 py-3 bg-red-100 dark:bg-red-500/10 border-b border-red-200 dark:border-red-500/20 font-medium text-red-900 dark:text-red-300 text-sm">
                         ❌ 搜索出错
                       </div>
-                      <div className="p-5 text-red-800 text-[15px] leading-relaxed whitespace-pre-wrap">
+                      <div className="p-5 text-red-800 dark:text-red-200 text-[15px] leading-relaxed whitespace-pre-wrap">
                         {errorObj}
                       </div>
                     </div>

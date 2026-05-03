@@ -391,16 +391,16 @@ const LikedMusic = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-gray-500">加载中...</div>
+      <div className="flex items-center justify-center min-h-96 bg-gray-50/30 dark:bg-[#0a0a0a]">
+        <div className="text-gray-500 dark:text-neutral-400">加载中...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-red-500">{error}</div>
+      <div className="flex items-center justify-center min-h-96 bg-gray-50/30 dark:bg-[#0a0a0a]">
+        <div className="text-red-500 dark:text-red-400">{error}</div>
       </div>
     );
   }
@@ -412,20 +412,24 @@ const LikedMusic = () => {
   const currentState = currentPlaying ? playingStates[currentPlaying] : null;
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gray-50/30 dark:bg-[#0a0a0a]">
       {/* 当前歌曲信息展示区域 */}
-      <div className="sticky p-4 top-0 bg-white z-10 border-b border-gray-200">
+      <div className="sticky p-4 top-0 bg-white/90 dark:bg-[#0a0a0a]/90 backdrop-blur-md z-10 border-b border-gray-200 dark:border-neutral-800 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-4">
-              <h1 className="text-xl font-semibold text-gray-800">我喜欢的音乐</h1>
-              <span className="text-sm text-gray-500">({likedMusic.length} 首)</span>
+              <h1 className="text-xl font-semibold text-gray-800 dark:text-neutral-100">
+                我喜欢的音乐
+              </h1>
+              <span className="text-sm text-gray-500 dark:text-neutral-400">
+                ({likedMusic.length} 首)
+              </span>
             </div>
 
             {/* 音乐控制栏 */}
             <div className="flex items-center justify-center gap-2">
               <button
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200 disabled:opacity-50"
+                className="p-2 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-full transition-colors duration-200 disabled:opacity-50"
                 onClick={handlePrevious}
                 disabled={!currentPlaying || likedMusic.length === 0}
                 title="上一首"
@@ -437,7 +441,7 @@ const LikedMusic = () => {
                 className={`p-2 rounded-full transition-colors duration-200 ${
                   currentState?.isPlaying
                     ? "bg-pink-500 text-white hover:bg-pink-600"
-                    : "bg-gray-100 hover:bg-gray-200"
+                    : "bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-200 hover:bg-gray-200 dark:hover:bg-neutral-700"
                 } ${currentState?.isLoading ? "cursor-not-allowed" : "cursor-pointer"}`}
                 onClick={handlePlayPause}
                 disabled={currentState?.isLoading}
@@ -455,7 +459,7 @@ const LikedMusic = () => {
               </button>
 
               <button
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200 disabled:opacity-50"
+                className="p-2 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-full transition-colors duration-200 disabled:opacity-50"
                 onClick={handleNext}
                 disabled={!currentPlaying || likedMusic.length === 0}
                 title="下一首"
@@ -467,8 +471,8 @@ const LikedMusic = () => {
               <button
                 className={`p-2 rounded-full transition-colors duration-200 ${
                   playMode === "order"
-                    ? "hover:bg-gray-100 text-gray-600"
-                    : "bg-pink-100 text-pink-500 hover:bg-pink-200"
+                    ? "hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-600 dark:text-neutral-300"
+                    : "bg-pink-100 dark:bg-pink-500/10 text-pink-500 dark:text-pink-400 hover:bg-pink-200 dark:hover:bg-pink-500/20"
                 }`}
                 onClick={togglePlayMode}
                 title={getPlayModeText()}
@@ -491,7 +495,7 @@ const LikedMusic = () => {
                   href={`https://www.bilibili.com/video/${currentMusic.bvid}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block text-sm font-medium text-gray-900 truncate cursor-pointer"
+                  className="block text-sm font-medium text-gray-900 dark:text-neutral-100 hover:text-pink-600 dark:hover:text-pink-400 truncate cursor-pointer"
                 >
                   {currentMusic.title}
                 </a>
@@ -499,7 +503,7 @@ const LikedMusic = () => {
                   href={`https://space.bilibili.com/${currentMusic.mid}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-gray-500 truncate cursor-pointer"
+                  className="text-xs text-gray-500 dark:text-neutral-400 hover:text-pink-600 dark:hover:text-pink-400 truncate cursor-pointer"
                 >
                   {currentMusic.author}
                 </a>
@@ -528,7 +532,7 @@ const LikedMusic = () => {
         </div>
       ) : (
         <div className="flex items-center justify-center min-h-96">
-          <div className="text-gray-500">暂无喜欢的音乐</div>
+          <div className="text-gray-500 dark:text-neutral-400">暂无喜欢的音乐</div>
         </div>
       )}
     </div>

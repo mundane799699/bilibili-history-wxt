@@ -82,7 +82,7 @@ const LikedMusicItem = ({
 
   return (
     <div
-      className="bg-white rounded-lg shadow-md hover:shadow-lg hover:bg-gray-50 transition-shadow duration-300 overflow-hidden cursor-pointer"
+      className="bg-white dark:bg-neutral-900 border border-transparent dark:border-neutral-800 rounded-lg shadow-md hover:shadow-lg hover:bg-gray-50 dark:hover:bg-neutral-800 transition-all duration-300 overflow-hidden cursor-pointer"
       onClick={() => onPlay()}
     >
       <div className="flex gap-4 p-4 items-center">
@@ -109,7 +109,7 @@ const LikedMusicItem = ({
               href={`https://www.bilibili.com/video/${music.bvid}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-lg font-semibold text-gray-900 mb-2  hover:text-pink-600 cursor-pointer"
+              className="text-lg font-semibold text-gray-900 dark:text-neutral-100 mb-2 hover:text-pink-600 dark:hover:text-pink-400 cursor-pointer"
               onClick={(e) => e.stopPropagation()}
             >
               {music.title}
@@ -122,17 +122,19 @@ const LikedMusicItem = ({
               href={`https://space.bilibili.com/${music.mid}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-gray-600 hover:text-pink-600 cursor-pointer"
+              className="text-sm text-gray-600 dark:text-neutral-300 hover:text-pink-600 dark:hover:text-pink-400 cursor-pointer"
               onClick={(e) => e.stopPropagation()}
             >
               {music.author}
             </a>
-            <span className="text-xs text-gray-400">收藏于 {formatDate(music.added_at)}</span>
+            <span className="text-xs text-gray-400 dark:text-neutral-500">
+              收藏于 {formatDate(music.added_at)}
+            </span>
           </div>
 
           {/* 错误提示 */}
           {playError && (
-            <div className="text-red-500 text-xs mb-2 flex items-center gap-1">
+            <div className="text-red-500 dark:text-red-400 text-xs mb-2 flex items-center gap-1">
               <span>⚠️</span>
               <span>{playError}</span>
             </div>
@@ -142,7 +144,7 @@ const LikedMusicItem = ({
         {/* 操作按钮 */}
         <div className="flex items-center gap-2">
           <button
-            className={`p-2 rounded-full transition-colors duration-200 hover:bg-gray-100 ${
+            className={`p-2 text-gray-700 dark:text-neutral-300 rounded-full transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-neutral-700 ${
               removing ? "cursor-not-allowed" : "cursor-pointer"
             }`}
             onClick={handleRemove}

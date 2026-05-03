@@ -63,7 +63,7 @@ export const UserInfo = () => {
       <div className="flex items-center space-x-3">
         <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-300 dark:bg-neutral-700">
           {userInfo ? (
-            <div className="w-full h-full bg-pink-400 dark:bg-pink-700 flex items-center justify-center">
+            <div className="w-full h-full bg-pink-400 dark:bg-gray-700 flex items-center justify-center">
               <span className="text-white font-medium text-sm">{getInitial(userInfo.name)}</span>
             </div>
           ) : (

@@ -505,16 +505,16 @@ const WebDavSync = () => {
   };
 
   return (
-    <div className="max-w-[800px] mx-auto p-6 pb-20">
+    <div className="max-w-[800px] mx-auto p-6 pb-20 min-h-screen bg-gray-50/30 dark:bg-[#0a0a0a] text-gray-900 dark:text-neutral-100">
       <h1 className="text-3xl font-bold mb-2">WebDAV 同步</h1>
-      <p className="text-gray-500 text-sm mb-8">
+      <p className="text-gray-500 dark:text-neutral-400 text-sm mb-8">
         通过 WebDAV 或手动导出/导入来备份和恢复你的数据。
       </p>
 
       {/* ===== WebDAV 配置区域 ===== */}
-      <div className="mb-8 rounded-xl bg-white shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-5 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
-          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+      <div className="mb-8 rounded-xl bg-white dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden">
+        <div className="p-5 border-b border-gray-100 dark:border-neutral-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-500/10 dark:to-indigo-500/10">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-neutral-100 flex items-center gap-2">
             <svg
               className="w-5 h-5 text-blue-600"
               fill="none"
@@ -530,11 +530,11 @@ const WebDavSync = () => {
             </svg>
             WebDAV 服务器配置
           </h2>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-500 dark:text-neutral-400 mt-1">
             支持坚果云、NextCloud、群晖 NAS 等 WebDAV 服务
           </p>
           <button
-            className="text-xs text-blue-500 mt-1 cursor-pointer"
+            className="text-xs text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 mt-1 cursor-pointer"
             onClick={() => {
               const url = browser.runtime.getURL("/webdav-tutorial.html");
               browser.tabs.create({ url });
@@ -546,51 +546,59 @@ const WebDavSync = () => {
 
         <div className="p-5 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">服务器地址</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1">
+              服务器地址
+            </label>
             <input
               type="url"
               placeholder="例如：https://dav.jianguoyun.com/dav"
               value={config.serverUrl}
               onChange={(e) => setConfig({ ...config, serverUrl: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500/25 focus:border-transparent outline-none transition-all text-sm"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">用户名</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1">
+                用户名
+              </label>
               <input
                 type="text"
                 placeholder="WebDAV 用户名"
                 value={config.username}
                 onChange={(e) => setConfig({ ...config, username: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500/25 focus:border-transparent outline-none transition-all text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">密码</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1">
+                密码
+              </label>
               <input
                 type="password"
                 placeholder="WebDAV 密码 / 应用密码"
                 value={config.password}
                 onChange={(e) => setConfig({ ...config, password: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500/25 focus:border-transparent outline-none transition-all text-sm"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">远程路径</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1">
+              远程路径
+            </label>
             <input
               type="text"
               placeholder="/bilibili-history/"
               value={config.basePath}
               onChange={(e) => setConfig({ ...config, basePath: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500/25 focus:border-transparent outline-none transition-all text-sm"
             />
           </div>
 
-          <p className="text-xs text-gray-400 flex items-center gap-1">
+          <p className="text-xs text-gray-400 dark:text-neutral-500 flex items-center gap-1">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
@@ -606,7 +614,7 @@ const WebDavSync = () => {
             <button
               onClick={handleTestConnection}
               disabled={isTesting || !config.serverUrl}
-              className="px-4 py-2 text-sm font-medium bg-white text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm font-medium bg-white dark:bg-neutral-900 text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-500/40 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isTesting ? "测试中..." : "测试连接"}
             </button>
@@ -622,9 +630,9 @@ const WebDavSync = () => {
       </div>
 
       {/* ===== WebDAV 同步操作区域 ===== */}
-      <div className="mb-8 rounded-xl bg-white shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-5 border-b border-gray-100 bg-gradient-to-r from-emerald-50 to-teal-50">
-          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+      <div className="mb-8 rounded-xl bg-white dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden">
+        <div className="p-5 border-b border-gray-100 dark:border-neutral-800 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-500/10 dark:to-teal-500/10">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-neutral-100 flex items-center gap-2">
             <svg
               className="w-5 h-5 text-emerald-600"
               fill="none"
@@ -641,7 +649,7 @@ const WebDavSync = () => {
             WebDAV 同步
           </h2>
           {lastSync && (
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-neutral-400 mt-1">
               上次同步：{new Date(lastSync).toLocaleString()}
             </p>
           )}
@@ -650,12 +658,16 @@ const WebDavSync = () => {
         <div className="p-5">
           {/* 进度条 */}
           {syncProgress && (
-            <div className="mb-5 p-4 bg-blue-50 rounded-lg border border-blue-200 animate-in fade-in">
+            <div className="mb-5 p-4 bg-blue-50 dark:bg-blue-500/10 rounded-lg border border-blue-200 dark:border-blue-500/20 animate-in fade-in">
               <div className="flex justify-between mb-1">
-                <span className="text-sm font-medium text-blue-700">{syncProgress.message}</span>
-                <span className="text-sm font-medium text-blue-700">{progressPercent}%</span>
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                  {syncProgress.message}
+                </span>
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                  {progressPercent}%
+                </span>
               </div>
-              <div className="w-full bg-blue-200 rounded-full h-2">
+              <div className="w-full bg-blue-200 dark:bg-blue-500/20 rounded-full h-2">
                 <div
                   className="bg-blue-600 h-2 rounded-full transition-all duration-500"
                   style={{ width: `${progressPercent}%` }}
@@ -698,8 +710,8 @@ const WebDavSync = () => {
             </button>
           </div>
 
-          <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
-            <p className="text-xs text-amber-700">
+          <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-500/10 rounded-lg border border-amber-200 dark:border-amber-500/20">
+            <p className="text-xs text-amber-700 dark:text-amber-300">
               <strong>提示：</strong>
               恢复数据时会智能合并，仅当远端数据更新时才覆盖本地记录，不会丢失本地较新的数据。
             </p>
@@ -708,9 +720,9 @@ const WebDavSync = () => {
       </div>
 
       {/* ===== 自动同步设置区域 ===== */}
-      <div className="mb-8 rounded-xl bg-white shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-5 border-b border-gray-100 bg-gradient-to-r from-orange-50 to-amber-50">
-          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+      <div className="mb-8 rounded-xl bg-white dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden">
+        <div className="p-5 border-b border-gray-100 dark:border-neutral-800 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-500/10 dark:to-amber-500/10">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-neutral-100 flex items-center gap-2">
             <svg
               className="w-5 h-5 text-orange-600"
               fill="none"
@@ -726,14 +738,18 @@ const WebDavSync = () => {
             </svg>
             自动同步
           </h2>
-          <p className="text-xs text-gray-500 mt-1">开启后会在后台定时自动备份数据到 WebDAV</p>
+          <p className="text-xs text-gray-500 dark:text-neutral-400 mt-1">
+            开启后会在后台定时自动备份数据到 WebDAV
+          </p>
         </div>
 
         <div className="p-5 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-sm font-medium text-gray-700">启用自动同步</span>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <span className="text-sm font-medium text-gray-700 dark:text-neutral-300">
+                启用自动同步
+              </span>
+              <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">
                 在后台定时将数据自动备份到 WebDAV 服务器
               </p>
             </div>
@@ -742,7 +758,7 @@ const WebDavSync = () => {
               disabled={!config.serverUrl}
               title="切换自动同步"
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none ${
-                autoSyncEnabled ? "bg-orange-500" : "bg-gray-300"
+                autoSyncEnabled ? "bg-orange-500" : "bg-gray-300 dark:bg-neutral-700"
               } ${!config.serverUrl ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
             >
               <span
@@ -755,14 +771,14 @@ const WebDavSync = () => {
 
           {autoSyncEnabled && (
             <div className="flex items-center gap-3">
-              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+              <label className="text-sm font-medium text-gray-700 dark:text-neutral-300 whitespace-nowrap">
                 同步间隔
               </label>
               <select
                 value={autoSyncInterval}
                 onChange={(e) => handleIntervalChange(Number(e.target.value))}
                 title="自动同步间隔"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all text-sm bg-white"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-orange-500 dark:focus:ring-orange-500/25 focus:border-transparent outline-none transition-all text-sm bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-100"
               >
                 <option value={15}>每 15 分钟</option>
                 <option value={30}>每 30 分钟</option>
@@ -776,8 +792,8 @@ const WebDavSync = () => {
           )}
 
           {!config.serverUrl && (
-            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-              <p className="text-xs text-gray-500">
+            <div className="p-3 bg-gray-50 dark:bg-neutral-800 rounded-lg border border-gray-200 dark:border-neutral-700">
+              <p className="text-xs text-gray-500 dark:text-neutral-400">
                 请先在上方配置并保存 WebDAV 服务器信息后再开启自动同步。
               </p>
             </div>
@@ -786,9 +802,9 @@ const WebDavSync = () => {
       </div>
 
       {/* ===== 手动导出/导入区域 ===== */}
-      <div className="mb-8 rounded-xl bg-white shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-5 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-fuchsia-50">
-          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+      <div className="mb-8 rounded-xl bg-white dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden">
+        <div className="p-5 border-b border-gray-100 dark:border-neutral-800 bg-gradient-to-r from-purple-50 to-fuchsia-50 dark:from-purple-500/10 dark:to-fuchsia-500/10">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-neutral-100 flex items-center gap-2">
             <svg
               className="w-5 h-5 text-purple-600"
               fill="none"
@@ -804,7 +820,7 @@ const WebDavSync = () => {
             </svg>
             手动导出 / 导入
           </h2>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-500 dark:text-neutral-400 mt-1">
             导出所有数据为单个 JSON 文件，或从 JSON 文件导入恢复
           </p>
         </div>
@@ -844,8 +860,8 @@ const WebDavSync = () => {
             </button>
           </div>
 
-          <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-xs text-gray-600">
+          <div className="mt-4 p-3 bg-gray-50 dark:bg-neutral-800 rounded-lg border border-gray-200 dark:border-neutral-700">
+            <p className="text-xs text-gray-600 dark:text-neutral-300">
               <strong>说明：</strong>导出文件包含历史记录、喜欢的音乐、收藏夹和收藏资源的完整数据。
               导入时会智能合并，同时兼容旧版导出的单独历史记录或音乐 JSON 文件。
             </p>
@@ -854,9 +870,11 @@ const WebDavSync = () => {
       </div>
 
       {/* ===== 使用说明 ===== */}
-      <div className="rounded-xl bg-gray-50 border border-gray-200 p-5">
-        <h3 className="text-base font-semibold mb-3 text-gray-800">使用说明</h3>
-        <ul className="text-sm text-gray-600 space-y-2">
+      <div className="rounded-xl bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 p-5">
+        <h3 className="text-base font-semibold mb-3 text-gray-800 dark:text-neutral-100">
+          使用说明
+        </h3>
+        <ul className="text-sm text-gray-600 dark:text-neutral-300 space-y-2">
           <li className="flex items-start gap-2">
             <span className="text-blue-500 mt-0.5 shrink-0">•</span>
             <span>
@@ -887,10 +905,14 @@ const WebDavSync = () => {
       {/* ===== 备份模式选择对话框 ===== */}
       {showBackupDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="p-6 border-b border-gray-100">
-              <h3 className="text-lg font-bold text-gray-800">选择备份模式</h3>
-              <p className="text-sm text-gray-500 mt-1">请选择你想要的备份方式</p>
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-in fade-in zoom-in-95 border border-transparent dark:border-neutral-800">
+            <div className="p-6 border-b border-gray-100 dark:border-neutral-800">
+              <h3 className="text-lg font-bold text-gray-800 dark:text-neutral-100">
+                选择备份模式
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-neutral-400 mt-1">
+                请选择你想要的备份方式
+              </p>
             </div>
 
             <div className="p-6 space-y-3">
@@ -899,7 +921,7 @@ const WebDavSync = () => {
                   setShowBackupDialog(false);
                   handleBidirectionalSync();
                 }}
-                className="w-full flex items-start gap-3 p-4 rounded-xl border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 transition-all text-left"
+                className="w-full flex items-start gap-3 p-4 rounded-xl border-2 border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/15 hover:border-blue-400 dark:hover:border-blue-500/50 transition-all text-left"
               >
                 <svg
                   className="w-6 h-6 text-blue-600 mt-0.5 shrink-0"
@@ -915,8 +937,10 @@ const WebDavSync = () => {
                   />
                 </svg>
                 <div>
-                  <span className="font-semibold text-blue-800">双向同步（推荐）</span>
-                  <p className="text-xs text-blue-600 mt-1">
+                  <span className="font-semibold text-blue-800 dark:text-blue-300">
+                    双向同步（推荐）
+                  </span>
+                  <p className="text-xs text-blue-600 dark:text-blue-300/90 mt-1">
                     先从 WebDAV
                     拉取远端数据并智能合并到本地，再将最新数据推送回去。适合多设备使用，不会丢失其他设备的数据。
                   </p>
@@ -928,7 +952,7 @@ const WebDavSync = () => {
                   setShowBackupDialog(false);
                   handleBackup();
                 }}
-                className="w-full flex items-start gap-3 p-4 rounded-xl border-2 border-amber-200 bg-amber-50 hover:bg-amber-100 hover:border-amber-400 transition-all text-left"
+                className="w-full flex items-start gap-3 p-4 rounded-xl border-2 border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/15 hover:border-amber-400 dark:hover:border-amber-500/50 transition-all text-left"
               >
                 <svg
                   className="w-6 h-6 text-amber-600 mt-0.5 shrink-0"
@@ -944,8 +968,8 @@ const WebDavSync = () => {
                   />
                 </svg>
                 <div>
-                  <span className="font-semibold text-amber-800">强制覆盖</span>
-                  <p className="text-xs text-amber-600 mt-1">
+                  <span className="font-semibold text-amber-800 dark:text-amber-300">强制覆盖</span>
+                  <p className="text-xs text-amber-600 dark:text-amber-300/90 mt-1">
                     直接用本地数据覆盖 WebDAV 上的文件，不拉取远端数据。适合确定本地数据最新的场景。
                   </p>
                 </div>
@@ -955,7 +979,7 @@ const WebDavSync = () => {
             <div className="px-6 pb-5">
               <button
                 onClick={() => setShowBackupDialog(false)}
-                className="w-full py-2.5 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+                className="w-full py-2.5 text-sm font-medium text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg transition-all"
               >
                 取消
               </button>
