@@ -188,15 +188,13 @@ const CloudSync = () => {
         </button>
       </div>
 
-      <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
-        <h3 className="text-lg font-semibold mb-2 text-gray-800">使用说明</h3>
-        <ul className="text-sm text-gray-600 space-y-1">
-          <li>• 点击"上传数据到云端"将本地数据同步到云端服务器</li>
-          <li>• 点击"查看云端数据"查看已同步到云端的数据</li>
-          <li>• 点击"从云端获取数据"将云端数据同步到浏览器插件</li>
-          <li className="text-red-500">
-            • 已经上传的数据会标记为已上传，再次点击上传时不会重复上传
-          </li>
+      <div className="mt-8 p-4 bg-gray-50 dark:bg-neutral-900 rounded-lg border border-gray-200 dark:border-neutral-800">
+        <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-neutral-100">使用说明</h3>
+        <ul className="text-sm text-gray-600 dark:text-neutral-300 space-y-1 list-disc pl-5">
+          <li>点击"上传数据到云端"将本地数据同步到云端服务器</li>
+          <li>点击"查看云端数据"查看已同步到云端的数据</li>
+          <li>点击"从云端获取数据"将云端数据同步到浏览器插件</li>
+          <li className="text-red-500 dark:text-red-400">已经上传的数据会标记为已上传，再次点击上传时不会重复上传</li>
         </ul>
       </div>
 
