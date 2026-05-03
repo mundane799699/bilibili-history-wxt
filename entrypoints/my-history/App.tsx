@@ -14,6 +14,7 @@ import { Favorites } from "../../pages/Favorites";
 import Welcome from "../../pages/Welcome";
 import AISearch from "../../pages/AISearch";
 import Reward from "../../pages/Reward";
+import { UpdateNoticeModal } from "../../components/UpdateNoticeModal";
 
 const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -26,6 +27,7 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
       <div className={`${!isWelcome ? "ml-40" : ""} w-full transition-all duration-300`}>
         {children}
       </div>
+      {!isWelcome && <UpdateNoticeModal />}
     </div>
   );
 };

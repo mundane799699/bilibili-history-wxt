@@ -20,6 +20,7 @@ export const SYNC_PROGRESS_HISTORY = "syncProgressHistory";
 export const SYNC_PROGRESS_FAV = "syncProgressFav";
 export const DATE_SELECTION_MODE = "date_selection_mode";
 export const GRID_COLUMNS = "gridColumns";
+export const LAST_SEEN_UPDATE_VERSION = "lastSeenUpdateVersion";
 
 // WebDAV 同步相关
 export const WEBDAV_CONFIG = "webdavConfig";
@@ -34,6 +35,11 @@ export const AI_SEARCH_HISTORY = "aiSearchHistory";
 export const THEME_MODE = "themeMode";
 
 export const UPDATE_HISTORY = [
+  {
+    date: "2026-05-03",
+    version: "1.9.8",
+    changes: ["增加白天/黑夜模式", "增加更新特性的弹窗", "增加赞赏入口"],
+  },
   {
     date: "2026-03-14",
     version: "1.9.7",
