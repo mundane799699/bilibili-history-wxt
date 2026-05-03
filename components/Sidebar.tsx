@@ -12,6 +12,7 @@ import {
   Sparkles,
   Sun,
   Moon,
+  Heart,
 } from "lucide-react";
 import { UserInfo } from "./UserInfo";
 import ExpandableMenu from "./ExpandableMenu";
@@ -31,8 +32,8 @@ const menuList = [
     to: "/favorites",
   },
   {
-    title: "AI 探索（beta）",
-    icon: <Sparkles className="w-4 h-4 text-indigo-500" />,
+    title: "AI探索",
+    icon: <Sparkles className="w-4 h-4" />,
     to: "/ai-search",
   },
   {
@@ -68,6 +69,11 @@ const menuList = [
     title: "WebDAV",
     icon: <HardDriveDownload className="w-4 h-4" />,
     to: "/webdav-sync",
+  },
+  {
+    title: "赞赏",
+    icon: <Heart className="w-4 h-4" />,
+    to: "/reward",
   },
   {
     title: "设置",
