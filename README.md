@@ -25,8 +25,8 @@
   </p>
 
   <p>
-    <a href="https://bilibilihistory.com"><b>官网</b></a> ·
-    <a href="https://www.bilibili.com/video/BV1PALHzREm1"><b>演示视频</b></a> ·
+    <a href="https://bilibilihistory.com" target="_blank" rel="noopener noreferrer"><b>官网</b></a> ·
+    <a href="https://www.bilibili.com/video/BV1PALHzREm1" target="_blank" rel="noopener noreferrer"><b>演示视频</b></a> ·
     <a href="#安装">安装</a> ·
     <a href="#功能特性">功能</a> ·
     <a href="#本地开发">开发</a>
