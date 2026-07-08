@@ -181,7 +181,10 @@ export default defineBackground(() => {
 
       // skip when auto favorites sync switch is off (default off)
       const favAutoSyncEnabled = await getStorageValue(FAV_AUTO_SYNC_ENABLED, false);
-      if (!favAutoSyncEnabled) return;
+      if (!favAutoSyncEnabled) {
+        console.log("自动同步收藏夹开关未开启，跳过本次收藏夹同步");
+        return;
+      }
 
       // 默认改成15分钟同步一次
       const syncInterval = await getStorageValue(FAV_SYNC_INTERVAL, 15);
