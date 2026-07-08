@@ -1,3 +1,12 @@
+// Fake data for now; update this list on each release
+const REWARD_LIST: { name: string; amount: number; date: string; message?: string }[] = [
+  { name: "苦乐都跟随", amount: 0.5, date: "2026-07-03", message: "b站无限历史插件很好用" },
+  { name: "佚名", amount: 10, date: "2026-06-09" },
+  { name: "十分钟的人生", amount: 10, date: "2026-05-30" },
+  { name: "毛志伟", amount: 5, date: "2026-05-21", message: "非常不错，继续加油" },
+  { name: "佚名", amount: 1, date: "2026-05-10" },
+];
+
 const Reward = () => {
   return (
     <div className="max-w-[800px] mx-auto p-6">
@@ -28,7 +37,25 @@ const Reward = () => {
 
       <section className="mt-12">
         <h2 className="text-3xl font-semibold mb-3">赞赏名单</h2>
-        <p>赞赏后添加作者微信zflyoung(请备注赞赏支持）, 您的名字将在下个版本更新后出现在名单中</p>
+        <p className="text-gray-600 dark:text-neutral-400 text-base mb-4">
+          赞赏后添加作者微信zflyoung(请备注赞赏支持）, 您的名字将在下个版本更新后出现在名单中
+        </p>
+        <ul className="divide-y divide-gray-200 dark:divide-neutral-700 border border-gray-200 dark:border-neutral-700 rounded-lg">
+          {REWARD_LIST.map((item, index) => (
+            <li key={index} className="flex items-center justify-between px-4 py-3">
+              <div>
+                <span className="font-medium">{item.name}</span>
+                {item.message && (
+                  <p className="text-sm text-gray-500 dark:text-neutral-400 mt-1">{item.message}</p>
+                )}
+              </div>
+              <div className="text-right shrink-0 ml-4">
+                <span className="text-orange-500 font-semibold">¥{item.amount}</span>
+                <p className="text-xs text-gray-400 dark:text-neutral-500 mt-1">{item.date}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
       </section>
     </div>
   );
