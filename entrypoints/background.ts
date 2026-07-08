@@ -6,6 +6,7 @@ import {
   SYNC_TIME_REMAIN,
   IS_SYNC_DELETE_FROM_BILIBILI,
   IS_SYNCING_FAV,
+  FAV_AUTO_SYNC_ENABLED,
   FAV_SYNC_INTERVAL,
   FAV_SYNC_TIME_REMAIN,
   SYNC_PROGRESS_HISTORY,
@@ -177,6 +178,10 @@ export default defineBackground(() => {
         console.log("收藏夹功能已禁用，跳过同步");
         return;
       }
+
+      // skip when auto favorites sync switch is off (default off)
+      const favAutoSyncEnabled = await getStorageValue(FAV_AUTO_SYNC_ENABLED, false);
+      if (!favAutoSyncEnabled) return;
 
       // 默认改成15分钟同步一次
       const syncInterval = await getStorageValue(FAV_SYNC_INTERVAL, 15);

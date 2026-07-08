@@ -44,13 +44,13 @@ const Reward = () => {
           {REWARD_LIST.map((item, index) => (
             <li key={index} className="flex items-center justify-between px-4 py-3">
               <div>
-                <span className="font-medium">{item.name}</span>
+                <span className="font-medium text-base">{item.name}</span>
                 {item.message && (
-                  <p className="text-sm text-gray-500 dark:text-neutral-400 mt-1">{item.message}</p>
+                  <p className="text-base text-gray-500 dark:text-neutral-400 mt-1">{item.message}</p>
                 )}
               </div>
               <div className="text-right shrink-0 ml-4">
-                <span className="text-orange-500 font-semibold">¥{item.amount}</span>
+                <span className="text-orange-500 font-semibold text-base">¥{item.amount}</span>
                 <p className="text-xs text-gray-400 dark:text-neutral-500 mt-1">{item.date}</p>
               </div>
             </li>

@@ -66,7 +66,7 @@ export const UpdateNoticeModal = () => {
         <button
           type="button"
           onClick={handleClose}
-          className="mt-6 w-full rounded-lg bg-pink-500 dark:bg-pink-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
+          className="mt-6 w-full rounded-lg bg-pink-500 dark:bg-pink-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-pink-600"
         >
           我知道了
         </button>

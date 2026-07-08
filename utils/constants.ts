@@ -11,6 +11,7 @@ export const SYNC_INTERVAL = "syncInterval";
 
 export const SYNC_TIME_REMAIN = "syncTimeRemain";
 
+export const FAV_AUTO_SYNC_ENABLED = "favAutoSyncEnabled"; // auto favorites sync switch, default false
 export const FAV_SYNC_INTERVAL = "favSyncInterval"; // 单位：分钟，默认 60*24 (1天)
 export const FAV_SYNC_TIME_REMAIN = "favSyncTimeRemain"; // 单位：分钟
 
@@ -35,6 +36,15 @@ export const AI_SEARCH_HISTORY = "aiSearchHistory";
 export const THEME_MODE = "themeMode";
 
 export const UPDATE_HISTORY = [
+  {
+    date: "2026-07-08",
+    version: "1.9.9",
+    changes: [
+      "增加赞赏名单",
+      "为 DNR 规则 8 增加 initiatorDomains 限制发起方, 避免误伤 www 页搜索 API",
+      "设置页增加自动同步收藏夹控制开关，开启以后插件才会在后台定时自动同步收藏夹数据",
+    ],
+  },
   {
     date: "2026-05-03",
     version: "1.9.8",
