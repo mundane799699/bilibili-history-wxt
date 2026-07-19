@@ -19,6 +19,8 @@ import {
   getAllLikedMusic,
   getAllFavFolders,
   getAllFavResources,
+  getAllSubscribedCollections,
+  getAllSubscribedCollectionResources,
   saveHistory,
   importLikedMusic,
   importFavFolders,
@@ -26,15 +28,26 @@ import {
   smartMergeHistory,
   smartMergeLikedMusic,
   smartMergeFavResources,
+  importSubscribedCollections,
+  smartMergeSubscribedCollectionResources,
 } from "@/utils/db";
-import { HistoryItem, LikedMusic, FavoriteFolder, FavoriteResource } from "@/utils/types";
+import {
+  HistoryItem,
+  LikedMusic,
+  FavoriteFolder,
+  FavoriteResource,
+  SubscribedCollection,
+  SubscribedCollectionResource,
+} from "@/utils/types";
 
-/** WebDAV 同步的 4 个数据文件名 */
+/** WebDAV 同步的数据文件名 */
 const DATA_FILES = {
   history: "history.json",
   likedMusic: "likedMusic.json",
   favFolders: "favFolders.json",
   favResources: "favResources.json",
+  subscribedCollections: "subscribedCollections.json",
+  subscribedCollectionResources: "subscribedCollectionResources.json",
 } as const;
 
 /** 备份/恢复进度信息 */
@@ -137,32 +150,32 @@ const WebDavSync = () => {
     }
 
     setIsBackingUp(true);
-    setSyncProgress({ current: 0, total: 4, message: "准备备份数据..." });
+    setSyncProgress({ current: 0, total: 6, message: "准备备份数据..." });
 
     try {
       // 确保远程目录存在
       await ensureDirectory(config);
 
       // 1. 上传历史记录
-      setSyncProgress({ current: 0, total: 4, message: "正在备份历史记录..." });
+      setSyncProgress({ current: 0, total: 6, message: "正在备份历史记录..." });
       const history = await getAllHistory();
       const historyOk = await uploadFile(config, DATA_FILES.history, JSON.stringify(history));
       if (!historyOk) throw new Error("上传历史记录失败");
 
       // 2. 上传喜欢的音乐
-      setSyncProgress({ current: 1, total: 4, message: "正在备份喜欢的音乐..." });
+      setSyncProgress({ current: 1, total: 6, message: "正在备份喜欢的音乐..." });
       const music = await getAllLikedMusic();
       const musicOk = await uploadFile(config, DATA_FILES.likedMusic, JSON.stringify(music));
       if (!musicOk) throw new Error("上传喜欢的音乐失败");
 
       // 3. 上传收藏夹
-      setSyncProgress({ current: 2, total: 4, message: "正在备份收藏夹..." });
+      setSyncProgress({ current: 2, total: 6, message: "正在备份收藏夹..." });
       const folders = await getAllFavFolders();
       const foldersOk = await uploadFile(config, DATA_FILES.favFolders, JSON.stringify(folders));
       if (!foldersOk) throw new Error("上传收藏夹失败");
 
       // 4. 上传收藏资源
-      setSyncProgress({ current: 3, total: 4, message: "正在备份收藏资源..." });
+      setSyncProgress({ current: 3, total: 6, message: "正在备份收藏资源..." });
       const resources = await getAllFavResources();
       const resourcesOk = await uploadFile(
         config,
@@ -171,14 +184,34 @@ const WebDavSync = () => {
       );
       if (!resourcesOk) throw new Error("上传收藏资源失败");
 
+      // 5. 上传订阅合集
+      setSyncProgress({ current: 4, total: 6, message: "正在备份订阅合集..." });
+      const collections = await getAllSubscribedCollections();
+      const collectionsOk = await uploadFile(
+        config,
+        DATA_FILES.subscribedCollections,
+        JSON.stringify(collections),
+      );
+      if (!collectionsOk) throw new Error("上传订阅合集失败");
+
+      // 6. 上传订阅合集视频
+      setSyncProgress({ current: 5, total: 6, message: "正在备份合集视频..." });
+      const collectionResources = await getAllSubscribedCollectionResources();
+      const collectionResourcesOk = await uploadFile(
+        config,
+        DATA_FILES.subscribedCollectionResources,
+        JSON.stringify(collectionResources),
+      );
+      if (!collectionResourcesOk) throw new Error("上传合集视频失败");
+
       // 记录同步时间（数值时间戳）
       const now = Date.now();
       await setStorageValue(WEBDAV_LAST_SYNC, now);
       setLastSync(now);
 
-      setSyncProgress({ current: 4, total: 4, message: "备份完成！" });
+      setSyncProgress({ current: 6, total: 6, message: "备份完成！" });
       toast.success(
-        `备份完成！历史 ${history.length} 条，音乐 ${music.length} 首，收藏夹 ${folders.length} 个，收藏 ${resources.length} 项`,
+        `备份完成！历史 ${history.length} 条，音乐 ${music.length} 首，收藏夹 ${folders.length} 个，收藏 ${resources.length} 项，订阅合集 ${collections.length} 个，合集视频 ${collectionResources.length} 项`,
       );
     } catch (error: any) {
       console.error("WebDAV 备份失败:", error);
@@ -198,7 +231,7 @@ const WebDavSync = () => {
     }
 
     setIsBackingUp(true);
-    setSyncProgress({ current: 0, total: 8, message: "准备双向同步..." });
+    setSyncProgress({ current: 0, total: 12, message: "准备双向同步..." });
 
     try {
       await ensureDirectory(config);
@@ -207,7 +240,7 @@ const WebDavSync = () => {
       let totalMerged = 0;
       let totalSkipped = 0;
 
-      setSyncProgress({ current: 0, total: 8, message: "步骤 1/2：拉取历史记录..." });
+      setSyncProgress({ current: 0, total: 12, message: "步骤 1/2：拉取历史记录..." });
       const historyData = await downloadFile(config, DATA_FILES.history);
       if (historyData) {
         const items = JSON.parse(historyData) as HistoryItem[];
@@ -216,7 +249,7 @@ const WebDavSync = () => {
         totalSkipped += result.skipped;
       }
 
-      setSyncProgress({ current: 1, total: 8, message: "步骤 1/2：拉取喜欢的音乐..." });
+      setSyncProgress({ current: 1, total: 12, message: "步骤 1/2：拉取喜欢的音乐..." });
       const musicData = await downloadFile(config, DATA_FILES.likedMusic);
       if (musicData) {
         const items = JSON.parse(musicData) as LikedMusic[];
@@ -225,7 +258,7 @@ const WebDavSync = () => {
         totalSkipped += result.skipped;
       }
 
-      setSyncProgress({ current: 2, total: 8, message: "步骤 1/2：拉取收藏夹..." });
+      setSyncProgress({ current: 2, total: 12, message: "步骤 1/2：拉取收藏夹..." });
       const foldersData = await downloadFile(config, DATA_FILES.favFolders);
       if (foldersData) {
         const items = JSON.parse(foldersData) as FavoriteFolder[];
@@ -233,7 +266,7 @@ const WebDavSync = () => {
         totalMerged += items.length;
       }
 
-      setSyncProgress({ current: 3, total: 8, message: "步骤 1/2：拉取收藏资源..." });
+      setSyncProgress({ current: 3, total: 12, message: "步骤 1/2：拉取收藏资源..." });
       const resourcesData = await downloadFile(config, DATA_FILES.favResources);
       if (resourcesData) {
         const items = JSON.parse(resourcesData) as FavoriteResource[];
@@ -242,23 +275,43 @@ const WebDavSync = () => {
         totalSkipped += result.skipped;
       }
 
+      setSyncProgress({ current: 4, total: 12, message: "步骤 1/2：拉取订阅合集..." });
+      const collectionsData = await downloadFile(config, DATA_FILES.subscribedCollections);
+      if (collectionsData) {
+        const items = JSON.parse(collectionsData) as SubscribedCollection[];
+        await importSubscribedCollections(items);
+        totalMerged += items.length;
+      }
+
+      setSyncProgress({ current: 5, total: 12, message: "步骤 1/2：拉取合集视频..." });
+      const collectionResourcesData = await downloadFile(
+        config,
+        DATA_FILES.subscribedCollectionResources,
+      );
+      if (collectionResourcesData) {
+        const items = JSON.parse(collectionResourcesData) as SubscribedCollectionResource[];
+        const result = await smartMergeSubscribedCollectionResources(items);
+        totalMerged += result.merged;
+        totalSkipped += result.skipped;
+      }
+
       // 第二步：推送合并后的最新数据
-      setSyncProgress({ current: 4, total: 8, message: "步骤 2/2：推送历史记录..." });
+      setSyncProgress({ current: 6, total: 12, message: "步骤 2/2：推送历史记录..." });
       const history = await getAllHistory();
       const historyOk = await uploadFile(config, DATA_FILES.history, JSON.stringify(history));
       if (!historyOk) throw new Error("上传历史记录失败");
 
-      setSyncProgress({ current: 5, total: 8, message: "步骤 2/2：推送喜欢的音乐..." });
+      setSyncProgress({ current: 7, total: 12, message: "步骤 2/2：推送喜欢的音乐..." });
       const music = await getAllLikedMusic();
       const musicOk = await uploadFile(config, DATA_FILES.likedMusic, JSON.stringify(music));
       if (!musicOk) throw new Error("上传音乐失败");
 
-      setSyncProgress({ current: 6, total: 8, message: "步骤 2/2：推送收藏夹..." });
+      setSyncProgress({ current: 8, total: 12, message: "步骤 2/2：推送收藏夹..." });
       const folders = await getAllFavFolders();
       const foldersOk = await uploadFile(config, DATA_FILES.favFolders, JSON.stringify(folders));
       if (!foldersOk) throw new Error("上传收藏夹失败");
 
-      setSyncProgress({ current: 7, total: 8, message: "步骤 2/2：推送收藏资源..." });
+      setSyncProgress({ current: 9, total: 12, message: "步骤 2/2：推送收藏资源..." });
       const resources = await getAllFavResources();
       const resourcesOk = await uploadFile(
         config,
@@ -267,13 +320,31 @@ const WebDavSync = () => {
       );
       if (!resourcesOk) throw new Error("上传收藏资源失败");
 
+      setSyncProgress({ current: 10, total: 12, message: "步骤 2/2：推送订阅合集..." });
+      const collections = await getAllSubscribedCollections();
+      const collectionsOk = await uploadFile(
+        config,
+        DATA_FILES.subscribedCollections,
+        JSON.stringify(collections),
+      );
+      if (!collectionsOk) throw new Error("上传订阅合集失败");
+
+      setSyncProgress({ current: 11, total: 12, message: "步骤 2/2：推送合集视频..." });
+      const collectionResources = await getAllSubscribedCollectionResources();
+      const collectionResourcesOk = await uploadFile(
+        config,
+        DATA_FILES.subscribedCollectionResources,
+        JSON.stringify(collectionResources),
+      );
+      if (!collectionResourcesOk) throw new Error("上传合集视频失败");
+
       const now = Date.now();
       await setStorageValue(WEBDAV_LAST_SYNC, now);
       setLastSync(now);
 
-      setSyncProgress({ current: 8, total: 8, message: "双向同步完成！" });
+      setSyncProgress({ current: 12, total: 12, message: "双向同步完成！" });
       toast.success(
-        `双向同步完成！合并 ${totalMerged} 条，跳过 ${totalSkipped} 条，推送 ${history.length + music.length + folders.length + resources.length} 条`,
+        `双向同步完成！合并 ${totalMerged} 条，跳过 ${totalSkipped} 条，推送 ${history.length + music.length + folders.length + resources.length + collections.length + collectionResources.length} 条`,
       );
     } catch (error: any) {
       console.error("WebDAV 双向同步失败:", error);
@@ -293,14 +364,14 @@ const WebDavSync = () => {
     }
 
     setIsRestoring(true);
-    setSyncProgress({ current: 0, total: 4, message: "正在从 WebDAV 下载数据..." });
+    setSyncProgress({ current: 0, total: 6, message: "正在从 WebDAV 下载数据..." });
 
     try {
       let totalMerged = 0;
       let totalSkipped = 0;
 
       // 1. 恢复历史记录
-      setSyncProgress({ current: 0, total: 4, message: "正在恢复历史记录..." });
+      setSyncProgress({ current: 0, total: 6, message: "正在恢复历史记录..." });
       const historyData = await downloadFile(config, DATA_FILES.history);
       if (historyData) {
         const items = JSON.parse(historyData) as HistoryItem[];
@@ -310,7 +381,7 @@ const WebDavSync = () => {
       }
 
       // 2. 恢复喜欢的音乐
-      setSyncProgress({ current: 1, total: 4, message: "正在恢复喜欢的音乐..." });
+      setSyncProgress({ current: 1, total: 6, message: "正在恢复喜欢的音乐..." });
       const musicData = await downloadFile(config, DATA_FILES.likedMusic);
       if (musicData) {
         const items = JSON.parse(musicData) as LikedMusic[];
@@ -320,7 +391,7 @@ const WebDavSync = () => {
       }
 
       // 3. 恢复收藏夹（直接 upsert，无时间戳比对）
-      setSyncProgress({ current: 2, total: 4, message: "正在恢复收藏夹..." });
+      setSyncProgress({ current: 2, total: 6, message: "正在恢复收藏夹..." });
       const foldersData = await downloadFile(config, DATA_FILES.favFolders);
       if (foldersData) {
         const items = JSON.parse(foldersData) as FavoriteFolder[];
@@ -329,11 +400,33 @@ const WebDavSync = () => {
       }
 
       // 4. 恢复收藏资源
-      setSyncProgress({ current: 3, total: 4, message: "正在恢复收藏资源..." });
+      setSyncProgress({ current: 3, total: 6, message: "正在恢复收藏资源..." });
       const resourcesData = await downloadFile(config, DATA_FILES.favResources);
       if (resourcesData) {
         const items = JSON.parse(resourcesData) as FavoriteResource[];
         const result = await smartMergeFavResources(items);
+        totalMerged += result.merged;
+        totalSkipped += result.skipped;
+      }
+
+      // 5. 恢复订阅合集
+      setSyncProgress({ current: 4, total: 6, message: "正在恢复订阅合集..." });
+      const collectionsData = await downloadFile(config, DATA_FILES.subscribedCollections);
+      if (collectionsData) {
+        const items = JSON.parse(collectionsData) as SubscribedCollection[];
+        await importSubscribedCollections(items);
+        totalMerged += items.length;
+      }
+
+      // 6. 恢复订阅合集视频
+      setSyncProgress({ current: 5, total: 6, message: "正在恢复合集视频..." });
+      const collectionResourcesData = await downloadFile(
+        config,
+        DATA_FILES.subscribedCollectionResources,
+      );
+      if (collectionResourcesData) {
+        const items = JSON.parse(collectionResourcesData) as SubscribedCollectionResource[];
+        const result = await smartMergeSubscribedCollectionResources(items);
         totalMerged += result.merged;
         totalSkipped += result.skipped;
       }
@@ -343,7 +436,7 @@ const WebDavSync = () => {
       await setStorageValue(WEBDAV_LAST_SYNC, now);
       setLastSync(now);
 
-      setSyncProgress({ current: 4, total: 4, message: "恢复完成！" });
+      setSyncProgress({ current: 6, total: 6, message: "恢复完成！" });
       toast.success(`恢复完成！合并 ${totalMerged} 条，跳过 ${totalSkipped} 条（本地更新）`);
     } catch (error: any) {
       console.error("WebDAV 恢复失败:", error);
@@ -366,6 +459,8 @@ const WebDavSync = () => {
         likedMusic: await getAllLikedMusic(),
         favFolders: await getAllFavFolders(),
         favResources: await getAllFavResources(),
+        subscribedCollections: await getAllSubscribedCollections(),
+        subscribedCollectionResources: await getAllSubscribedCollectionResources(),
       };
 
       const json = JSON.stringify(data, null, 2);
@@ -380,7 +475,7 @@ const WebDavSync = () => {
       URL.revokeObjectURL(url);
 
       toast.success(
-        `导出成功！历史 ${data.history.length} 条，音乐 ${data.likedMusic.length} 首，收藏夹 ${data.favFolders.length} 个，收藏 ${data.favResources.length} 项`,
+        `导出成功！历史 ${data.history.length} 条，音乐 ${data.likedMusic.length} 首，收藏夹 ${data.favFolders.length} 个，收藏 ${data.favResources.length} 项，订阅合集 ${data.subscribedCollections.length} 个，合集视频 ${data.subscribedCollectionResources.length} 项`,
       );
     } catch (error) {
       console.error("导出数据失败:", error);
@@ -433,6 +528,20 @@ const WebDavSync = () => {
               }
               if (data.favResources && Array.isArray(data.favResources)) {
                 const resResult = await smartMergeFavResources(data.favResources);
+                totalMerged += resResult.merged;
+                totalSkipped += resResult.skipped;
+              }
+              if (data.subscribedCollections && Array.isArray(data.subscribedCollections)) {
+                await importSubscribedCollections(data.subscribedCollections);
+                totalMerged += data.subscribedCollections.length;
+              }
+              if (
+                data.subscribedCollectionResources &&
+                Array.isArray(data.subscribedCollectionResources)
+              ) {
+                const resResult = await smartMergeSubscribedCollectionResources(
+                  data.subscribedCollectionResources,
+                );
                 totalMerged += resResult.merged;
                 totalSkipped += resResult.skipped;
               }
