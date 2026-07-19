@@ -29,10 +29,14 @@ import {
   getAllLikedMusic,
   getAllFavFolders,
   getAllFavResources,
+  getAllSubscribedCollections,
+  getAllSubscribedCollectionResources,
   smartMergeHistory,
   smartMergeLikedMusic,
   smartMergeFavResources,
   importFavFolders,
+  importSubscribedCollections,
+  smartMergeSubscribedCollectionResources,
   replaceSubscribedCollections,
   replaceSubscribedCollectionResources,
 } from "../utils/db";
@@ -823,6 +827,21 @@ export default defineBackground(() => {
         await smartMergeFavResources(items);
       }
 
+      const collectionsData = await downloadFile(config, "subscribedCollections.json");
+      if (collectionsData) {
+        const items = JSON.parse(collectionsData);
+        await importSubscribedCollections(items);
+      }
+
+      const collectionResourcesData = await downloadFile(
+        config,
+        "subscribedCollectionResources.json",
+      );
+      if (collectionResourcesData) {
+        const items = JSON.parse(collectionResourcesData);
+        await smartMergeSubscribedCollectionResources(items);
+      }
+
       // ===== 第二步：将合并后的最新本地数据推送到远端 =====
       console.log("[WebDAV 同步] 步骤 2/2：推送本地数据到远端...");
 
@@ -838,11 +857,21 @@ export default defineBackground(() => {
       const resources = await getAllFavResources();
       await uploadFile(config, "favResources.json", JSON.stringify(resources));
 
+      const collections = await getAllSubscribedCollections();
+      await uploadFile(config, "subscribedCollections.json", JSON.stringify(collections));
+
+      const collectionResources = await getAllSubscribedCollectionResources();
+      await uploadFile(
+        config,
+        "subscribedCollectionResources.json",
+        JSON.stringify(collectionResources),
+      );
+
       // 同步完成，记录时间戳
       await setStorageValue(WEBDAV_LAST_SYNC, Date.now());
 
       console.log(
-        `WebDAV 双向同步完成：历史 ${history.length}，音乐 ${music.length}，收藏夹 ${folders.length}，收藏 ${resources.length}`,
+        `WebDAV 双向同步完成：历史 ${history.length}，音乐 ${music.length}，收藏夹 ${folders.length}，收藏 ${resources.length}，订阅合集 ${collections.length}，合集视频 ${collectionResources.length}`,
       );
     } catch (error) {
       console.error("WebDAV 双向同步失败:", error);

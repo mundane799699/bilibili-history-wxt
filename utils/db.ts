@@ -1042,6 +1042,26 @@ export const getSubscribedCollectionResources = async (
   });
 };
 
+/** 获取所有订阅合集 */
+export const getAllSubscribedCollections = async (): Promise<SubscribedCollection[]> => {
+  return getSubscribedCollections();
+};
+
+/** 获取所有订阅合集资源 */
+export const getAllSubscribedCollectionResources = async (): Promise<
+  SubscribedCollectionResource[]
+> => {
+  const db = await openDB();
+  const tx = db.transaction("subscribedCollectionResources", "readonly");
+  const store = tx.objectStore("subscribedCollectionResources");
+
+  return new Promise((resolve, reject) => {
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+};
+
 export const deleteFavResources = async (ids: number[]): Promise<void> => {
   const db = await openDB();
   const tx = db.transaction("favResources", "readwrite");
@@ -1148,6 +1168,26 @@ export const importFavResources = async (resources: FavoriteResource[]): Promise
       store.put(res);
     });
 
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+};
+
+/** 批量导入订阅合集（直接 upsert，按合集信息覆盖） */
+export const importSubscribedCollections = async (
+  collections: SubscribedCollection[],
+): Promise<void> => {
+  const db = await openDB();
+  const tx = db.transaction("subscribedCollections", "readwrite");
+  const store = tx.objectStore("subscribedCollections");
+
+  return new Promise((resolve, reject) => {
+    if (collections.length === 0) {
+      resolve();
+      return;
+    }
+
+    collections.forEach((collection) => store.put(collection));
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
@@ -1291,6 +1331,48 @@ export const smartMergeFavResources = async (
         store.put(remoteItem);
         merged++;
         processed++;
+      };
+    });
+
+    tx.oncomplete = () => resolve({ merged, skipped });
+    tx.onerror = () => reject(tx.error);
+  });
+};
+
+/**
+ * 智能合并订阅合集资源：按视频发布时间比对。
+ * 视频发布时间通常不可变；时间相同则以远端数据为准，补齐可能更新的标题或封面。
+ */
+export const smartMergeSubscribedCollectionResources = async (
+  remoteItems: SubscribedCollectionResource[],
+): Promise<{ merged: number; skipped: number }> => {
+  const db = await openDB();
+  const tx = db.transaction("subscribedCollectionResources", "readwrite");
+  const store = tx.objectStore("subscribedCollectionResources");
+  let merged = 0;
+  let skipped = 0;
+
+  return new Promise((resolve, reject) => {
+    if (remoteItems.length === 0) {
+      resolve({ merged: 0, skipped: 0 });
+      return;
+    }
+
+    remoteItems.forEach((remoteItem) => {
+      const getReq = store.get(remoteItem.id);
+      getReq.onsuccess = () => {
+        const localItem = getReq.result as SubscribedCollectionResource | undefined;
+
+        if (!localItem || remoteItem.pubdate >= localItem.pubdate) {
+          store.put(remoteItem);
+          merged++;
+        } else {
+          skipped++;
+        }
+      };
+      getReq.onerror = () => {
+        store.put(remoteItem);
+        merged++;
       };
     });
 
