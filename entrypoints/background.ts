@@ -327,15 +327,14 @@ export default defineBackground(() => {
     sendResponse: (response: any) => void,
   ) => {
     const collectionId = Number(message.collectionId);
-    const mid = Number(message.mid);
 
-    if (!Number.isFinite(collectionId) || !Number.isFinite(mid)) {
+    if (!Number.isFinite(collectionId)) {
       sendResponse({ success: false, error: "合集信息不完整" });
       return;
     }
 
     try {
-      await syncSubscribedCollectionResources(collectionId, mid);
+      await syncSubscribedCollectionResources(collectionId);
       sendResponse({ success: true, message: "合集内容同步成功" });
     } catch (error) {
       console.error("同步合集内容失败:", error);
@@ -737,24 +736,19 @@ export default defineBackground(() => {
     await replaceSubscribedCollections(collections);
   }
 
-  async function syncSubscribedCollectionResources(
-    collectionId: number,
-    mid: number,
-  ): Promise<void> {
+  async function syncSubscribedCollectionResources(collectionId: number): Promise<void> {
     const sessdata = await getBilibiliSession();
     const pageSize = 30;
     let page = 1;
-    let total = Infinity;
+    let hasMore = true;
     const resources: SubscribedCollectionResource[] = [];
-    const referer = `https://space.bilibili.com/${mid}/lists/${collectionId}?type=season`;
 
-    while (resources.length < total) {
+    while (hasMore) {
       const response = await fetch(
-        `https://api.bilibili.com/x/polymer/web-space/seasons_archives_list?mid=${mid}&season_id=${collectionId}&page_num=${page}&page_size=${pageSize}&sort_reverse=false`,
+        `https://api.bilibili.com/x/space/fav/season/list?season_id=${collectionId}&pn=${page}&ps=${pageSize}`,
         {
           headers: {
             Cookie: `SESSDATA=${sessdata}`,
-            Referer: referer,
           },
         },
       );
@@ -763,25 +757,24 @@ export default defineBackground(() => {
       const data = await response.json();
       if (data.code !== 0) throw new Error(data.message || "获取合集内容失败");
 
-      const archives = data.data?.archives || [];
-      total = Number(data.data?.page?.total || 0);
+      const medias = data.data?.medias || [];
       resources.push(
-        ...archives.map((archive: any, index: number) => ({
-          id: `${collectionId}-${archive.aid}`,
+        ...medias.map((media: any, index: number) => ({
+          id: `${collectionId}-${media.id}`,
           collection_id: collectionId,
-          aid: archive.aid,
-          bvid: archive.bvid,
-          title: archive.title || "未命名视频",
-          cover: archive.pic || archive.cover || "",
-          duration: archive.duration || 0,
-          author_name: archive.owner?.name || archive.author || "未知 UP 主",
-          author_mid: archive.owner?.mid || archive.mid || 0,
-          pubdate: archive.pubdate || archive.ctime || 0,
+          aid: media.id,
+          bvid: media.bvid || media.bv_id || "",
+          title: media.title || "未命名视频",
+          cover: media.cover || "",
+          duration: media.duration || 0,
+          author_name: media.upper?.name || "未知 UP 主",
+          author_mid: media.upper?.mid || 0,
+          pubdate: media.pubtime || media.ctime || 0,
           index: resources.length + index,
         })),
       );
 
-      if (archives.length < pageSize) break;
+      hasMore = Boolean(data.data?.has_more);
       page += 1;
     }
 
