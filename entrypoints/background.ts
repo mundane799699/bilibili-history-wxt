@@ -33,9 +33,12 @@ import {
   smartMergeLikedMusic,
   smartMergeFavResources,
   importFavFolders,
+  replaceSubscribedCollections,
+  replaceSubscribedCollectionResources,
 } from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
 import { WebDavConfig, ensureDirectory, uploadFile, downloadFile } from "../utils/webdav";
+import { SubscribedCollection, SubscribedCollectionResource } from "../utils/types";
 
 export default defineBackground(() => {
   console.log("Hello background!", { id: browser.runtime.id });
@@ -302,6 +305,43 @@ export default defineBackground(() => {
     }
   };
 
+  const handleSyncSubscribedCollections = async (sendResponse: (response: any) => void) => {
+    try {
+      await syncSubscribedCollections();
+      sendResponse({ success: true, message: "订阅合集同步成功" });
+    } catch (error) {
+      console.error("同步订阅合集失败:", error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : "未知错误",
+      });
+    }
+  };
+
+  const handleSyncSubscribedCollectionResources = async (
+    message: any,
+    sendResponse: (response: any) => void,
+  ) => {
+    const collectionId = Number(message.collectionId);
+    const mid = Number(message.mid);
+
+    if (!Number.isFinite(collectionId) || !Number.isFinite(mid)) {
+      sendResponse({ success: false, error: "合集信息不完整" });
+      return;
+    }
+
+    try {
+      await syncSubscribedCollectionResources(collectionId, mid);
+      sendResponse({ success: true, message: "合集内容同步成功" });
+    } catch (error) {
+      console.error("同步合集内容失败:", error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : "未知错误",
+      });
+    }
+  };
+
   // 处理删除历史记录的消息
   const handleDeleteHistoryItem = async (message: any, sendResponse: (response: any) => void) => {
     try {
@@ -334,6 +374,12 @@ export default defineBackground(() => {
       return true; // 保持消息通道开放
     } else if (message.action === "syncFavorites") {
       handleSyncFavorites(message, sendResponse);
+      return true;
+    } else if (message.action === "syncSubscribedCollections") {
+      handleSyncSubscribedCollections(sendResponse);
+      return true;
+    } else if (message.action === "syncSubscribedCollectionResources") {
+      handleSyncSubscribedCollectionResources(message, sendResponse);
       return true;
     }
   });
@@ -624,6 +670,118 @@ export default defineBackground(() => {
       console.error("同步收藏夹过程出错:", error);
       throw error;
     }
+  }
+
+  async function getBilibiliSession(): Promise<string> {
+    const cookies = await browser.cookies.getAll({ domain: "bilibili.com" });
+    const sessdata = cookies.find((cookie) => cookie.name === "SESSDATA")?.value;
+    if (!sessdata) throw new Error("未找到 B 站登录信息，请先登录 B 站");
+    return sessdata;
+  }
+
+  async function getCurrentBilibiliMid(sessdata: string): Promise<number> {
+    const navRes = await fetch("https://api.bilibili.com/x/web-interface/nav", {
+      headers: { Cookie: `SESSDATA=${sessdata}` },
+    });
+    if (!navRes.ok) throw new Error("获取用户信息失败");
+
+    const navData = await navRes.json();
+    if (navData.code !== 0 || !navData.data?.mid)
+      throw new Error(navData.message || "获取用户信息失败");
+    return navData.data.mid;
+  }
+
+  async function syncSubscribedCollections(): Promise<void> {
+    const sessdata = await getBilibiliSession();
+    const currentMid = await getCurrentBilibiliMid(sessdata);
+    const pageSize = 50;
+    let page = 1;
+    let total = Infinity;
+    const collections: SubscribedCollection[] = [];
+
+    while (collections.length < total) {
+      const response = await fetch(
+        `https://api.bilibili.com/x/v3/fav/folder/collected/list?pn=${page}&ps=${pageSize}&up_mid=${currentMid}&platform=web&web_location=333.1387`,
+        { headers: { Cookie: `SESSDATA=${sessdata}` } },
+      );
+      if (!response.ok) throw new Error("获取订阅合集失败");
+
+      const data = await response.json();
+      if (data.code !== 0) throw new Error(data.message || "获取订阅合集失败");
+
+      const list = data.data?.list || [];
+      total = Number(data.data?.count || 0);
+      collections.push(
+        ...list.map((item: any, index: number) => ({
+          id: item.id,
+          mid: item.mid,
+          title: item.title || "未命名合集",
+          cover: item.cover || "",
+          intro: item.intro || "",
+          ctime: item.ctime || 0,
+          mtime: item.mtime || 0,
+          media_count: item.media_count || 0,
+          upper: item.upper || { mid: item.mid, name: "未知 UP 主", face: "" },
+          index: collections.length + index,
+        })),
+      );
+
+      if (list.length < pageSize) break;
+      page += 1;
+    }
+
+    await replaceSubscribedCollections(collections);
+  }
+
+  async function syncSubscribedCollectionResources(
+    collectionId: number,
+    mid: number,
+  ): Promise<void> {
+    const sessdata = await getBilibiliSession();
+    const pageSize = 30;
+    let page = 1;
+    let total = Infinity;
+    const resources: SubscribedCollectionResource[] = [];
+    const referer = `https://space.bilibili.com/${mid}/lists/${collectionId}?type=season`;
+
+    while (resources.length < total) {
+      const response = await fetch(
+        `https://api.bilibili.com/x/polymer/web-space/seasons_archives_list?mid=${mid}&season_id=${collectionId}&page_num=${page}&page_size=${pageSize}&sort_reverse=false`,
+        {
+          headers: {
+            Cookie: `SESSDATA=${sessdata}`,
+            Referer: referer,
+          },
+        },
+      );
+      if (!response.ok) throw new Error("获取合集内容失败");
+
+      const data = await response.json();
+      if (data.code !== 0) throw new Error(data.message || "获取合集内容失败");
+
+      const archives = data.data?.archives || [];
+      total = Number(data.data?.page?.total || 0);
+      resources.push(
+        ...archives.map((archive: any, index: number) => ({
+          id: `${collectionId}-${archive.aid}`,
+          collection_id: collectionId,
+          aid: archive.aid,
+          bvid: archive.bvid,
+          title: archive.title || "未命名视频",
+          cover: archive.pic || archive.cover || "",
+          duration: archive.duration || 0,
+          author_name: archive.owner?.name || archive.author || "未知 UP 主",
+          author_mid: archive.owner?.mid || archive.mid || 0,
+          pubdate: archive.pubdate || archive.ctime || 0,
+          index: resources.length + index,
+        })),
+      );
+
+      if (archives.length < pageSize) break;
+      page += 1;
+    }
+
+    await replaceSubscribedCollectionResources(collectionId, resources);
   }
 
   // WebDAV 自动双向同步：拉取 → 合并 → 推送

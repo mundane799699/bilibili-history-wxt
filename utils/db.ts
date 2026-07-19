@@ -1,9 +1,15 @@
-import { DBConfig, HistoryItem, LikedMusic } from "./types";
+import {
+  DBConfig,
+  HistoryItem,
+  LikedMusic,
+  SubscribedCollection,
+  SubscribedCollectionResource,
+} from "./types";
 import dayjs from "dayjs";
 
 const DB_CONFIG: DBConfig = {
   name: "bilibiliHistory",
-  version: 5,
+  version: 6,
   stores: {
     history: {
       keyPath: "id",
@@ -20,6 +26,14 @@ const DB_CONFIG: DBConfig = {
     favResources: {
       keyPath: "id",
       indexes: ["folder_id", "fav_time"],
+    },
+    subscribedCollections: {
+      keyPath: "id",
+      indexes: ["mid"],
+    },
+    subscribedCollectionResources: {
+      keyPath: "id",
+      indexes: ["collection_id", "pubdate"],
     },
   },
 };
@@ -60,6 +74,20 @@ export const openDB = (): Promise<IDBDatabase> => {
         });
         favResourcesStore.createIndex("folder_id", "folder_id", { unique: false });
         favResourcesStore.createIndex("fav_time", "fav_time", { unique: false });
+
+        const subscribedCollectionsStore = db.createObjectStore("subscribedCollections", {
+          keyPath: "id",
+        });
+        subscribedCollectionsStore.createIndex("mid", "mid", { unique: false });
+
+        const subscribedCollectionResourcesStore = db.createObjectStore(
+          "subscribedCollectionResources",
+          { keyPath: "id" },
+        );
+        subscribedCollectionResourcesStore.createIndex("collection_id", "collection_id", {
+          unique: false,
+        });
+        subscribedCollectionResourcesStore.createIndex("pubdate", "pubdate", { unique: false });
 
         console.log("首次创建数据库和所有表");
       }
@@ -132,6 +160,24 @@ export const openDB = (): Promise<IDBDatabase> => {
         });
         favResourcesStore.createIndex("folder_id", "folder_id", { unique: false });
         favResourcesStore.createIndex("fav_time", "fav_time", { unique: false });
+      }
+
+      if (!db.objectStoreNames.contains("subscribedCollections")) {
+        const subscribedCollectionsStore = db.createObjectStore("subscribedCollections", {
+          keyPath: "id",
+        });
+        subscribedCollectionsStore.createIndex("mid", "mid", { unique: false });
+      }
+
+      if (!db.objectStoreNames.contains("subscribedCollectionResources")) {
+        const subscribedCollectionResourcesStore = db.createObjectStore(
+          "subscribedCollectionResources",
+          { keyPath: "id" },
+        );
+        subscribedCollectionResourcesStore.createIndex("collection_id", "collection_id", {
+          unique: false,
+        });
+        subscribedCollectionResourcesStore.createIndex("pubdate", "pubdate", { unique: false });
       }
     };
   });
@@ -925,6 +971,72 @@ export const getFavResources = async (folderId?: number): Promise<FavoriteResour
     } else {
       request = store.getAll();
     }
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+};
+
+export const replaceSubscribedCollections = async (
+  collections: SubscribedCollection[],
+): Promise<void> => {
+  const db = await openDB();
+  const tx = db.transaction("subscribedCollections", "readwrite");
+  const store = tx.objectStore("subscribedCollections");
+
+  return new Promise((resolve, reject) => {
+    const clearRequest = store.clear();
+    clearRequest.onsuccess = () => {
+      collections.forEach((collection) => store.put(collection));
+    };
+    clearRequest.onerror = () => reject(clearRequest.error);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+};
+
+export const getSubscribedCollections = async (): Promise<SubscribedCollection[]> => {
+  const db = await openDB();
+  const tx = db.transaction("subscribedCollections", "readonly");
+  const store = tx.objectStore("subscribedCollections");
+
+  return new Promise((resolve, reject) => {
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+};
+
+export const replaceSubscribedCollectionResources = async (
+  collectionId: number,
+  resources: SubscribedCollectionResource[],
+): Promise<void> => {
+  const db = await openDB();
+  const tx = db.transaction("subscribedCollectionResources", "readwrite");
+  const store = tx.objectStore("subscribedCollectionResources");
+  const collectionIndex = store.index("collection_id");
+
+  return new Promise((resolve, reject) => {
+    const existingKeysRequest = collectionIndex.getAllKeys(collectionId);
+    existingKeysRequest.onsuccess = () => {
+      existingKeysRequest.result.forEach((key) => store.delete(key));
+      resources.forEach((resource) => store.put(resource));
+    };
+    existingKeysRequest.onerror = () => reject(existingKeysRequest.error);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+};
+
+export const getSubscribedCollectionResources = async (
+  collectionId: number,
+): Promise<SubscribedCollectionResource[]> => {
+  const db = await openDB();
+  const tx = db.transaction("subscribedCollectionResources", "readonly");
+  const store = tx.objectStore("subscribedCollectionResources");
+  const collectionIndex = store.index("collection_id");
+
+  return new Promise((resolve, reject) => {
+    const request = collectionIndex.getAll(collectionId);
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
