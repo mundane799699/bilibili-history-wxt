@@ -15,6 +15,7 @@ import Welcome from "../../pages/Welcome";
 import AISearch from "../../pages/AISearch";
 import Reward from "../../pages/Reward";
 import { UpdateNoticeModal } from "../../components/UpdateNoticeModal";
+import SubscribedCollections from "../../pages/SubscribedCollections";
 
 const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -48,6 +49,7 @@ const App = () => {
             <Route path="/webdav-sync" element={<WebDavSync />} />
             <Route path="/reward" element={<Reward />} />
             <Route path="/favorites" element={<Favorites />} />
+            <Route path="/collections" element={<SubscribedCollections />} />
             <Route path="/ai-search" element={<AISearch />} />
             <Route path="/music/search" element={<SearchMusic />} />
             <Route path="/music/liked" element={<LikedMusic />} />

@@ -45,6 +45,14 @@ export interface DBConfig {
       keyPath: string;
       indexes: string[];
     };
+    subscribedCollections: {
+      keyPath: string;
+      indexes: string[];
+    };
+    subscribedCollectionResources: {
+      keyPath: string;
+      indexes: string[];
+    };
   };
 }
 
@@ -93,4 +101,35 @@ export interface FavoriteResource {
   bvid: string;
   folder_id: number; // 关联的收藏夹ID
   index: number; // 在收藏夹中的顺序
+}
+
+export interface SubscribedCollection {
+  id: number;
+  mid: number;
+  title: string;
+  cover: string;
+  intro: string;
+  ctime: number;
+  mtime: number;
+  media_count: number;
+  upper: {
+    mid: number;
+    name: string;
+    face: string;
+  };
+  index: number;
+}
+
+export interface SubscribedCollectionResource {
+  id: string;
+  collection_id: number;
+  aid: number;
+  bvid: string;
+  title: string;
+  cover: string;
+  duration: number;
+  author_name: string;
+  author_mid: number;
+  pubdate: number;
+  index: number;
 }

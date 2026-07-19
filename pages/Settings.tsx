@@ -382,7 +382,7 @@ const Settings = () => {
               onChange={handleHideUserInfoChange}
             />
 
-            {["收藏夹", "听歌", "云同步", "WebDAV", "关于", "反馈"].map((title) => (
+            {["收藏夹", "合集", "听歌", "云同步", "WebDAV", "关于", "反馈"].map((title) => (
               <Checkbox
                 key={title}
                 label={`隐藏${title}`}

@@ -13,6 +13,7 @@ import {
   Sun,
   Moon,
   Heart,
+  LibraryBig,
 } from "lucide-react";
 import { UserInfo } from "./UserInfo";
 import ExpandableMenu from "./ExpandableMenu";
@@ -30,6 +31,11 @@ const menuList = [
     title: "收藏夹",
     icon: <Star className="w-4 h-4" />,
     to: "/favorites",
+  },
+  {
+    title: "合集",
+    icon: <LibraryBig className="w-4 h-4" />,
+    to: "/collections",
   },
   {
     title: "AI探索",
