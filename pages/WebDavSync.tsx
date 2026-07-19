@@ -971,7 +971,8 @@ const WebDavSync = () => {
 
           <div className="mt-4 p-3 bg-gray-50 dark:bg-neutral-800 rounded-lg border border-gray-200 dark:border-neutral-700">
             <p className="text-xs text-gray-600 dark:text-neutral-300">
-              <strong>说明：</strong>导出文件包含历史记录、喜欢的音乐、收藏夹和收藏资源的完整数据。
+              <strong>说明：</strong>
+              导出文件包含历史记录、喜欢的音乐、收藏夹、收藏资源、订阅合集和合集视频的完整数据。
               导入时会智能合并，同时兼容旧版导出的单独历史记录或音乐 JSON 文件。
             </p>
           </div>
