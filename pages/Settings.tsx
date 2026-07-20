@@ -13,6 +13,7 @@ import {
   SYNC_PROGRESS_HISTORY,
   SYNC_PROGRESS_FAV,
   DATE_SELECTION_MODE,
+  HISTORY_LOAD_MODE,
 } from "../utils/constants";
 import {
   exportHistoryToCSV,
@@ -34,6 +35,7 @@ const Settings = () => {
   const [isHideUserInfo, setIsHideUserInfo] = useState(false);
   const [hiddenMenus, setHiddenMenus] = useState<string[]>([]);
   const [dateSelectionMode, setDateSelectionMode] = useState<"range" | "single">("range");
+  const [historyLoadMode, setHistoryLoadMode] = useState<"pagination" | "scroll">("pagination");
 
   // separate progress states
   const [historyProgress, setHistoryProgress] = useState<{
@@ -71,6 +73,7 @@ const Settings = () => {
       const storedSyncInterval = await getStorageValue(SYNC_INTERVAL, 1);
       const storedFavSyncInterval = await getStorageValue(FAV_SYNC_INTERVAL, 15);
       const storedDateMode = await getStorageValue(DATE_SELECTION_MODE, "range");
+      const storedHistoryLoadMode = await getStorageValue(HISTORY_LOAD_MODE, "pagination");
 
       const histProg = await getStorageValue(SYNC_PROGRESS_HISTORY, null);
       const favProg = await getStorageValue(SYNC_PROGRESS_FAV, null);
@@ -83,6 +86,7 @@ const Settings = () => {
       setSyncInterval(storedSyncInterval);
       setFavSyncInterval(storedFavSyncInterval);
       setDateSelectionMode(storedDateMode as "range" | "single");
+      setHistoryLoadMode(storedHistoryLoadMode as "pagination" | "scroll");
 
       setHistoryProgress(histProg);
       setFavProgress(favProg);
@@ -495,6 +499,44 @@ const Settings = () => {
                 {isExporting ? "导出中..." : "导出"}
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 历史记录加载方式 */}
+      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800">
+        <div className="p-5">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-neutral-100 mb-1">
+            历史记录加载方式
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-neutral-400 mb-6">
+            控制历史记录页面的数据加载方式
+          </p>
+
+          <div className="flex gap-6">
+            {(
+              [
+                { value: "pagination", label: "分页加载" },
+                { value: "scroll", label: "下拉加载" },
+              ] as const
+            ).map((option) => (
+              <label key={option.value} className="flex items-center gap-2 cursor-pointer group">
+                <input
+                  type="radio"
+                  name="historyLoadMode"
+                  value={option.value}
+                  checked={historyLoadMode === option.value}
+                  onChange={async () => {
+                    setHistoryLoadMode(option.value);
+                    await setStorageValue(HISTORY_LOAD_MODE, option.value);
+                  }}
+                  className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-neutral-700 transition-all cursor-pointer"
+                />
+                <span className="text-sm text-gray-600 dark:text-neutral-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                  {option.label}
+                </span>
+              </label>
+            ))}
           </div>
         </div>
       </div>

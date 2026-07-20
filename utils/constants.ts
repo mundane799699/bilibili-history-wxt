@@ -21,6 +21,10 @@ export const SYNC_PROGRESS_HISTORY = "syncProgressHistory";
 export const SYNC_PROGRESS_FAV = "syncProgressFav";
 export const DATE_SELECTION_MODE = "date_selection_mode";
 export const GRID_COLUMNS = "gridColumns";
+// history page load mode: "pagination" | "scroll", default "pagination"
+export const HISTORY_LOAD_MODE = "history_load_mode";
+// page size for the history page pagination mode, default 100
+export const HISTORY_PAGE_SIZE = "history_page_size";
 export const LAST_SEEN_UPDATE_VERSION = "lastSeenUpdateVersion";
 
 // WebDAV 同步相关
@@ -28,6 +32,20 @@ export const WEBDAV_CONFIG = "webdavConfig";
 export const WEBDAV_LAST_SYNC = "webdavLastSync";
 export const WEBDAV_AUTO_SYNC_ENABLED = "webdavAutoSyncEnabled";
 export const WEBDAV_AUTO_SYNC_INTERVAL = "webdavAutoSyncInterval"; // 单位：分钟，默认 30
+export const WEBDAV_SYNC_ITEMS = "webdavSyncItems"; // 勾选的同步数据项，页面与后台自动同步共用
+
+/** 各数据项是否参与 WebDAV 同步，默认只同步历史记录 */
+export const DEFAULT_WEBDAV_SYNC_ITEMS = {
+  history: true,
+  likedMusic: false,
+  favFolders: false,
+  favResources: false,
+  subscribedCollections: false,
+  subscribedCollectionResources: false,
+};
+
+export type WebDavSyncItems = typeof DEFAULT_WEBDAV_SYNC_ITEMS;
+export type WebDavSyncKey = keyof WebDavSyncItems;
 
 export const DASHSCOPE_API_KEY = "dashscopeApiKey";
 export const AI_SEARCH_HISTORY = "aiSearchHistory";
@@ -36,6 +54,15 @@ export const AI_SEARCH_HISTORY = "aiSearchHistory";
 export const THEME_MODE = "themeMode";
 
 export const UPDATE_HISTORY = [
+  {
+    date: "2026-07-20",
+    version: "2.0.0",
+    changes: [
+      "历史记录页面支持分页加载和下拉加载，支持切换",
+      "新增订阅合集管理",
+      "优化webdav数据管理",
+    ],
+  },
   {
     date: "2026-07-08",
     version: "1.9.9",

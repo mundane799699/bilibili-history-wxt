@@ -6,6 +6,9 @@ interface PaginationProps {
   totalItems: number;
   pageSize: number;
   onPageChange: (page: number) => void;
+  // when provided, a page size selector is rendered
+  onPageSizeChange?: (size: number) => void;
+  pageSizeOptions?: number[];
 }
 
 export const Pagination: React.FC<PaginationProps> = ({
@@ -13,6 +16,8 @@ export const Pagination: React.FC<PaginationProps> = ({
   totalItems,
   pageSize,
   onPageChange,
+  onPageSizeChange,
+  pageSizeOptions = [20, 50, 100, 200],
 }) => {
   const totalPages = Math.ceil(totalItems / pageSize);
   const [jumpToPage, setJumpToPage] = useState("");
@@ -134,6 +139,21 @@ export const Pagination: React.FC<PaginationProps> = ({
       <span className="text-sm text-gray-500 dark:text-neutral-400 ml-4">
         共 {totalPages} 页 / {totalItems} 个
       </span>
+
+      {/* 每页条数 */}
+      {onPageSizeChange && (
+        <select
+          value={pageSize}
+          onChange={(e) => onPageSizeChange(Number(e.target.value))}
+          className="h-8 px-2 ml-2 border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-gray-600 dark:text-neutral-300 rounded-md text-sm outline-none cursor-pointer focus:border-[#00aeec] dark:focus:border-[#00aeec] transition-colors"
+        >
+          {pageSizeOptions.map((size) => (
+            <option key={size} value={size}>
+              {size} 条/页
+            </option>
+          ))}
+        </select>
+      )}
 
       {/* 跳转 */}
       <div className="flex items-center gap-2 ml-2">

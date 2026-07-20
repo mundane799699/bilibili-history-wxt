@@ -376,6 +376,48 @@ export const getHistory = async (
   });
 };
 
+// offset-based pagination for the history page: one cursor pass collects
+// the requested page and counts all matched records for the paginator
+export const getHistoryPage = async (
+  page: number = 1,
+  pageSize: number = 20,
+  keyword: string = "",
+  dateRange: { start: string; end: string } | null = null,
+  businessType: string = "",
+  searchType: "all" | "title" | "up" | "bvid" | "avid" = "all",
+): Promise<{ items: HistoryItem[]; total: number }> => {
+  const db = await openDB();
+  const tx = db.transaction("history", "readonly");
+  const store = tx.objectStore("history");
+  const index = store.index("view_at");
+
+  const request = index.openCursor(null, "prev");
+  const offset = (page - 1) * pageSize;
+  const items: HistoryItem[] = [];
+  let total = 0;
+
+  return new Promise((resolve, reject) => {
+    request.onsuccess = (event) => {
+      const cursor = (event.target as IDBRequest).result as IDBCursorWithValue;
+
+      if (cursor) {
+        const value = cursor.value as HistoryItem;
+        if (matchCondition(value, keyword, dateRange, businessType, searchType)) {
+          if (total >= offset && items.length < pageSize) {
+            items.push(value);
+          }
+          total++;
+        }
+        cursor.continue();
+      } else {
+        resolve({ items, total });
+      }
+    };
+
+    request.onerror = () => reject(request.error);
+  });
+};
+
 export const deleteDB = () => {
   return new Promise<void>((resolve, reject) => {
     const request = indexedDB.deleteDatabase(DB_CONFIG.name);

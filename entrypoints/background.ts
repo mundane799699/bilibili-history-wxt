@@ -16,6 +16,10 @@ import {
   WEBDAV_LAST_SYNC,
   WEBDAV_AUTO_SYNC_ENABLED,
   WEBDAV_AUTO_SYNC_INTERVAL,
+  WEBDAV_SYNC_ITEMS,
+  DEFAULT_WEBDAV_SYNC_ITEMS,
+  WebDavSyncItems,
+  WebDavSyncKey,
 } from "../utils/constants";
 import {
   openDB,
@@ -781,7 +785,59 @@ export default defineBackground(() => {
     await replaceSubscribedCollectionResources(collectionId, resources);
   }
 
-  // WebDAV 自动双向同步：拉取 → 合并 → 推送
+  // WebDAV 同步数据项定义：文件名、本地读取与远端合并策略（与 WebDavSync 页面保持一致）
+  const WEBDAV_DATA_ITEMS: {
+    key: WebDavSyncKey;
+    label: string;
+    file: string;
+    getAll: () => Promise<unknown[]>;
+    merge: (items: any[]) => Promise<unknown>;
+  }[] = [
+    {
+      key: "history",
+      label: "历史",
+      file: "history.json",
+      getAll: getAllHistory,
+      merge: smartMergeHistory,
+    },
+    {
+      key: "likedMusic",
+      label: "音乐",
+      file: "likedMusic.json",
+      getAll: getAllLikedMusic,
+      merge: smartMergeLikedMusic,
+    },
+    {
+      key: "favFolders",
+      label: "收藏夹",
+      file: "favFolders.json",
+      getAll: getAllFavFolders,
+      merge: importFavFolders,
+    },
+    {
+      key: "favResources",
+      label: "收藏",
+      file: "favResources.json",
+      getAll: getAllFavResources,
+      merge: smartMergeFavResources,
+    },
+    {
+      key: "subscribedCollections",
+      label: "订阅合集",
+      file: "subscribedCollections.json",
+      getAll: getAllSubscribedCollections,
+      merge: importSubscribedCollections,
+    },
+    {
+      key: "subscribedCollectionResources",
+      label: "合集视频",
+      file: "subscribedCollectionResources.json",
+      getAll: getAllSubscribedCollectionResources,
+      merge: smartMergeSubscribedCollectionResources,
+    },
+  ];
+
+  // WebDAV 自动双向同步：拉取 → 合并 → 推送（仅同步用户勾选的数据项）
   async function autoSyncWebDav(): Promise<void> {
     try {
       const config = await getStorageValue<WebDavConfig | null>(WEBDAV_CONFIG, null);
@@ -790,82 +846,41 @@ export default defineBackground(() => {
         return;
       }
 
-      console.log("开始 WebDAV 双向同步...");
+      const syncItems = await getStorageValue<WebDavSyncItems>(
+        WEBDAV_SYNC_ITEMS,
+        DEFAULT_WEBDAV_SYNC_ITEMS,
+      );
+      const items = WEBDAV_DATA_ITEMS.filter((item) => syncItems[item.key]);
+      if (items.length === 0) {
+        console.log("WebDAV 同步数据项均未勾选，跳过自动同步");
+        return;
+      }
+
+      console.log(`开始 WebDAV 双向同步（${items.map((i) => i.label).join("、")}）...`);
       await ensureDirectory(config);
 
       // ===== 第一步：拉取远端数据并合并到本地 =====
       console.log("[WebDAV 同步] 步骤 1/2：拉取并合并远端数据...");
-
-      const historyData = await downloadFile(config, "history.json");
-      if (historyData) {
-        const items = JSON.parse(historyData);
-        await smartMergeHistory(items);
-      }
-
-      const musicData = await downloadFile(config, "likedMusic.json");
-      if (musicData) {
-        const items = JSON.parse(musicData);
-        await smartMergeLikedMusic(items);
-      }
-
-      const foldersData = await downloadFile(config, "favFolders.json");
-      if (foldersData) {
-        const items = JSON.parse(foldersData);
-        await importFavFolders(items);
-      }
-
-      const resourcesData = await downloadFile(config, "favResources.json");
-      if (resourcesData) {
-        const items = JSON.parse(resourcesData);
-        await smartMergeFavResources(items);
-      }
-
-      const collectionsData = await downloadFile(config, "subscribedCollections.json");
-      if (collectionsData) {
-        const items = JSON.parse(collectionsData);
-        await importSubscribedCollections(items);
-      }
-
-      const collectionResourcesData = await downloadFile(
-        config,
-        "subscribedCollectionResources.json",
-      );
-      if (collectionResourcesData) {
-        const items = JSON.parse(collectionResourcesData);
-        await smartMergeSubscribedCollectionResources(items);
+      for (const item of items) {
+        const remote = await downloadFile(config, item.file);
+        if (remote) {
+          await item.merge(JSON.parse(remote));
+        }
       }
 
       // ===== 第二步：将合并后的最新本地数据推送到远端 =====
       console.log("[WebDAV 同步] 步骤 2/2：推送本地数据到远端...");
-
-      const history = await getAllHistory();
-      await uploadFile(config, "history.json", JSON.stringify(history));
-
-      const music = await getAllLikedMusic();
-      await uploadFile(config, "likedMusic.json", JSON.stringify(music));
-
-      const folders = await getAllFavFolders();
-      await uploadFile(config, "favFolders.json", JSON.stringify(folders));
-
-      const resources = await getAllFavResources();
-      await uploadFile(config, "favResources.json", JSON.stringify(resources));
-
-      const collections = await getAllSubscribedCollections();
-      await uploadFile(config, "subscribedCollections.json", JSON.stringify(collections));
-
-      const collectionResources = await getAllSubscribedCollectionResources();
-      await uploadFile(
-        config,
-        "subscribedCollectionResources.json",
-        JSON.stringify(collectionResources),
-      );
+      const summary: string[] = [];
+      for (const item of items) {
+        const data = await item.getAll();
+        await uploadFile(config, item.file, JSON.stringify(data));
+        summary.push(`${item.label} ${data.length}`);
+      }
 
       // 同步完成，记录时间戳
       await setStorageValue(WEBDAV_LAST_SYNC, Date.now());
 
-      console.log(
-        `WebDAV 双向同步完成：历史 ${history.length}，音乐 ${music.length}，收藏夹 ${folders.length}，收藏 ${resources.length}，订阅合集 ${collections.length}，合集视频 ${collectionResources.length}`,
-      );
+      console.log(`WebDAV 双向同步完成：${summary.join("，")}`);
     } catch (error) {
       console.error("WebDAV 双向同步失败:", error);
     }

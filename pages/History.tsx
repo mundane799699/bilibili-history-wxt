@@ -1,12 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { HistoryItem } from "../components/HistoryItem";
-import { getHistory, getTotalHistoryCount } from "../utils/db";
+import { getHistory, getHistoryPage, getTotalHistoryCount } from "../utils/db";
 import { HistoryItem as HistoryItemType } from "../utils/types";
 import { useDebounce } from "use-debounce";
 import { RefreshCwIcon, ChevronDownIcon, Search, X, Filter, Minus, Plus } from "lucide-react";
-import { DATE_SELECTION_MODE, GRID_COLUMNS } from "../utils/constants";
+import { Pagination } from "../components/Pagination";
+import {
+  DATE_SELECTION_MODE,
+  GRID_COLUMNS,
+  HISTORY_LOAD_MODE,
+  HISTORY_PAGE_SIZE,
+} from "../utils/constants";
 import { DateRangePicker } from "../components/DateRangePicker";
 import { getStorageValue, setStorageValue } from "../utils/storage";
+
+const DEFAULT_PAGE_SIZE = 100;
 
 export const History: React.FC = () => {
   const [history, setHistory] = useState<HistoryItemType[]>([]);
@@ -21,11 +29,17 @@ export const History: React.FC = () => {
   const [isSearchKindDropdownOpen, setIsSearchKindDropdownOpen] = useState(false);
   const [selectedType, setSelectedType] = useState("all");
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
+  const [isLoadModeDropdownOpen, setIsLoadModeDropdownOpen] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [totalHistoryCount, setTotalHistoryCount] = useState(0);
   const [dateSelectionMode, setDateSelectionMode] = useState<"range" | "single">("range");
   const [gridColumns, setGridColumns] = useState(4);
+  // null means the stored value is not loaded yet
+  const [loadMode, setLoadMode] = useState<"pagination" | "scroll" | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalFiltered, setTotalFiltered] = useState(0);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -43,6 +57,12 @@ export const History: React.FC = () => {
     });
     getStorageValue<number>(GRID_COLUMNS, 4).then((cols) => {
       setGridColumns(cols);
+    });
+    getStorageValue<number>(HISTORY_PAGE_SIZE, DEFAULT_PAGE_SIZE).then((size) => {
+      setPageSize(size);
+    });
+    getStorageValue(HISTORY_LOAD_MODE, "pagination").then((mode) => {
+      setLoadMode(mode as "pagination" | "scroll");
     });
   }, []);
 
@@ -107,9 +127,51 @@ export const History: React.FC = () => {
   const loadHistoryRef = useRef(loadHistory);
   loadHistoryRef.current = loadHistory;
 
+  // offset-based page load for pagination mode
+  const loadPage = async (page: number) => {
+    if (isLoadingRef.current) {
+      return;
+    }
+    try {
+      setIsLoading(true);
+      isLoadingRef.current = true;
+
+      const { items, total } = await getHistoryPage(
+        page,
+        pageSize,
+        debouncedKeyword,
+        { start: startDate, end: endDate },
+        selectedType,
+        searchType,
+      );
+
+      setHistory(items);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setTotalFiltered(total);
+      setCurrentPage(page);
+    } catch (error) {
+      console.error("Failed to load history:", error);
+    } finally {
+      setIsLoading(false);
+      isLoadingRef.current = false;
+    }
+  };
+
+  const reload = () => {
+    if (loadMode === "pagination") {
+      loadPage(1);
+    } else {
+      loadHistory(false);
+    }
+  };
+
   useEffect(() => {
-    loadHistory(false);
-  }, [debouncedKeyword, startDate, endDate, selectedType, searchType]);
+    // wait until the stored load mode is resolved to avoid a duplicated first load
+    if (loadMode === null) {
+      return;
+    }
+    reload();
+  }, [debouncedKeyword, startDate, endDate, selectedType, searchType, loadMode, pageSize]);
 
   useEffect(() => {
     getTotalCount();
@@ -214,8 +276,52 @@ export const History: React.FC = () => {
             </div>
           </div>
 
-          {/* 中间：搜索框 (带类型选择) */}
-          <div className="flex-1 w-full md:max-w-xl px-4">
+          {/* 中间：加载方式 + 搜索框 (带类型选择) */}
+          <div className="flex-1 w-full md:max-w-lg px-4 flex items-center gap-3">
+            {/* 加载方式下拉 */}
+            <div className="relative shrink-0">
+              <button
+                className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-neutral-900 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg text-sm text-gray-700 dark:text-neutral-200 transition-colors border border-gray-200/50 dark:border-neutral-800 whitespace-nowrap"
+                onClick={() => setIsLoadModeDropdownOpen(!isLoadModeDropdownOpen)}
+              >
+                <span>{loadMode === "scroll" ? "下拉加载" : "分页加载"}</span>
+                <ChevronDownIcon className="w-3.5 h-3.5 text-gray-400 dark:text-neutral-500" />
+              </button>
+
+              {isLoadModeDropdownOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setIsLoadModeDropdownOpen(false)}
+                  ></div>
+                  <div className="absolute top-full left-0 mt-1 w-28 bg-white dark:bg-neutral-900 rounded-lg shadow-lg border border-gray-100 dark:border-neutral-800 py-1 z-20 animate-in fade-in zoom-in-95 duration-200">
+                    {(
+                      [
+                        { value: "pagination", label: "分页加载" },
+                        { value: "scroll", label: "下拉加载" },
+                      ] as const
+                    ).map((option) => (
+                      <button
+                        key={option.value}
+                        className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                          loadMode === option.value
+                            ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium"
+                            : "text-gray-600 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-800"
+                        }`}
+                        onClick={() => {
+                          setLoadMode(option.value);
+                          setStorageValue(HISTORY_LOAD_MODE, option.value);
+                          setIsLoadModeDropdownOpen(false);
+                        }}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
             <div className="relative group w-full flex items-center bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-full transition-all duration-300 shadow-sm hover:shadow-md focus-within:bg-white dark:focus-within:bg-neutral-900 focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-500/20 focus-within:border-blue-400 dark:focus-within:border-blue-500">
               {/* 搜索类型下拉 */}
               <div className="relative">
@@ -336,7 +442,7 @@ export const History: React.FC = () => {
             <button
               onClick={() => {
                 getTotalCount();
-                loadHistory(false);
+                reload();
               }}
               className={`p-2 bg-white dark:bg-neutral-900 text-gray-500 dark:text-neutral-400 rounded-full hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm border border-gray-200 dark:border-neutral-800 hover:border-blue-200 dark:hover:border-blue-500/30 hover:rotate-180 duration-500 ${
                 isLoading ? "opacity-50 cursor-not-allowed" : ""
@@ -366,13 +472,28 @@ export const History: React.FC = () => {
             }}
           />
         ))}
-        <div
-          ref={loadMoreCallbackRef}
-          className="col-span-full py-8 text-center text-gray-500 dark:text-neutral-400 text-sm"
-        >
-          {getLoadMoreText()}
-        </div>
+        {loadMode === "scroll" && (
+          <div
+            ref={loadMoreCallbackRef}
+            className="col-span-full py-8 text-center text-gray-500 dark:text-neutral-400 text-sm"
+          >
+            {getLoadMoreText()}
+          </div>
+        )}
       </div>
+
+      {loadMode === "pagination" && (
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalFiltered}
+          pageSize={pageSize}
+          onPageChange={loadPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setStorageValue(HISTORY_PAGE_SIZE, size);
+          }}
+        />
+      )}
 
       {history.length === 0 && !isLoading && (
         <div className="text-center py-20">

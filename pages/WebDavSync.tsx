@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { getStorageValue, setStorageValue } from "@/utils/storage";
 import {
@@ -6,6 +7,10 @@ import {
   WEBDAV_LAST_SYNC,
   WEBDAV_AUTO_SYNC_ENABLED,
   WEBDAV_AUTO_SYNC_INTERVAL,
+  WEBDAV_SYNC_ITEMS,
+  DEFAULT_WEBDAV_SYNC_ITEMS,
+  WebDavSyncItems,
+  WebDavSyncKey,
 } from "@/utils/constants";
 import {
   WebDavConfig,
@@ -31,24 +36,68 @@ import {
   importSubscribedCollections,
   smartMergeSubscribedCollectionResources,
 } from "@/utils/db";
-import {
-  HistoryItem,
-  LikedMusic,
-  FavoriteFolder,
-  FavoriteResource,
-  SubscribedCollection,
-  SubscribedCollectionResource,
-} from "@/utils/types";
+import { HistoryItem, LikedMusic, FavoriteFolder, SubscribedCollection } from "@/utils/types";
 
-/** WebDAV 同步的数据文件名 */
-const DATA_FILES = {
-  history: "history.json",
-  likedMusic: "likedMusic.json",
-  favFolders: "favFolders.json",
-  favResources: "favResources.json",
-  subscribedCollections: "subscribedCollections.json",
-  subscribedCollectionResources: "subscribedCollectionResources.json",
-} as const;
+/** Per-dataset definition: remote file name, label, local reader, and remote-merge strategy */
+interface DataItemDef {
+  key: WebDavSyncKey;
+  label: string;
+  file: string;
+  getAll: () => Promise<unknown[]>;
+  merge: (items: any[]) => Promise<{ merged: number; skipped: number }>;
+}
+
+const DATA_ITEMS: DataItemDef[] = [
+  {
+    key: "history",
+    label: "历史记录",
+    file: "history.json",
+    getAll: getAllHistory,
+    merge: smartMergeHistory,
+  },
+  {
+    key: "likedMusic",
+    label: "喜欢的音乐",
+    file: "likedMusic.json",
+    getAll: getAllLikedMusic,
+    merge: smartMergeLikedMusic,
+  },
+  {
+    key: "favFolders",
+    label: "收藏夹",
+    file: "favFolders.json",
+    getAll: getAllFavFolders,
+    // Folders are upserted directly without timestamp comparison
+    merge: async (items: FavoriteFolder[]) => {
+      await importFavFolders(items);
+      return { merged: items.length, skipped: 0 };
+    },
+  },
+  {
+    key: "favResources",
+    label: "收藏资源",
+    file: "favResources.json",
+    getAll: getAllFavResources,
+    merge: smartMergeFavResources,
+  },
+  {
+    key: "subscribedCollections",
+    label: "订阅合集",
+    file: "subscribedCollections.json",
+    getAll: getAllSubscribedCollections,
+    merge: async (items: SubscribedCollection[]) => {
+      await importSubscribedCollections(items);
+      return { merged: items.length, skipped: 0 };
+    },
+  },
+  {
+    key: "subscribedCollectionResources",
+    label: "合集视频",
+    file: "subscribedCollectionResources.json",
+    getAll: getAllSubscribedCollectionResources,
+    merge: smartMergeSubscribedCollectionResources,
+  },
+];
 
 /** 备份/恢复进度信息 */
 interface SyncProgress {
@@ -67,6 +116,7 @@ const defaultConfig: WebDavConfig = {
 const WebDavSync = () => {
   // ===== WebDAV 配置状态 =====
   const [config, setConfig] = useState<WebDavConfig>(defaultConfig);
+  const [showPassword, setShowPassword] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSync, setLastSync] = useState<number | null>(null);
@@ -78,6 +128,22 @@ const WebDavSync = () => {
 
   // ===== 备份模式对话框 =====
   const [showBackupDialog, setShowBackupDialog] = useState(false);
+
+  // ===== 同步数据项勾选（持久化，后台自动同步共用） =====
+  const [selectedKeys, setSelectedKeys] = useState<WebDavSyncItems>(DEFAULT_WEBDAV_SYNC_ITEMS);
+
+  const toggleSelected = (key: WebDavSyncKey) =>
+    setSelectedKeys((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      setStorageValue(WEBDAV_SYNC_ITEMS, next);
+      return next;
+    });
+
+  const getSelectedItems = () => {
+    const items = DATA_ITEMS.filter((d) => selectedKeys[d.key]);
+    if (items.length === 0) toast.error("请至少勾选一项要同步的数据");
+    return items;
+  };
 
   // ===== 手动导出/导入状态 =====
   const [isExporting, setIsExporting] = useState(false);
@@ -99,6 +165,13 @@ const WebDavSync = () => {
       setAutoSyncEnabled(enabled);
       const interval = await getStorageValue<number>(WEBDAV_AUTO_SYNC_INTERVAL, 30);
       setAutoSyncInterval(interval);
+
+      const syncItems = await getStorageValue<WebDavSyncItems>(
+        WEBDAV_SYNC_ITEMS,
+        DEFAULT_WEBDAV_SYNC_ITEMS,
+      );
+      // Merge over defaults so newly added keys get a value
+      setSelectedKeys({ ...DEFAULT_WEBDAV_SYNC_ITEMS, ...syncItems });
     };
     loadConfig();
   }, []);
@@ -149,70 +222,36 @@ const WebDavSync = () => {
       return;
     }
 
+    const items = getSelectedItems();
+    if (items.length === 0) return;
+
     setIsBackingUp(true);
-    setSyncProgress({ current: 0, total: 6, message: "准备备份数据..." });
+    setSyncProgress({ current: 0, total: items.length, message: "准备备份数据..." });
 
     try {
       // 确保远程目录存在
       await ensureDirectory(config);
 
-      // 1. 上传历史记录
-      setSyncProgress({ current: 0, total: 6, message: "正在备份历史记录..." });
-      const history = await getAllHistory();
-      const historyOk = await uploadFile(config, DATA_FILES.history, JSON.stringify(history));
-      if (!historyOk) throw new Error("上传历史记录失败");
-
-      // 2. 上传喜欢的音乐
-      setSyncProgress({ current: 1, total: 6, message: "正在备份喜欢的音乐..." });
-      const music = await getAllLikedMusic();
-      const musicOk = await uploadFile(config, DATA_FILES.likedMusic, JSON.stringify(music));
-      if (!musicOk) throw new Error("上传喜欢的音乐失败");
-
-      // 3. 上传收藏夹
-      setSyncProgress({ current: 2, total: 6, message: "正在备份收藏夹..." });
-      const folders = await getAllFavFolders();
-      const foldersOk = await uploadFile(config, DATA_FILES.favFolders, JSON.stringify(folders));
-      if (!foldersOk) throw new Error("上传收藏夹失败");
-
-      // 4. 上传收藏资源
-      setSyncProgress({ current: 3, total: 6, message: "正在备份收藏资源..." });
-      const resources = await getAllFavResources();
-      const resourcesOk = await uploadFile(
-        config,
-        DATA_FILES.favResources,
-        JSON.stringify(resources),
-      );
-      if (!resourcesOk) throw new Error("上传收藏资源失败");
-
-      // 5. 上传订阅合集
-      setSyncProgress({ current: 4, total: 6, message: "正在备份订阅合集..." });
-      const collections = await getAllSubscribedCollections();
-      const collectionsOk = await uploadFile(
-        config,
-        DATA_FILES.subscribedCollections,
-        JSON.stringify(collections),
-      );
-      if (!collectionsOk) throw new Error("上传订阅合集失败");
-
-      // 6. 上传订阅合集视频
-      setSyncProgress({ current: 5, total: 6, message: "正在备份合集视频..." });
-      const collectionResources = await getAllSubscribedCollectionResources();
-      const collectionResourcesOk = await uploadFile(
-        config,
-        DATA_FILES.subscribedCollectionResources,
-        JSON.stringify(collectionResources),
-      );
-      if (!collectionResourcesOk) throw new Error("上传合集视频失败");
+      const summary: string[] = [];
+      for (const [i, item] of items.entries()) {
+        setSyncProgress({
+          current: i,
+          total: items.length,
+          message: `正在备份${item.label}...`,
+        });
+        const data = await item.getAll();
+        const ok = await uploadFile(config, item.file, JSON.stringify(data));
+        if (!ok) throw new Error(`上传${item.label}失败`);
+        summary.push(`${item.label} ${data.length} 条`);
+      }
 
       // 记录同步时间（数值时间戳）
       const now = Date.now();
       await setStorageValue(WEBDAV_LAST_SYNC, now);
       setLastSync(now);
 
-      setSyncProgress({ current: 6, total: 6, message: "备份完成！" });
-      toast.success(
-        `备份完成！历史 ${history.length} 条，音乐 ${music.length} 首，收藏夹 ${folders.length} 个，收藏 ${resources.length} 项，订阅合集 ${collections.length} 个，合集视频 ${collectionResources.length} 项`,
-      );
+      setSyncProgress({ current: items.length, total: items.length, message: "备份完成！" });
+      toast.success(`备份完成！${summary.join("，")}`);
     } catch (error: any) {
       console.error("WebDAV 备份失败:", error);
       toast.error(error.message || "备份失败，请检查配置");
@@ -230,8 +269,12 @@ const WebDavSync = () => {
       return;
     }
 
+    const items = getSelectedItems();
+    if (items.length === 0) return;
+    const total = items.length * 2;
+
     setIsBackingUp(true);
-    setSyncProgress({ current: 0, total: 12, message: "准备双向同步..." });
+    setSyncProgress({ current: 0, total, message: "准备双向同步..." });
 
     try {
       await ensureDirectory(config);
@@ -240,111 +283,37 @@ const WebDavSync = () => {
       let totalMerged = 0;
       let totalSkipped = 0;
 
-      setSyncProgress({ current: 0, total: 12, message: "步骤 1/2：拉取历史记录..." });
-      const historyData = await downloadFile(config, DATA_FILES.history);
-      if (historyData) {
-        const items = JSON.parse(historyData) as HistoryItem[];
-        const result = await smartMergeHistory(items);
-        totalMerged += result.merged;
-        totalSkipped += result.skipped;
-      }
-
-      setSyncProgress({ current: 1, total: 12, message: "步骤 1/2：拉取喜欢的音乐..." });
-      const musicData = await downloadFile(config, DATA_FILES.likedMusic);
-      if (musicData) {
-        const items = JSON.parse(musicData) as LikedMusic[];
-        const result = await smartMergeLikedMusic(items);
-        totalMerged += result.merged;
-        totalSkipped += result.skipped;
-      }
-
-      setSyncProgress({ current: 2, total: 12, message: "步骤 1/2：拉取收藏夹..." });
-      const foldersData = await downloadFile(config, DATA_FILES.favFolders);
-      if (foldersData) {
-        const items = JSON.parse(foldersData) as FavoriteFolder[];
-        await importFavFolders(items);
-        totalMerged += items.length;
-      }
-
-      setSyncProgress({ current: 3, total: 12, message: "步骤 1/2：拉取收藏资源..." });
-      const resourcesData = await downloadFile(config, DATA_FILES.favResources);
-      if (resourcesData) {
-        const items = JSON.parse(resourcesData) as FavoriteResource[];
-        const result = await smartMergeFavResources(items);
-        totalMerged += result.merged;
-        totalSkipped += result.skipped;
-      }
-
-      setSyncProgress({ current: 4, total: 12, message: "步骤 1/2：拉取订阅合集..." });
-      const collectionsData = await downloadFile(config, DATA_FILES.subscribedCollections);
-      if (collectionsData) {
-        const items = JSON.parse(collectionsData) as SubscribedCollection[];
-        await importSubscribedCollections(items);
-        totalMerged += items.length;
-      }
-
-      setSyncProgress({ current: 5, total: 12, message: "步骤 1/2：拉取合集视频..." });
-      const collectionResourcesData = await downloadFile(
-        config,
-        DATA_FILES.subscribedCollectionResources,
-      );
-      if (collectionResourcesData) {
-        const items = JSON.parse(collectionResourcesData) as SubscribedCollectionResource[];
-        const result = await smartMergeSubscribedCollectionResources(items);
-        totalMerged += result.merged;
-        totalSkipped += result.skipped;
+      for (const [i, item] of items.entries()) {
+        setSyncProgress({ current: i, total, message: `步骤 1/2：拉取${item.label}...` });
+        const remote = await downloadFile(config, item.file);
+        if (remote) {
+          const result = await item.merge(JSON.parse(remote));
+          totalMerged += result.merged;
+          totalSkipped += result.skipped;
+        }
       }
 
       // 第二步：推送合并后的最新数据
-      setSyncProgress({ current: 6, total: 12, message: "步骤 2/2：推送历史记录..." });
-      const history = await getAllHistory();
-      const historyOk = await uploadFile(config, DATA_FILES.history, JSON.stringify(history));
-      if (!historyOk) throw new Error("上传历史记录失败");
-
-      setSyncProgress({ current: 7, total: 12, message: "步骤 2/2：推送喜欢的音乐..." });
-      const music = await getAllLikedMusic();
-      const musicOk = await uploadFile(config, DATA_FILES.likedMusic, JSON.stringify(music));
-      if (!musicOk) throw new Error("上传音乐失败");
-
-      setSyncProgress({ current: 8, total: 12, message: "步骤 2/2：推送收藏夹..." });
-      const folders = await getAllFavFolders();
-      const foldersOk = await uploadFile(config, DATA_FILES.favFolders, JSON.stringify(folders));
-      if (!foldersOk) throw new Error("上传收藏夹失败");
-
-      setSyncProgress({ current: 9, total: 12, message: "步骤 2/2：推送收藏资源..." });
-      const resources = await getAllFavResources();
-      const resourcesOk = await uploadFile(
-        config,
-        DATA_FILES.favResources,
-        JSON.stringify(resources),
-      );
-      if (!resourcesOk) throw new Error("上传收藏资源失败");
-
-      setSyncProgress({ current: 10, total: 12, message: "步骤 2/2：推送订阅合集..." });
-      const collections = await getAllSubscribedCollections();
-      const collectionsOk = await uploadFile(
-        config,
-        DATA_FILES.subscribedCollections,
-        JSON.stringify(collections),
-      );
-      if (!collectionsOk) throw new Error("上传订阅合集失败");
-
-      setSyncProgress({ current: 11, total: 12, message: "步骤 2/2：推送合集视频..." });
-      const collectionResources = await getAllSubscribedCollectionResources();
-      const collectionResourcesOk = await uploadFile(
-        config,
-        DATA_FILES.subscribedCollectionResources,
-        JSON.stringify(collectionResources),
-      );
-      if (!collectionResourcesOk) throw new Error("上传合集视频失败");
+      let totalPushed = 0;
+      for (const [i, item] of items.entries()) {
+        setSyncProgress({
+          current: items.length + i,
+          total,
+          message: `步骤 2/2：推送${item.label}...`,
+        });
+        const data = await item.getAll();
+        const ok = await uploadFile(config, item.file, JSON.stringify(data));
+        if (!ok) throw new Error(`上传${item.label}失败`);
+        totalPushed += data.length;
+      }
 
       const now = Date.now();
       await setStorageValue(WEBDAV_LAST_SYNC, now);
       setLastSync(now);
 
-      setSyncProgress({ current: 12, total: 12, message: "双向同步完成！" });
+      setSyncProgress({ current: total, total, message: "双向同步完成！" });
       toast.success(
-        `双向同步完成！合并 ${totalMerged} 条，跳过 ${totalSkipped} 条，推送 ${history.length + music.length + folders.length + resources.length + collections.length + collectionResources.length} 条`,
+        `双向同步完成！合并 ${totalMerged} 条，跳过 ${totalSkipped} 条，推送 ${totalPushed} 条`,
       );
     } catch (error: any) {
       console.error("WebDAV 双向同步失败:", error);
@@ -363,72 +332,28 @@ const WebDavSync = () => {
       return;
     }
 
+    const items = getSelectedItems();
+    if (items.length === 0) return;
+
     setIsRestoring(true);
-    setSyncProgress({ current: 0, total: 6, message: "正在从 WebDAV 下载数据..." });
+    setSyncProgress({ current: 0, total: items.length, message: "正在从 WebDAV 下载数据..." });
 
     try {
       let totalMerged = 0;
       let totalSkipped = 0;
 
-      // 1. 恢复历史记录
-      setSyncProgress({ current: 0, total: 6, message: "正在恢复历史记录..." });
-      const historyData = await downloadFile(config, DATA_FILES.history);
-      if (historyData) {
-        const items = JSON.parse(historyData) as HistoryItem[];
-        const result = await smartMergeHistory(items);
-        totalMerged += result.merged;
-        totalSkipped += result.skipped;
-      }
-
-      // 2. 恢复喜欢的音乐
-      setSyncProgress({ current: 1, total: 6, message: "正在恢复喜欢的音乐..." });
-      const musicData = await downloadFile(config, DATA_FILES.likedMusic);
-      if (musicData) {
-        const items = JSON.parse(musicData) as LikedMusic[];
-        const result = await smartMergeLikedMusic(items);
-        totalMerged += result.merged;
-        totalSkipped += result.skipped;
-      }
-
-      // 3. 恢复收藏夹（直接 upsert，无时间戳比对）
-      setSyncProgress({ current: 2, total: 6, message: "正在恢复收藏夹..." });
-      const foldersData = await downloadFile(config, DATA_FILES.favFolders);
-      if (foldersData) {
-        const items = JSON.parse(foldersData) as FavoriteFolder[];
-        await importFavFolders(items);
-        totalMerged += items.length;
-      }
-
-      // 4. 恢复收藏资源
-      setSyncProgress({ current: 3, total: 6, message: "正在恢复收藏资源..." });
-      const resourcesData = await downloadFile(config, DATA_FILES.favResources);
-      if (resourcesData) {
-        const items = JSON.parse(resourcesData) as FavoriteResource[];
-        const result = await smartMergeFavResources(items);
-        totalMerged += result.merged;
-        totalSkipped += result.skipped;
-      }
-
-      // 5. 恢复订阅合集
-      setSyncProgress({ current: 4, total: 6, message: "正在恢复订阅合集..." });
-      const collectionsData = await downloadFile(config, DATA_FILES.subscribedCollections);
-      if (collectionsData) {
-        const items = JSON.parse(collectionsData) as SubscribedCollection[];
-        await importSubscribedCollections(items);
-        totalMerged += items.length;
-      }
-
-      // 6. 恢复订阅合集视频
-      setSyncProgress({ current: 5, total: 6, message: "正在恢复合集视频..." });
-      const collectionResourcesData = await downloadFile(
-        config,
-        DATA_FILES.subscribedCollectionResources,
-      );
-      if (collectionResourcesData) {
-        const items = JSON.parse(collectionResourcesData) as SubscribedCollectionResource[];
-        const result = await smartMergeSubscribedCollectionResources(items);
-        totalMerged += result.merged;
-        totalSkipped += result.skipped;
+      for (const [i, item] of items.entries()) {
+        setSyncProgress({
+          current: i,
+          total: items.length,
+          message: `正在恢复${item.label}...`,
+        });
+        const remote = await downloadFile(config, item.file);
+        if (remote) {
+          const result = await item.merge(JSON.parse(remote));
+          totalMerged += result.merged;
+          totalSkipped += result.skipped;
+        }
       }
 
       // 记录同步时间
@@ -436,7 +361,7 @@ const WebDavSync = () => {
       await setStorageValue(WEBDAV_LAST_SYNC, now);
       setLastSync(now);
 
-      setSyncProgress({ current: 6, total: 6, message: "恢复完成！" });
+      setSyncProgress({ current: items.length, total: items.length, message: "恢复完成！" });
       toast.success(`恢复完成！合并 ${totalMerged} 条，跳过 ${totalSkipped} 条（本地更新）`);
     } catch (error: any) {
       console.error("WebDAV 恢复失败:", error);
@@ -684,13 +609,23 @@ const WebDavSync = () => {
               <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1">
                 密码
               </label>
-              <input
-                type="password"
-                placeholder="WebDAV 密码 / 应用密码"
-                value={config.password}
-                onChange={(e) => setConfig({ ...config, password: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500/25 focus:border-transparent outline-none transition-all text-sm"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="WebDAV 密码 / 应用密码"
+                  value={config.password}
+                  onChange={(e) => setConfig({ ...config, password: e.target.value })}
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500/25 focus:border-transparent outline-none transition-all text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-neutral-500 dark:hover:text-neutral-300 transition-colors"
+                  aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -784,6 +719,27 @@ const WebDavSync = () => {
               </div>
             </div>
           )}
+
+          {/* 同步数据项勾选 */}
+          <div className="mb-5">
+            <p className="text-sm font-medium text-gray-700 dark:text-neutral-300 mb-2">同步内容</p>
+            <div className="flex flex-wrap gap-x-5 gap-y-2">
+              {DATA_ITEMS.map((item) => (
+                <label
+                  key={item.key}
+                  className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-neutral-400 cursor-pointer select-none"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedKeys[item.key]}
+                    onChange={() => toggleSelected(item.key)}
+                    className="w-4 h-4 rounded border-gray-300 dark:border-neutral-600 text-emerald-500 focus:ring-emerald-500 dark:bg-neutral-800"
+                  />
+                  {item.label}
+                </label>
+              ))}
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button
