@@ -1,120 +1,12 @@
-import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getStorageValue } from "../utils/storage";
-import { SYNC_PROGRESS_HISTORY, SYNC_PROGRESS_FAV, UPDATE_HISTORY } from "../utils/constants";
+import { UPDATE_HISTORY } from "../utils/constants";
 
 const Welcome = () => {
   const navigate = useNavigate();
-  const [historyProgress, setHistoryProgress] = useState<{
-    current: number;
-    message: string;
-  } | null>(null);
-  const [favProgress, setFavProgress] = useState<{
-    current: number;
-    total?: number;
-    message: string;
-  } | null>(null);
-  const [version, setVersion] = useState<string>("");
-
-  useEffect(() => {
-    const loadProgress = async () => {
-      const h = await getStorageValue(SYNC_PROGRESS_HISTORY, null);
-      const f = await getStorageValue(SYNC_PROGRESS_FAV, null);
-      setHistoryProgress(h);
-      setFavProgress(f);
-    };
-    loadProgress();
-
-    const handleStorageChange = (
-      changes: { [key: string]: Browser.storage.StorageChange },
-      areaName: string,
-    ) => {
-      if (areaName === "local") {
-        if (changes[SYNC_PROGRESS_HISTORY]) {
-          setHistoryProgress(
-            changes[SYNC_PROGRESS_HISTORY].newValue as { current: number; message: string } | null,
-          );
-        }
-        if (changes[SYNC_PROGRESS_FAV]) {
-          setFavProgress(
-            changes[SYNC_PROGRESS_FAV].newValue as {
-              current: number;
-              total: number;
-              message: string;
-            } | null,
-          );
-        }
-      }
-    };
-
-    browser.storage.onChanged.addListener(handleStorageChange);
-
-    // Get version
-    const manifest = browser?.runtime?.getManifest?.();
-    if (manifest?.version) {
-      setVersion(manifest.version);
-    }
-
-    return () => {
-      browser.storage.onChanged.removeListener(handleStorageChange);
-    };
-  }, []);
 
   return (
     <div className="flex flex-col items-center min-h-[80vh] bg-white p-6 rounded-xl shadow-sm m-4 max-w-[800px] mx-auto">
       <h1 className="text-3xl font-bold text-gray-800 mb-2">欢迎使用 Bilibili History</h1>
-      <p className="text-gray-500 mb-8 text-center max-w-lg">
-        插件正在为您初始化数据，同步您的历史记录和收藏夹。您可以随时开始使用，同步将在后台继续进行。
-      </p>
-
-      <div className="w-full max-w-md space-y-6 mb-10">
-        {/* History Sync Status */}
-        <div className="bg-blue-50 border border-blue-100 rounded-lg p-5 transition-all hover:shadow-md">
-          <div className="flex justify-between items-center mb-2">
-            <span className="font-semibold text-blue-800 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-              历史记录同步
-            </span>
-            <span className="text-xs font-mono text-blue-600 bg-white px-2 py-1 rounded shadow-sm border border-blue-100">
-              {historyProgress?.current || 0} 条
-            </span>
-          </div>
-          <p className="text-sm text-blue-600/80 truncate font-medium">
-            {historyProgress?.message || "准备中..."}
-          </p>
-        </div>
-
-        {/* Fav Sync Status */}
-        <div className="bg-purple-50 border border-purple-100 rounded-lg p-5 transition-all hover:shadow-md">
-          <div className="flex justify-between items-center mb-3">
-            <span className="font-semibold text-purple-800 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
-              收藏夹同步
-            </span>
-            <span className="text-xs font-mono text-purple-600 bg-white px-2 py-1 rounded shadow-sm border border-purple-100">
-              {/* Display Fetched / Total if total is available, else just current */}
-              {favProgress?.total && favProgress.total > 0
-                ? `${favProgress.current} / ${favProgress.total}`
-                : favProgress?.current || 0}
-            </span>
-          </div>
-
-          {favProgress?.total && favProgress.total > 0 && (
-            <div className="w-full bg-purple-200/50 rounded-full h-2.5 mb-2 overflow-hidden">
-              <div
-                className="bg-purple-500 h-2.5 rounded-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(168,85,247,0.4)]"
-                style={{
-                  width: `${Math.min(100, (favProgress.current / favProgress.total) * 100)}%`,
-                }}
-              ></div>
-            </div>
-          )}
-
-          <p className="text-sm text-purple-600/80 truncate font-medium">
-            {favProgress?.message || "准备中..."}
-          </p>
-        </div>
-      </div>
 
       <button
         onClick={() => navigate("/")}

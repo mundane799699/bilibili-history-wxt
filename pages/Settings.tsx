@@ -10,8 +10,6 @@ import {
   FAV_SYNC_INTERVAL,
   HIDE_USER_INFO,
   HIDDEN_MENUS,
-  SYNC_PROGRESS_HISTORY,
-  SYNC_PROGRESS_FAV,
   DATE_SELECTION_MODE,
   HISTORY_LOAD_MODE,
 } from "../utils/constants";
@@ -36,17 +34,6 @@ const Settings = () => {
   const [hiddenMenus, setHiddenMenus] = useState<string[]>([]);
   const [dateSelectionMode, setDateSelectionMode] = useState<"range" | "single">("range");
   const [historyLoadMode, setHistoryLoadMode] = useState<"pagination" | "scroll">("pagination");
-
-  // separate progress states
-  const [historyProgress, setHistoryProgress] = useState<{
-    current: number;
-    message: string;
-  } | null>(null);
-  const [favProgress, setFavProgress] = useState<{
-    current: number;
-    total: number;
-    message: string;
-  } | null>(null);
 
   const [showResetResultDialog, setShowResetResultDialog] = useState(false);
   const [resetResult, setResetResult] = useState("");
@@ -75,9 +62,6 @@ const Settings = () => {
       const storedDateMode = await getStorageValue(DATE_SELECTION_MODE, "range");
       const storedHistoryLoadMode = await getStorageValue(HISTORY_LOAD_MODE, "pagination");
 
-      const histProg = await getStorageValue(SYNC_PROGRESS_HISTORY, null);
-      const favProg = await getStorageValue(SYNC_PROGRESS_FAV, null);
-
       setIsSyncDelete(syncDelete);
       setIsSyncDeleteFromBilibili(syncDeleteFromBilibili);
       setIsFavAutoSync(favAutoSync);
@@ -87,39 +71,8 @@ const Settings = () => {
       setFavSyncInterval(storedFavSyncInterval);
       setDateSelectionMode(storedDateMode as "range" | "single");
       setHistoryLoadMode(storedHistoryLoadMode as "pagination" | "scroll");
-
-      setHistoryProgress(histProg);
-      setFavProgress(favProg);
     };
     loadSettings();
-
-    // 监听 storage 变化
-    const handleStorageChange = (
-      changes: { [key: string]: Browser.storage.StorageChange },
-      areaName: string,
-    ) => {
-      if (areaName === "local") {
-        if (changes[SYNC_PROGRESS_HISTORY]) {
-          setHistoryProgress(
-            changes[SYNC_PROGRESS_HISTORY].newValue as { current: number; message: string } | null,
-          );
-        }
-        if (changes[SYNC_PROGRESS_FAV]) {
-          setFavProgress(
-            changes[SYNC_PROGRESS_FAV].newValue as {
-              current: number;
-              total: number;
-              message: string;
-            } | null,
-          );
-        }
-      }
-    };
-
-    browser.storage.onChanged.addListener(handleStorageChange);
-    return () => {
-      browser.storage.onChanged.removeListener(handleStorageChange);
-    };
   }, []);
 
   const handleSyncDeleteChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -323,53 +276,6 @@ const Settings = () => {
         </div>
       </div>
 
-      {/* 历史记录同同进度显示 */}
-      {historyProgress && historyProgress.message && (
-        <div className="w-full max-w-md mb-4 p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg animate-in fade-in duration-300">
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <span className="font-medium text-blue-800 dark:text-blue-300">历史记录同步中</span>
-              <span className="text-xs text-blue-600 dark:text-blue-300 font-mono">
-                {historyProgress.current > 0 ? `${historyProgress.current} 条` : ""}
-              </span>
-            </div>
-            <p className="text-sm text-blue-600 dark:text-blue-300">{historyProgress.message}</p>
-          </div>
-        </div>
-      )}
-
-      {/* 收藏夹同步进度显示 */}
-      {favProgress && favProgress.message && (
-        <div className="w-full max-w-md mb-8 p-4 bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 rounded-lg animate-in fade-in duration-300">
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="font-medium text-purple-800 dark:text-purple-300">收藏夹同步中</span>
-              <span className="text-xs text-purple-600 dark:text-purple-300 font-bold">
-                {favProgress.total > 0
-                  ? `${favProgress.current} / ${favProgress.total}`
-                  : `${favProgress.current}`}
-              </span>
-            </div>
-            {favProgress.total > 0 && (
-              <div className="w-full bg-purple-200 dark:bg-purple-500/20 rounded-full h-2 mb-2">
-                <div
-                  className="bg-purple-600 h-2 rounded-full transition-all duration-300 ease-out"
-                  style={{
-                    width: `${Math.min(100, (favProgress.current / favProgress.total) * 100)}%`,
-                  }}
-                ></div>
-              </div>
-            )}
-            <p
-              className="text-sm text-purple-600 dark:text-purple-300 truncate"
-              title={favProgress.message}
-            >
-              {favProgress.message}
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* 侧边栏菜单管理 */}
       <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800">
         <div className="p-5">
@@ -486,7 +392,7 @@ const Settings = () => {
               <button
                 onClick={handleImport}
                 disabled={isImporting || exportFormat === "csv"}
-                className="px-5 py-2.5 text-sm font-medium bg-white dark:bg-neutral-900 text-gray-700 dark:text-neutral-300 border border-gray-300 dark:border-neutral-700 rounded-lg hover:bg-gray-50 dark:hover:bg-neutral-800 transition-all hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-5 py-2.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white border border-gray-300 rounded-lg transition-all hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 title={exportFormat === "csv" ? "CSV格式不支持导入" : "导入所选内容的JSON文件"}
               >
                 {isImporting ? "导入中..." : "导入 (JSON)"}
@@ -494,7 +400,7 @@ const Settings = () => {
               <button
                 onClick={handleExport}
                 disabled={isExporting}
-                className="px-5 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-lg shadow-md hover:shadow-lg hover:bg-blue-700 transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                className="px-5 py-2.5 text-sm font-medium bg-blue-600 text-white border rounded-lg shadow-md hover:shadow-lg border-gray-300 hover:bg-blue-700 transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
                 {isExporting ? "导出中..." : "导出"}
               </button>

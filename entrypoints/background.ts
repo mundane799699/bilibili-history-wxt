@@ -9,8 +9,6 @@ import {
   FAV_AUTO_SYNC_ENABLED,
   FAV_SYNC_INTERVAL,
   FAV_SYNC_TIME_REMAIN,
-  SYNC_PROGRESS_HISTORY,
-  SYNC_PROGRESS_FAV,
   HIDDEN_MENUS,
   WEBDAV_CONFIG,
   WEBDAV_LAST_SYNC,
@@ -49,8 +47,6 @@ import { WebDavConfig, ensureDirectory, uploadFile, downloadFile } from "../util
 import { SubscribedCollection, SubscribedCollectionResource } from "../utils/types";
 
 export default defineBackground(() => {
-  console.log("Hello background!", { id: browser.runtime.id });
-
   // 初始化定时任务
   browser.runtime.onInstalled.addListener(async (details) => {
     // 设置每分钟同步一次
@@ -76,27 +72,16 @@ export default defineBackground(() => {
         // 并行执行初始化同步
         const initHistory = async () => {
           await setStorageValue(IS_SYNCING, true);
-          await setStorageValue(SYNC_PROGRESS_HISTORY, {
-            current: 0,
-            message: "正在初始化同步...",
-          });
           try {
             await syncHistory(true);
           } catch (e) {
             console.error("History init failed", e);
           } finally {
             await setStorageValue(IS_SYNCING, false);
-            await setStorageValue(SYNC_PROGRESS_HISTORY, { current: 0, message: "初始化同步完成" });
           }
         };
         const initFav = async () => {
           await setStorageValue(IS_SYNCING_FAV, true);
-          // Initial placeholder
-          await setStorageValue(SYNC_PROGRESS_FAV, {
-            current: 0,
-            total: 0,
-            message: "正在初始化收藏夹...",
-          });
           try {
             await syncFavorites(true);
             await setStorageValue(HAS_FULL_FAV_SYNC, true);
@@ -124,7 +109,6 @@ export default defineBackground(() => {
 
       // 设置同步状态为进行中
       await setStorageValue(IS_SYNCING, true);
-      await setStorageValue(SYNC_PROGRESS_HISTORY, { current: 0, message: "开始定时同步..." });
 
       // 执行增量同步
       await syncHistory(false);
@@ -133,7 +117,6 @@ export default defineBackground(() => {
     } finally {
       // 无论成功还是失败，都重置同步状态
       await setStorageValue(IS_SYNCING, false);
-      await setStorageValue(SYNC_PROGRESS_HISTORY, { current: 0, message: "同步结束" });
       // 重置当前同步剩余时间
       await setStorageValue(SYNC_TIME_REMAIN, syncInterval);
     }
@@ -175,7 +158,7 @@ export default defineBackground(() => {
       const currentSyncRemain = syncRemain - 1;
       // 如果当前同步剩余时间大于0，则不进行同步
       if (currentSyncRemain > 0) {
-        console.log(`还需${currentSyncRemain}分钟进行同步，暂时跳过`);
+        console.log(`还需${currentSyncRemain}分钟进行历史记录同步，暂时跳过`);
         // 更新同步剩余时间
         await setStorageValue(SYNC_TIME_REMAIN, currentSyncRemain);
         return;
@@ -246,7 +229,6 @@ export default defineBackground(() => {
 
       // 设置同步状态为进行中
       await setStorageValue(IS_SYNCING, true);
-      await setStorageValue(SYNC_PROGRESS_HISTORY, { current: 0, message: "准备开始同步..." });
 
       // 获取前端传递的isFullSync参数，如果没有则根据历史记录判断
       const forceFullSync = message.isFullSync || false;
@@ -281,7 +263,6 @@ export default defineBackground(() => {
     } finally {
       // 无论成功还是失败，都重置同步状态
       await setStorageValue(IS_SYNCING, false);
-      await setStorageValue(SYNC_PROGRESS_HISTORY, { current: 0, message: "同步完成" });
     }
   };
 
@@ -409,7 +390,6 @@ export default defineBackground(() => {
       let view_at = 0;
       const type = "all";
       const ps = 30;
-      let totalSynced = 0;
 
       // 循环获取所有历史记录
       while (hasMore) {
@@ -427,37 +407,38 @@ export default defineBackground(() => {
           throw new Error("获取历史记录失败");
         }
 
-        const data = await response.json();
+        const { data, code, message } = await response.json();
 
-        if (data.code !== 0) {
-          throw new Error(data.message || "获取历史记录失败");
+        if (code !== 0) {
+          throw new Error(message || "获取历史记录失败");
         }
 
+        const { cursor, list } = data;
         // 更新分页参数
-        hasMore = data.data.list.length > 0;
-        max = data.data.cursor.max;
-        view_at = data.data.cursor.view_at;
+        hasMore = list.length > 0;
+        max = cursor.max;
+        view_at = cursor.view_at;
 
-        if (data.data.list.length > 0) {
+        if (list.length > 0) {
           // 为每批数据创建新的事务
           const db = await openDB();
           const tx = db.transaction("history", "readwrite");
           const store = tx.objectStore("history");
           // 取出list中的第一条和最后一条
           if (!isFullSync) {
-            const firstItem = data.data.list[0];
-            const lastItem = data.data.list[data.data.list.length - 1];
+            const firstItem = list[0];
+            const lastItem = list[list.length - 1];
             // 如果firstItem的bvid和lastItem的bvid在indexedDB中存在，则不进行同步
             const firstItemExists = await getItem(store, firstItem.history.oid);
             const lastItemExists = await getItem(store, lastItem.history.oid);
             if (firstItemExists && lastItemExists) {
-              console.log("增量同步至此结束");
+              console.log("增量同步至此结束111");
               hasMore = false;
             }
           }
 
           // 批量存储历史记录
-          for (const item of data.data.list) {
+          for (const item of list) {
             // put是异步的
             store.put({
               id: item.history.oid,
@@ -479,14 +460,6 @@ export default defineBackground(() => {
             });
           }
 
-          totalSynced += data.data.list.length;
-          // 更新同步进度
-          await setStorageValue(SYNC_PROGRESS_HISTORY, {
-            current: totalSynced,
-            message: `正在同步... 已获取 ${totalSynced} 条`,
-          });
-          console.log(`同步了${data.data.list.length}条历史记录，总计：${totalSynced}`);
-
           // 等待事务完成
           await new Promise((resolve, reject) => {
             tx.oncomplete = resolve;
@@ -500,15 +473,10 @@ export default defineBackground(() => {
 
       // 更新最后同步时间
       await browser.storage.local.set({ lastSync: Date.now() });
-      await setStorageValue(SYNC_PROGRESS_HISTORY, { current: totalSynced, message: "同步完成" });
 
       return true;
     } catch (error) {
       console.error("同步历史记录失败:", error);
-      await setStorageValue(SYNC_PROGRESS_HISTORY, {
-        current: 0,
-        message: `同步失败: ${error instanceof Error ? error.message : "未知错误"}`,
-      });
       throw error;
     }
   }
@@ -552,13 +520,6 @@ export default defineBackground(() => {
       const totalItems = isFullSync
         ? safeFolders.reduce((sum: number, folder: any) => sum + (folder.media_count || 0), 0)
         : safeFolders.length * 20;
-      let currentSynced = 0;
-
-      await setStorageValue(SYNC_PROGRESS_FAV, {
-        current: 0,
-        total: totalItems,
-        message: isFullSync ? "开始全量同步收藏夹..." : "开始增量同步收藏夹(仅第一页)...",
-      });
 
       for (const folder of safeFolders) {
         console.log(`正在同步收藏夹: ${folder.title} (${isFullSync ? "全量" : "仅第一页"})`);
@@ -626,14 +587,6 @@ export default defineBackground(() => {
 
             await saveFavResources(resources);
 
-            // 更新进度
-            currentSynced += resources.length;
-            await setStorageValue(SYNC_PROGRESS_FAV, {
-              current: currentSynced,
-              total: totalItems,
-              message: `正在同步: ${folder.title}`,
-            });
-
             // 非全量同步：只拉第一页，不继续翻页
             if (!isFullSync) {
               hasMore = false;
@@ -667,12 +620,6 @@ export default defineBackground(() => {
           }
         }
       }
-
-      await setStorageValue(SYNC_PROGRESS_FAV, {
-        current: totalItems,
-        total: totalItems,
-        message: "收藏夹同步完成",
-      });
     } catch (error) {
       console.error("同步收藏夹过程出错:", error);
       throw error;

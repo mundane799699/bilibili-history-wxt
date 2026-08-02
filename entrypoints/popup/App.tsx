@@ -3,7 +3,6 @@ import "./App.css";
 import { Toaster } from "react-hot-toast";
 function App() {
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isSyncingFav, setIsSyncingFav] = useState(false);
   const [status, setStatus] = useState("");
   const [isFullSync, setIsFullSync] = useState(false);
 
@@ -43,27 +42,6 @@ function App() {
     }
   };
 
-  const handleSyncFav = async () => {
-    setIsSyncingFav(true);
-    setStatus("正在同步收藏夹...");
-
-    try {
-      const response = await browser.runtime.sendMessage({
-        action: "syncFavorites",
-      });
-
-      if (response && response.success) {
-        setStatus(response.message);
-      } else {
-        setStatus("同步收藏夹失败：" + (response ? response.error : "未知错误"));
-      }
-    } catch (error) {
-      setStatus("同步收藏夹失败：" + (error instanceof Error ? error.message : "未知错误"));
-    } finally {
-      setIsSyncingFav(false);
-    }
-  };
-
   return (
     <>
       <Toaster position="top-center" />
@@ -78,7 +56,7 @@ function App() {
           }}
           disabled={isSyncing}
         >
-          打开历史记录页面
+          打开数据管理页面
         </button>
         <button
           className="w-full px-2 py-2 text-white bg-[#00a1d6] rounded hover:bg-[#0091c2] disabled:bg-gray-300 disabled:cursor-not-allowed"
@@ -86,13 +64,6 @@ function App() {
           disabled={isSyncing}
         >
           {isSyncing ? "同步中..." : "同步历史记录"}
-        </button>
-        <button
-          className="w-full px-2 py-2 text-white bg-[#fb7299] rounded hover:bg-[#e05a80] disabled:bg-gray-300 disabled:cursor-not-allowed"
-          onClick={handleSyncFav}
-          disabled={isSyncing || isSyncingFav}
-        >
-          {isSyncingFav ? "收藏夹同步中..." : "同步收藏夹"}
         </button>
         <div className="flex items-center gap-2">
           <input

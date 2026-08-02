@@ -17,8 +17,6 @@ export const FAV_SYNC_TIME_REMAIN = "favSyncTimeRemain"; // 单位：分钟
 
 export const HIDE_USER_INFO = "hideUserInfo";
 export const HIDDEN_MENUS = "hiddenMenus"; // Array of hidden titles
-export const SYNC_PROGRESS_HISTORY = "syncProgressHistory";
-export const SYNC_PROGRESS_FAV = "syncProgressFav";
 export const DATE_SELECTION_MODE = "date_selection_mode";
 export const GRID_COLUMNS = "gridColumns";
 // history page load mode: "pagination" | "scroll", default "pagination"
