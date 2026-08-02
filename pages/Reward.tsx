@@ -1,5 +1,13 @@
 // Fake data for now; update this list on each release
 const REWARD_LIST: { name: string; amount: number; date: string; message?: string }[] = [
+  { name: "佚名", amount: 1, date: "2026-07-30", message: "谢谢你的插件" },
+  {
+    name: "晒~居",
+    amount: 1,
+    date: "2026-07-29",
+    message: "up加油安 插件很好用 就是有些问题 设置按钮会挤到屏幕外",
+  },
+  { name: "佚名", amount: 10, date: "2026-07-29", message: "肥肠好用" },
   { name: "佚名", amount: 1, date: "2026-07-18" },
   { name: "苦乐都跟随", amount: 0.5, date: "2026-07-03", message: "b站无限历史插件很好用" },
   { name: "佚名", amount: 10, date: "2026-06-09" },
