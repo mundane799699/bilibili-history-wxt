@@ -6,6 +6,7 @@ import {
   SubscribedCollectionResource,
 } from "./types";
 import dayjs from "dayjs";
+import { recordStorageWarning } from "./storageHealth";
 
 const DB_CONFIG: DBConfig = {
   name: "bilibiliHistory",
@@ -42,7 +43,10 @@ export const openDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_CONFIG.name, DB_CONFIG.version);
 
-    request.onerror = () => reject(request.error);
+    request.onerror = () => {
+      void recordStorageWarning(request.error, "open-history-database");
+      reject(request.error);
+    };
     request.onsuccess = () => resolve(request.result);
 
     request.onupgradeneeded = (event) => {
@@ -208,6 +212,7 @@ export const saveHistory = async (history: HistoryItem[]): Promise<void> => {
         if (!operationsFailed) {
           operationsFailed = true;
           console.error("向 IndexedDB 中 put 项目失败:", request.error, "项目:", item);
+          void recordStorageWarning(request.error, "save-history-item");
         }
       };
     });
@@ -223,6 +228,7 @@ export const saveHistory = async (history: HistoryItem[]): Promise<void> => {
 
     tx.onerror = () => {
       console.error("保存/更新历史记录事务失败:", tx.error);
+      void recordStorageWarning(tx.error, "save-history-transaction");
       reject(tx.error);
     };
   });

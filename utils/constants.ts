@@ -26,6 +26,7 @@ export const HISTORY_LOAD_MODE = "history_load_mode";
 // page size for the history page pagination mode, default 100
 export const HISTORY_PAGE_SIZE = "history_page_size";
 export const LAST_SEEN_UPDATE_VERSION = "lastSeenUpdateVersion";
+export const STORAGE_LAST_WARNING = "storageLastWarning";
 
 // WebDAV 同步相关
 export const WEBDAV_CONFIG = "webdavConfig";

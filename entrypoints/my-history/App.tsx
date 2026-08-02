@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { HashRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { History } from "../../pages/History";
 import { About } from "../../pages/About";
@@ -16,6 +17,7 @@ import AISearch from "../../pages/AISearch";
 import Reward from "../../pages/Reward";
 import { UpdateNoticeModal } from "../../components/UpdateNoticeModal";
 import SubscribedCollections from "../../pages/SubscribedCollections";
+import { checkStorageHealth } from "../../utils/storageHealth";
 
 const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -34,6 +36,18 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
 };
 
 const App = () => {
+  useEffect(() => {
+    checkStorageHealth(true)
+      .then((report) => {
+        if (!report.storageProtected || report.errors.length > 0) {
+          console.warn("扩展存储未完全受保护:", report);
+        }
+      })
+      .catch((error) => {
+        console.error("检查扩展存储保护状态失败:", error);
+      });
+  }, []);
+
   return (
     <HashRouter>
       <Toaster position="top-center" />

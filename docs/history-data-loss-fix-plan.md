@@ -287,7 +287,9 @@ const { usage, quota } = await navigator.storage.estimate();
 
 要求：
 
-- `persist()` 返回 `false` 时继续运行，但展示“未获得持久化存储”。
+- 以 manifest 中的 `unlimitedStorage` 权限作为扩展存储保护的主要状态。
+- `navigator.storage.persisted()` 只作为辅助状态；当 `unlimitedStorage` 已生效时，即使
+  `persist()` 返回 `false` 也不得显示为“未获得授权”，并明确提示用户无需手动授权。
 - 展示当前使用量和估算配额。
 - 捕获 `QuotaExceededError`、`AbortError`、`UnknownError`。
 - 写事务失败时不更新同步成功状态或时间水位。
@@ -538,3 +540,17 @@ pnpm format:check
 - `utils/export.ts`
 - `wxt.config.ts`
 - 新增删除审计、同步和 IndexedDB 测试文件
+
+## 14. TODO
+
+- [ ] 第 4 节：堵住不可恢复的删除路径
+- [ ] 第 5 节：修复历史同步不完整
+- [x] 第 6 节：Edge/Chromium 存储保护
+  - [x] manifest 增加 `unlimitedStorage`
+  - [x] 扩展主页面启动时请求持久化存储
+  - [x] 设置页展示持久化状态、当前使用量和估算配额
+  - [x] 修正授权状态判断，以 `unlimitedStorage` 为主要保护状态，避免 `persisted()` 误报
+  - [x] 记录 `QuotaExceededError`、`AbortError`、`UnknownError` 等关键存储异常
+  - [x] 存储未持久化或发生异常时提示用户检查 JSON/WebDAV 备份
+- [ ] 第 7 节：数量和索引健康检查
+- [ ] 第 8 节：增强备份

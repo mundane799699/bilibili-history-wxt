@@ -6,7 +6,14 @@ export default defineConfig({
   manifest: {
     name: "Bilibili 无限历史记录",
     description: "不限制数量的保存你的bilibili历史记录",
-    permissions: ["storage", "tabs", "cookies", "alarms", "declarativeNetRequest"],
+    permissions: [
+      "unlimitedStorage",
+      "storage",
+      "tabs",
+      "cookies",
+      "alarms",
+      "declarativeNetRequest",
+    ],
     declarative_net_request: {
       rule_resources: [
         {

@@ -40,6 +40,7 @@ import {
   replaceSubscribedCollectionResources,
 } from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
+import { recordStorageWarning } from "../utils/storageHealth";
 import { WebDavConfig, ensureDirectory, uploadFile, downloadFile } from "../utils/webdav";
 import {
   FavoriteFolder,
@@ -499,7 +500,14 @@ export default defineBackground(() => {
           // 等待事务完成
           await new Promise((resolve, reject) => {
             tx.oncomplete = resolve;
-            tx.onerror = () => reject(tx.error);
+            tx.onerror = () => {
+              void recordStorageWarning(tx.error, "sync-history-transaction");
+              reject(tx.error);
+            };
+            tx.onabort = () => {
+              void recordStorageWarning(tx.error, "sync-history-transaction-abort");
+              reject(tx.error);
+            };
           });
 
           // 添加延时，避免请求过于频繁

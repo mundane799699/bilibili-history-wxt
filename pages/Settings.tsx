@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Check } from "lucide-react";
+import { Check, HardDrive, RefreshCw } from "lucide-react";
 import { clearHistory, saveHistory } from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
 import {
@@ -22,6 +22,7 @@ import { HistoryItem, LikedMusic } from "../utils/types";
 import { importLikedMusic } from "../utils/db";
 import { Checkbox } from "../components/Checkbox";
 import { Select } from "../components/Select";
+import { checkStorageHealth, formatStorageSize, StorageHealthReport } from "../utils/storageHealth";
 
 const Settings = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -44,6 +45,25 @@ const Settings = () => {
   const [exportFormat, setExportFormat] = useState<"csv" | "json">("json");
 
   const [syncInterval, setSyncInterval] = useState<number | string>(1);
+  const [storageHealth, setStorageHealth] = useState<StorageHealthReport | null>(null);
+  const [isCheckingStorage, setIsCheckingStorage] = useState(false);
+  const [storageHealthError, setStorageHealthError] = useState("");
+
+  const refreshStorageHealth = async (showSuccess = false) => {
+    setIsCheckingStorage(true);
+    setStorageHealthError("");
+    try {
+      const report = await checkStorageHealth(true);
+      setStorageHealth(report);
+      if (showSuccess) toast.success("存储保护状态已刷新");
+    } catch (error) {
+      console.error("检查存储保护状态失败:", error);
+      setStorageHealthError(error instanceof Error ? error.message : "未知错误");
+      if (showSuccess) toast.error("存储保护状态检查失败");
+    } finally {
+      setIsCheckingStorage(false);
+    }
+  };
 
   useEffect(() => {
     // 加载设置
@@ -65,6 +85,7 @@ const Settings = () => {
       setHistoryLoadMode(storedHistoryLoadMode as "pagination" | "scroll");
     };
     loadSettings();
+    void refreshStorageHealth();
   }, []);
 
   const handleSyncDeleteChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -251,6 +272,109 @@ const Settings = () => {
           >
             恢复出厂
           </button>
+        </div>
+      </div>
+
+      {/* Edge/Chromium 存储保护 */}
+      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800">
+        <div className="p-5">
+          <div className="flex items-start justify-between gap-4 mb-5">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                <HardDrive className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-800 dark:text-neutral-100 mb-1">
+                  本地存储保护
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-neutral-400">
+                  检查 IndexedDB 持久化状态和可用容量
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => void refreshStorageHealth(true)}
+              disabled={isCheckingStorage}
+              className="p-2 rounded-lg text-gray-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors disabled:opacity-50"
+              title="刷新存储保护状态"
+            >
+              <RefreshCw className={`w-4 h-4 ${isCheckingStorage ? "animate-spin" : ""}`} />
+            </button>
+          </div>
+
+          {storageHealth ? (
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500 dark:text-neutral-400">扩展存储保护</span>
+                <span
+                  className={
+                    storageHealth.storageProtected
+                      ? "font-medium text-green-600 dark:text-green-400"
+                      : "font-medium text-amber-600 dark:text-amber-400"
+                  }
+                >
+                  {storageHealth.storageProtected ? "已启用" : "未启用"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-gray-500 dark:text-neutral-400">保护方式</span>
+                <span className="text-right font-medium text-gray-700 dark:text-neutral-200">
+                  {storageHealth.unlimitedStorageGranted
+                    ? "unlimitedStorage 权限"
+                    : storageHealth.persisted
+                      ? "浏览器持久化存储"
+                      : "无"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500 dark:text-neutral-400">当前使用量</span>
+                <span className="font-medium text-gray-700 dark:text-neutral-200">
+                  {formatStorageSize(storageHealth.usage)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500 dark:text-neutral-400">估算配额</span>
+                <span className="font-medium text-gray-700 dark:text-neutral-200">
+                  {formatStorageSize(storageHealth.quota)}
+                </span>
+              </div>
+
+              {storageHealth.unlimitedStorageGranted && !storageHealth.persisted && (
+                <div className="rounded-lg border border-blue-200 dark:border-blue-500/20 bg-blue-50 dark:bg-blue-500/10 px-3 py-2 text-blue-700 dark:text-blue-300">
+                  unlimitedStorage
+                  权限已生效。浏览器未单独标记持久化存储不影响扩展存储保护，无需手动授权。
+                </div>
+              )}
+
+              {!storageHealth.storageProtected && (
+                <div className="rounded-lg border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-amber-700 dark:text-amber-300">
+                  未检测到 unlimitedStorage 权限或浏览器持久化存储。请先重新加载扩展，并建议定期导出
+                  JSON 或配置 WebDAV 备份。
+                </div>
+              )}
+
+              {(storageHealth.errors.length > 0 || storageHealthError) && (
+                <div className="rounded-lg border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-3 py-2 text-red-700 dark:text-red-300">
+                  存储状态检测出现异常：
+                  {storageHealthError || storageHealth.errors.map((error) => error.name).join("、")}
+                  。建议立即导出 JSON 或检查 WebDAV 备份。
+                </div>
+              )}
+
+              {storageHealth.lastWarning && (
+                <div className="rounded-lg border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-3 py-2 text-red-700 dark:text-red-300">
+                  最近一次存储写入异常：{storageHealth.lastWarning.name}（
+                  {new Date(storageHealth.lastWarning.timestamp).toLocaleString()}
+                  ）。建议立即检查备份。
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 dark:text-neutral-400">
+              {isCheckingStorage ? "正在检查存储状态..." : storageHealthError || "暂无存储信息"}
+            </p>
+          )}
         </div>
       </div>
 
