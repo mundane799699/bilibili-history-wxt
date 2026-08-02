@@ -1,8 +1,14 @@
 import { useEffect, useState, useRef } from "react";
 import { getFavFolders, getFavResources } from "../utils/db";
-import { FavoriteFolder, FavoriteResource } from "../utils/types";
-import { Folder, Video, Search, X, ChevronDownIcon } from "lucide-react";
+import {
+  FavoriteFolder,
+  FavoriteResource,
+  RefreshFavoriteFoldersRequest,
+  RefreshFavoriteFoldersResponse,
+} from "../utils/types";
+import { Folder, Video, Search, X, ChevronDownIcon, CloudDownload } from "lucide-react";
 import { Pagination } from "../components/Pagination";
+import { FavoriteFolderSyncModal } from "../components/FavoriteFolderSyncModal";
 
 export const Favorites = () => {
   const [folders, setFolders] = useState<FavoriteFolder[]>([]);
@@ -13,22 +19,59 @@ export const Favorites = () => {
   const [keyword, setKeyword] = useState("");
   const [searchType, setSearchType] = useState<"all" | "title" | "up" | "bvid" | "avid">("all");
   const [isSearchKindDropdownOpen, setIsSearchKindDropdownOpen] = useState(false);
+  const [syncTargetFolder, setSyncTargetFolder] = useState<FavoriteFolder | null>(null);
   const pageSize = 50;
 
   const contentRef = useRef<HTMLDivElement>(null);
+  const hasRefreshedFolderDirectoryRef = useRef(false);
 
   useEffect(() => {
-    loadFolders();
+    if (hasRefreshedFolderDirectoryRef.current) return;
+    hasRefreshedFolderDirectoryRef.current = true;
+
+    const initializeFolders = async () => {
+      // 先展示本地目录，再从网络刷新，网络失败时仍可使用 IndexedDB 中的数据。
+      await loadFolders();
+
+      try {
+        const request: RefreshFavoriteFoldersRequest = {
+          action: "refreshFavoriteFolders",
+        };
+        const response = (await browser.runtime.sendMessage(request)) as
+          RefreshFavoriteFoldersResponse | undefined;
+
+        if (!response) throw new Error("未收到收藏夹目录刷新响应");
+        if (!response.success) throw new Error(response.error || "刷新收藏夹目录失败");
+
+        await loadFolders();
+      } catch (error) {
+        console.error("从网络刷新收藏夹目录失败，继续使用本地数据", error);
+      }
+    };
+
+    void initializeFolders();
   }, []);
 
   useEffect(() => {
-    if (selectedFolderId) {
-      loadResources(selectedFolderId);
-    } else if (folders.length > 0) {
+    if (folders.length === 0) {
+      if (selectedFolderId !== null) {
+        setSelectedFolderId(null);
+        setResources([]);
+      }
+      return;
+    }
+
+    if (selectedFolderId === null || !folders.some((folder) => folder.id === selectedFolderId)) {
       // Default select first folder
       setSelectedFolderId(folders[0].id);
     }
   }, [folders, selectedFolderId]);
+
+  useEffect(() => {
+    if (selectedFolderId !== null) {
+      void loadResources(selectedFolderId);
+    }
+  }, [selectedFolderId]);
 
   const loadFolders = async () => {
     try {
@@ -36,12 +79,17 @@ export const Favorites = () => {
       // Sort by index
       const sortedList = list.sort((a, b) => (a.index || 0) - (b.index || 0));
       setFolders(sortedList);
+      return true;
     } catch (error) {
       console.error("加载收藏夹失败", error);
+      return false;
     }
   };
 
-  const loadResources = async (folderId: number) => {
+  const loadResources = async (
+    folderId: number,
+    { resetSearch = true }: { resetSearch?: boolean } = {},
+  ) => {
     setLoading(true);
     try {
       const list = await getFavResources(folderId);
@@ -49,11 +97,23 @@ export const Favorites = () => {
       const sortedList = list.sort((a, b) => (a.index || 0) - (b.index || 0));
       setResources(sortedList);
       setCurrentPage(1);
-      setKeyword("");
+      if (resetSearch) setKeyword("");
+      return true;
     } catch (error) {
       console.error("加载收藏资源失败", error);
+      return false;
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFolderSyncSuccess = async (folderId: number) => {
+    const foldersRefreshed = await loadFolders();
+    const resourcesRefreshed =
+      selectedFolderId === folderId ? await loadResources(folderId, { resetSearch: false }) : true;
+
+    if (!foldersRefreshed || !resourcesRefreshed) {
+      throw new Error("收藏夹页面刷新失败");
     }
   };
 
@@ -113,9 +173,28 @@ export const Favorites = () => {
               }`}
               onClick={() => setSelectedFolderId(folder.id)}
             >
-              <div className="font-medium truncate">{folder.title}</div>
-              <div className="text-xs text-gray-400 dark:text-neutral-500 mt-1">
-                {folder.media_count}个内容
+              <div className="flex items-start gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-medium" title={folder.title}>
+                    {folder.title}
+                  </div>
+                  <div className="mt-1 text-xs text-gray-400 dark:text-neutral-500">
+                    {folder.media_count}个内容
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setSyncTargetFolder(folder);
+                  }}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-md border border-blue-200 bg-white/80 px-2 py-1 text-xs font-medium text-blue-600 shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-100 dark:border-blue-500/30 dark:bg-neutral-900/80 dark:text-blue-400 dark:hover:border-blue-500/50 dark:hover:bg-blue-500/20"
+                  title={`同步收藏夹：${folder.title}`}
+                  aria-label={`同步收藏夹：${folder.title}`}
+                >
+                  <CloudDownload className="h-3.5 w-3.5" />
+                  <span>同步</span>
+                </button>
               </div>
             </div>
           ))}
@@ -301,6 +380,12 @@ export const Favorites = () => {
           </div>
         </div>
       </div>
+
+      <FavoriteFolderSyncModal
+        folder={syncTargetFolder}
+        onClose={() => setSyncTargetFolder(null)}
+        onSyncSuccess={handleFolderSyncSuccess}
+      />
     </div>
   );
 };

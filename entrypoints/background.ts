@@ -6,10 +6,6 @@ import {
   SYNC_INTERVAL,
   IS_SYNC_DELETE_FROM_BILIBILI,
   IS_SYNCING_FAV,
-  FAV_AUTO_SYNC_ENABLED,
-  FAV_SYNC_INTERVAL,
-  FAV_SYNC_TIME_REMAIN,
-  HIDDEN_MENUS,
   WEBDAV_CONFIG,
   WEBDAV_LAST_SYNC,
   WEBDAV_AUTO_SYNC_ENABLED,
@@ -24,6 +20,7 @@ import {
   getItem,
   deleteHistoryItem,
   saveFavFolders,
+  replaceFavFolders,
   saveFavResources,
   getFavResources,
   deleteFavResources,
@@ -45,8 +42,12 @@ import {
 import { getStorageValue, setStorageValue } from "../utils/storage";
 import { WebDavConfig, ensureDirectory, uploadFile, downloadFile } from "../utils/webdav";
 import {
+  FavoriteFolder,
+  RefreshFavoriteFoldersResponse,
   SubscribedCollection,
   SubscribedCollectionResource,
+  SyncFavoriteFolderRequest,
+  SyncFavoriteFolderResponse,
   SyncHistoryRequest,
   SyncHistoryResponse,
 } from "../utils/types";
@@ -63,10 +64,6 @@ export default defineBackground(() => {
   browser.runtime.onInstalled.addListener(async (details) => {
     // 设置每分钟同步一次
     browser.alarms.create("syncHistory", {
-      periodInMinutes: 1,
-    });
-    // 设置每分钟检查一次收藏夹同步
-    browser.alarms.create("syncFavorites", {
       periodInMinutes: 1,
     });
     // 设置每分钟检查一次 WebDAV 自动同步
@@ -135,31 +132,6 @@ export default defineBackground(() => {
     }
   };
 
-  const intervalFavSync = async (syncInterval: number) => {
-    let success = true;
-    try {
-      const isSyncing = await getStorageValue(IS_SYNCING_FAV);
-      if (isSyncing) {
-        console.log("收藏夹同步进行中，跳过本次");
-        return;
-      }
-
-      await setStorageValue(IS_SYNCING_FAV, true);
-      await syncFavorites(false);
-    } catch (error) {
-      console.error("定时收藏夹同步失败", error);
-      success = false;
-    } finally {
-      await setStorageValue(IS_SYNCING_FAV, false);
-      if (success) {
-        await setStorageValue(FAV_SYNC_TIME_REMAIN, syncInterval);
-      } else {
-        console.log("收藏夹增量同步失败，1分钟后重试...");
-        await setStorageValue(FAV_SYNC_TIME_REMAIN, 1);
-      }
-    }
-  };
-
   // 监听定时任务
   browser.alarms.onAlarm.addListener(async (alarm) => {
     if (alarm.name === "syncHistory") {
@@ -178,32 +150,6 @@ export default defineBackground(() => {
 
       // 同步成功后，syncHistory 会更新最近一次同步时间
       void intervalSync();
-    } else if (alarm.name === "syncFavorites") {
-      // 检查是否隐藏了收藏夹功能
-      const hiddenMenus = await getStorageValue<string[]>(HIDDEN_MENUS, []);
-      if (hiddenMenus.includes("收藏夹")) {
-        console.log("收藏夹功能已禁用，跳过同步");
-        return;
-      }
-
-      // skip when auto favorites sync switch is off (default off)
-      const favAutoSyncEnabled = await getStorageValue(FAV_AUTO_SYNC_ENABLED, false);
-      if (!favAutoSyncEnabled) {
-        console.log("自动同步收藏夹开关未开启，跳过本次收藏夹同步");
-        return;
-      }
-
-      // 默认改成15分钟同步一次
-      const syncInterval = await getStorageValue(FAV_SYNC_INTERVAL, 15);
-      const syncRemain = await getStorageValue(FAV_SYNC_TIME_REMAIN, syncInterval);
-      const currentSyncRemain = syncRemain - 1;
-
-      if (currentSyncRemain > 0) {
-        console.log(`还需${currentSyncRemain}分钟进行收藏夹同步，暂时跳过`);
-        await setStorageValue(FAV_SYNC_TIME_REMAIN, currentSyncRemain);
-        return;
-      }
-      intervalFavSync(syncInterval);
     } else if (alarm.name === "syncWebDav") {
       // WebDAV 自动同步：基于上次同步时间判断
       const enabled = await getStorageValue(WEBDAV_AUTO_SYNC_ENABLED, false);
@@ -284,7 +230,8 @@ export default defineBackground(() => {
     }
   };
 
-  const handleSyncFavorites = async (message: any, sendResponse: (response: any) => void) => {
+  const handleSyncFavorites = async (sendResponse: (response: any) => void) => {
+    let syncStarted = false;
     try {
       const isSyncing = await getStorageValue(IS_SYNCING_FAV);
       if (isSyncing) {
@@ -293,6 +240,7 @@ export default defineBackground(() => {
       }
 
       await setStorageValue(IS_SYNCING_FAV, true);
+      syncStarted = true;
       const hasFullFavSync = await getStorageValue(HAS_FULL_FAV_SYNC, false);
       if (!hasFullFavSync) {
         await syncFavorites(true);
@@ -308,7 +256,71 @@ export default defineBackground(() => {
         error: error instanceof Error ? error.message : "未知错误",
       });
     } finally {
-      await setStorageValue(IS_SYNCING_FAV, false);
+      if (syncStarted) {
+        await setStorageValue(IS_SYNCING_FAV, false);
+      }
+    }
+  };
+
+  const handleSyncFavoriteFolder = async (
+    message: SyncFavoriteFolderRequest,
+    sendResponse: (response: SyncFavoriteFolderResponse) => void,
+  ) => {
+    const folderId = Number(message.folderId);
+    if (!Number.isSafeInteger(folderId) || folderId <= 0) {
+      sendResponse({ success: false, error: "收藏夹信息不完整" });
+      return;
+    }
+    if (typeof message.isFullSync !== "boolean") {
+      sendResponse({ success: false, error: "同步方式不完整" });
+      return;
+    }
+
+    let syncStarted = false;
+    try {
+      const isSyncing = await getStorageValue(IS_SYNCING_FAV);
+      if (isSyncing) {
+        sendResponse({ success: false, error: "收藏夹同步正在进行中，请稍后再试" });
+        return;
+      }
+
+      await setStorageValue(IS_SYNCING_FAV, true);
+      syncStarted = true;
+
+      const folder = await syncFavoriteFolderById(folderId, message.isFullSync);
+      const mode = message.isFullSync ? "full" : "incremental";
+      sendResponse({
+        success: true,
+        message: `「${folder.title}」${message.isFullSync ? "全量" : "增量"}同步成功`,
+        folderId,
+        mode,
+      });
+    } catch (error) {
+      console.error("同步单个收藏夹失败:", error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : "未知错误",
+      });
+    } finally {
+      if (syncStarted) {
+        await setStorageValue(IS_SYNCING_FAV, false);
+      }
+    }
+  };
+
+  const handleRefreshFavoriteFolders = async (
+    sendResponse: (response: RefreshFavoriteFoldersResponse) => void,
+  ) => {
+    try {
+      const { folders } = await getFavoriteFoldersFromBilibili();
+      await replaceFavFolders(folders);
+      sendResponse({ success: true, folderCount: folders.length });
+    } catch (error) {
+      console.error("刷新收藏夹目录失败:", error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : "未知错误",
+      });
     }
   };
 
@@ -379,7 +391,13 @@ export default defineBackground(() => {
       handleDeleteHistoryItem(message, sendResponse);
       return true; // 保持消息通道开放
     } else if (message.action === "syncFavorites") {
-      handleSyncFavorites(message, sendResponse);
+      handleSyncFavorites(sendResponse);
+      return true;
+    } else if (message.action === "syncFavoriteFolder") {
+      handleSyncFavoriteFolder(message as SyncFavoriteFolderRequest, sendResponse);
+      return true;
+    } else if (message.action === "refreshFavoriteFolders") {
+      handleRefreshFavoriteFolders(sendResponse);
       return true;
     } else if (message.action === "syncSubscribedCollections") {
       handleSyncSubscribedCollections(sendResponse);
@@ -504,144 +522,202 @@ export default defineBackground(() => {
     }
   }
 
-  async function syncFavorites(isFullSync = false): Promise<void> {
-    try {
-      const cookies = await browser.cookies.getAll({ domain: "bilibili.com" });
-      const SESSDATA = cookies.find((c) => c.name === "SESSDATA")?.value;
-      if (!SESSDATA) throw new Error("未登录 B 站");
+  interface FavoriteFolderPage {
+    medias: any[];
+    hasMore: boolean;
+  }
 
-      // 1. 获取用户信息 (MID)
-      const navRes = await fetch("https://api.bilibili.com/x/web-interface/nav", {
-        headers: { Cookie: `SESSDATA=${SESSDATA}` },
-      });
-      const navData = await navRes.json();
-      if (navData.code !== 0) throw new Error("获取用户信息失败");
-      const mid = navData.data.mid;
+  async function getFavoriteFoldersFromBilibili(): Promise<{
+    sessdata: string;
+    folders: FavoriteFolder[];
+  }> {
+    const sessdata = await getBilibiliSession();
 
-      // 2. 获取收藏夹列表
-      const folderRes = await fetch(
-        `https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid=${mid}`,
-        { headers: { Cookie: `SESSDATA=${SESSDATA}` } },
-      );
-      const folderData = await folderRes.json();
-      if (folderData.code !== 0) throw new Error("获取收藏夹失败");
+    const navRes = await fetch("https://api.bilibili.com/x/web-interface/nav", {
+      headers: { Cookie: `SESSDATA=${sessdata}` },
+    });
+    if (!navRes.ok) throw new Error("获取用户信息失败");
 
-      const folders = folderData.data.list;
-      const safeFolders = folders || [];
-      if (safeFolders.length > 0) {
-        // 添加 index 字段
-        const foldersWithIndex = safeFolders.map((f: any, idx: number) => ({
-          ...f,
-          index: idx,
-        }));
-        await saveFavFolders(foldersWithIndex);
-        console.log(`同步了 ${safeFolders.length} 个收藏夹`);
+    const navData = await navRes.json();
+    if (navData.code !== 0) throw new Error(navData.message || "获取用户信息失败");
+
+    const mid = Number(navData.data?.mid);
+    if (!Number.isSafeInteger(mid) || mid <= 0) throw new Error("获取用户信息失败");
+
+    const folderRes = await fetch(
+      `https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid=${mid}`,
+      { headers: { Cookie: `SESSDATA=${sessdata}` } },
+    );
+    if (!folderRes.ok) throw new Error("获取收藏夹失败");
+
+    const folderData = await folderRes.json();
+    if (folderData.code !== 0) throw new Error(folderData.message || "获取收藏夹失败");
+
+    if (!folderData.data || !("list" in folderData.data)) {
+      throw new Error("收藏夹数据格式异常");
+    }
+
+    const onlineFolders = folderData.data.list;
+    if (onlineFolders !== null && !Array.isArray(onlineFolders)) {
+      throw new Error("收藏夹数据格式异常");
+    }
+
+    const folders = (onlineFolders || []).map(
+      (folder: FavoriteFolder, index: number): FavoriteFolder => ({
+        ...folder,
+        id: Number(folder.id),
+        index,
+      }),
+    );
+
+    return { sessdata, folders };
+  }
+
+  async function fetchFavoriteFolderPage(
+    folder: FavoriteFolder,
+    page: number,
+    sessdata: string,
+  ): Promise<FavoriteFolderPage> {
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+      try {
+        const response = await fetch(
+          `https://api.bilibili.com/x/v3/fav/resource/list?media_id=${folder.id}&pn=${page}&ps=20`,
+          {
+            headers: { Cookie: `SESSDATA=${sessdata}` },
+            signal: controller.signal,
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.code !== 0) {
+          throw new Error(data.message || "B 站接口返回失败");
+        }
+        if (!data.data || (data.data.medias != null && !Array.isArray(data.data.medias))) {
+          throw new Error("收藏夹资源数据格式异常");
+        }
+
+        return {
+          medias: data.data.medias || [],
+          hasMore: Boolean(data.data.has_more),
+        };
+      } catch (error) {
+        lastError = error;
+        if (attempt < 2) {
+          console.warn(`请求收藏夹 ${folder.title} 第 ${page} 页失败，正在重试 (${attempt}/2)`);
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    }
+
+    const reason = lastError instanceof Error ? `：${lastError.message}` : "";
+    throw new Error(`获取收藏夹「${folder.title}」第 ${page} 页失败${reason}`);
+  }
+
+  async function syncFavoriteFolderResources(
+    folder: FavoriteFolder,
+    sessdata: string,
+    isFullSync: boolean,
+  ): Promise<void> {
+    console.log(`正在同步收藏夹: ${folder.title} (${isFullSync ? "全量" : "增量"})`);
+
+    const localResources = await getFavResources(folder.id);
+    const existingResourceIds = new Set(localResources.map((item) => item.id));
+    const onlineResourceIds = new Set<number>();
+
+    let page = 1;
+    let allPagesFetched = false;
+
+    while (true) {
+      const { medias, hasMore } = await fetchFavoriteFolderPage(folder, page, sessdata);
+
+      if (medias.length === 0) {
+        if (hasMore) throw new Error(`收藏夹「${folder.title}」分页数据异常`);
+        allPagesFetched = true;
+        break;
       }
 
-      // 3. 同步每个收藏夹的资源
-      // 全量同步时计算总数用于进度展示；增量同步时总数按每个收藏夹1页(最多20)估算
-      const totalItems = isFullSync
-        ? safeFolders.reduce((sum: number, folder: any) => sum + (folder.media_count || 0), 0)
-        : safeFolders.length * 20;
+      const resourceIds = medias.map((media: any) => Number(media.id));
+      if (resourceIds.some((id: number) => !Number.isSafeInteger(id) || id <= 0)) {
+        throw new Error(`收藏夹「${folder.title}」资源数据格式异常`);
+      }
 
-      for (const folder of safeFolders) {
-        console.log(`正在同步收藏夹: ${folder.title} (${isFullSync ? "全量" : "仅第一页"})`);
+      resourceIds.forEach((id: number) => onlineResourceIds.add(id));
 
-        // 用于记录本次API返回的所有资源ID，全量同步时用于后续比对删除本地已取消收藏的资源
-        const onlineResourceIds = new Set<number>();
+      const reachedLocalBoundary =
+        !isFullSync &&
+        existingResourceIds.has(resourceIds[0]) &&
+        existingResourceIds.has(resourceIds[resourceIds.length - 1]);
 
-        let hasMore = true;
-        let page = 1;
-        while (hasMore) {
-          let res;
-          let fetchSuccess = false;
-          let retries = 0;
+      const resources = medias.map((media: any, index: number) => ({
+        ...media,
+        folder_id: folder.id,
+        index: (page - 1) * 20 + index,
+        id: resourceIds[index],
+        bv_id: media.bv_id || media.bvid,
+      }));
+      await saveFavResources(resources);
 
-          while (!fetchSuccess && retries < 2) {
-            try {
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时重试
+      if (!hasMore) {
+        allPagesFetched = true;
+        break;
+      }
+      if (reachedLocalBoundary) break;
 
-              res = await fetch(
-                `https://api.bilibili.com/x/v3/fav/resource/list?media_id=${folder.id}&pn=${page}&ps=20`,
-                {
-                  headers: { Cookie: `SESSDATA=${SESSDATA}` },
-                  signal: controller.signal,
-                },
-              );
-              clearTimeout(timeoutId);
-              fetchSuccess = true;
-            } catch (err) {
-              console.warn(
-                `请求收藏夹 ${folder.title} 第 ${page} 页超时或失败，正在重试 (${retries + 1}/2)...`,
-              );
-              retries++;
-              await new Promise((r) => setTimeout(r, 2000));
-            }
-          }
+      page += 1;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
 
-          if (!res || !res.ok) {
-            console.error(`获取收藏夹 ${folder.title} 彻底失败，跳过本页`);
-            break;
-          }
+    if (isFullSync) {
+      if (!allPagesFetched) {
+        throw new Error(`收藏夹「${folder.title}」未完整同步，已跳过本地清理`);
+      }
 
-          const data = await res.json();
-          if (data.code !== 0) {
-            console.error(`获取收藏夹 ${folder.title} 资源失败:`, data.message);
-            break;
-          }
+      const idsToDelete = localResources
+        .filter((item) => !onlineResourceIds.has(item.id))
+        .map((item) => item.id);
 
-          const medias = data.data.medias;
-          if (medias && medias.length > 0) {
-            // 收集这一页的资源ID
-            medias.forEach((m: any) => onlineResourceIds.add(m.id));
+      if (idsToDelete.length > 0) {
+        await deleteFavResources(idsToDelete);
+        console.log(`从收藏夹 "${folder.title}" 删除了 ${idsToDelete.length} 个已取消收藏的项目`);
+      }
+    }
+  }
 
-            // 补全 folder_id 和 index
-            const resources = medias.map((m: any, idx: number) => ({
-              ...m,
-              folder_id: folder.id,
-              // 使用全局索引 (page-1)*20 + idx
-              index: (page - 1) * 20 + idx,
-              // fix some fields mapping if needed, based on interface
-              // data from API matches interface mostly
-              id: m.id,
-              bv_id: m.bv_id || m.bvid,
-            }));
+  async function syncFavoriteFolderById(
+    folderId: number,
+    isFullSync: boolean,
+  ): Promise<FavoriteFolder> {
+    const { sessdata, folders } = await getFavoriteFoldersFromBilibili();
+    const folder = folders.find((item) => item.id === folderId);
+    if (!folder) throw new Error("收藏夹不存在或无权访问");
 
-            await saveFavResources(resources);
+    await saveFavFolders([folder]);
+    await syncFavoriteFolderResources(folder, sessdata, isFullSync);
+    return folder;
+  }
 
-            // 非全量同步：只拉第一页，不继续翻页
-            if (!isFullSync) {
-              hasMore = false;
-            } else {
-              hasMore = data.data.has_more;
-              page++;
-            }
-            await new Promise((resolve) => setTimeout(resolve, 500)); // limit rate
-          } else {
-            hasMore = false;
-          }
-        }
+  async function syncFavorites(isFullSync = false): Promise<void> {
+    try {
+      const { sessdata, folders } = await getFavoriteFoldersFromBilibili();
 
-        // 4. 清理本地存在但线上已不存在的资源 (取消收藏的)
-        // 仅全量同步时执行清理，增量同步只拉了第一页，无法准确判断哪些被取消收藏
-        if (isFullSync) {
-          try {
-            const localResources = await getFavResources(folder.id);
-            const idsToDelete = localResources
-              .filter((item) => !onlineResourceIds.has(item.id))
-              .map((item) => item.id);
+      if (folders.length > 0) {
+        await saveFavFolders(folders);
+        console.log(`同步了 ${folders.length} 个收藏夹`);
+      }
 
-            if (idsToDelete.length > 0) {
-              await deleteFavResources(idsToDelete);
-              console.log(
-                `从收藏夹 "${folder.title}" 删除了 ${idsToDelete.length} 个已取消收藏的项目`,
-              );
-            }
-          } catch (err) {
-            console.error(`清理收藏夹 "${folder.title}" 本地数据失败:`, err);
-          }
-        }
+      for (const folder of folders) {
+        await syncFavoriteFolderResources(folder, sessdata, isFullSync);
       }
     } catch (error) {
       console.error("同步收藏夹过程出错:", error);

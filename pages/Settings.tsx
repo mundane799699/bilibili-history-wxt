@@ -6,8 +6,6 @@ import {
   IS_SYNC_DELETE,
   SYNC_INTERVAL,
   IS_SYNC_DELETE_FROM_BILIBILI,
-  FAV_AUTO_SYNC_ENABLED,
-  FAV_SYNC_INTERVAL,
   HIDE_USER_INFO,
   HIDDEN_MENUS,
   DATE_SELECTION_MODE,
@@ -29,7 +27,6 @@ const Settings = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isSyncDelete, setIsSyncDelete] = useState(true);
   const [isSyncDeleteFromBilibili, setIsSyncDeleteFromBilibili] = useState(true);
-  const [isFavAutoSync, setIsFavAutoSync] = useState(false);
   const [isHideUserInfo, setIsHideUserInfo] = useState(false);
   const [hiddenMenus, setHiddenMenus] = useState<string[]>([]);
   const [dateSelectionMode, setDateSelectionMode] = useState<"range" | "single">("range");
@@ -47,28 +44,23 @@ const Settings = () => {
   const [exportFormat, setExportFormat] = useState<"csv" | "json">("json");
 
   const [syncInterval, setSyncInterval] = useState<number | string>(1);
-  const [favSyncInterval, setFavSyncInterval] = useState<number | string>(15);
 
   useEffect(() => {
     // 加载设置
     const loadSettings = async () => {
       const syncDelete = await getStorageValue(IS_SYNC_DELETE, true);
       const syncDeleteFromBilibili = await getStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, true);
-      const favAutoSync = await getStorageValue(FAV_AUTO_SYNC_ENABLED, false);
       const hideUserInfo = await getStorageValue(HIDE_USER_INFO, false);
       const menus = await getStorageValue(HIDDEN_MENUS, []);
       const storedSyncInterval = await getStorageValue(SYNC_INTERVAL, 1);
-      const storedFavSyncInterval = await getStorageValue(FAV_SYNC_INTERVAL, 15);
       const storedDateMode = await getStorageValue(DATE_SELECTION_MODE, "range");
       const storedHistoryLoadMode = await getStorageValue(HISTORY_LOAD_MODE, "pagination");
 
       setIsSyncDelete(syncDelete);
       setIsSyncDeleteFromBilibili(syncDeleteFromBilibili);
-      setIsFavAutoSync(favAutoSync);
       setIsHideUserInfo(hideUserInfo);
       setHiddenMenus(menus);
       setSyncInterval(storedSyncInterval);
-      setFavSyncInterval(storedFavSyncInterval);
       setDateSelectionMode(storedDateMode as "range" | "single");
       setHistoryLoadMode(storedHistoryLoadMode as "pagination" | "scroll");
     };
@@ -85,12 +77,6 @@ const Settings = () => {
     const newValue = e.target.checked;
     setIsSyncDeleteFromBilibili(newValue);
     await setStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, newValue);
-  };
-
-  const handleFavAutoSyncChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.checked;
-    setIsFavAutoSync(newValue);
-    await setStorageValue(FAV_AUTO_SYNC_ENABLED, newValue);
   };
 
   const handleHideUserInfoChange = async (checked: boolean) => {
@@ -132,14 +118,6 @@ const Settings = () => {
     const num = Number(val);
     if (!isNaN(num) && num >= 1) {
       await setStorageValue(SYNC_INTERVAL, num);
-    }
-  };
-
-  const handleFavSyncIntervalChange = async (val: string | number) => {
-    setFavSyncInterval(val);
-    const num = Number(val);
-    if (!isNaN(num) && num >= 1) {
-      await setStorageValue(FAV_SYNC_INTERVAL, num);
     }
   };
 
@@ -493,31 +471,9 @@ const Settings = () => {
 
       <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800 hover:border-gray-200 dark:hover:border-neutral-700 transition-colors">
         <div className="flex items-center justify-between p-5">
-          <div className="pr-4">
-            <h3 className="text-base font-medium text-gray-800 dark:text-neutral-100">
-              自动同步收藏夹
-            </h3>
-            <p className="text-xs text-gray-400 dark:text-neutral-500 mt-1">
-              开启后按下方设定的间隔自动同步收藏夹
-            </p>
-          </div>
-          <label className="relative inline-flex items-center cursor-pointer shrink-0">
-            <input
-              type="checkbox"
-              className="sr-only peer"
-              checked={isFavAutoSync}
-              onChange={handleFavAutoSyncChange}
-            />
-            <div className="w-11 h-6 bg-gray-200 dark:bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-neutral-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-          </label>
-        </div>
-      </div>
-
-      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800 hover:border-gray-200 dark:hover:border-neutral-700 transition-colors">
-        <div className="flex items-center justify-between p-5">
           <div>
             <h3 className="text-base font-medium text-gray-800 dark:text-neutral-100">
-              自动同步时间间隔
+              历史记录自动同步时间间隔
             </h3>
             <p className="text-xs text-fuchsia-500 mt-1">单位：分钟</p>
           </div>
@@ -544,44 +500,6 @@ const Settings = () => {
             <button
               onClick={() => handleSyncIntervalChange(Number(syncInterval) + 1)}
               className="w-8 h-8 flex items-center justify-center text-white bg-fuchsia-500 rounded-full hover:bg-fuchsia-600 transition-colors shadow-sm"
-            >
-              +
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800 hover:border-gray-200 dark:hover:border-neutral-700 transition-colors">
-        <div className="flex items-center justify-between p-5">
-          <div>
-            <h3 className="text-base font-medium text-gray-800 dark:text-neutral-100">
-              自动同步收藏夹间隔
-            </h3>
-            <p className="text-xs text-pink-500 mt-1">单位：分钟</p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => handleFavSyncIntervalChange(Number(favSyncInterval) - 5)}
-              className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-neutral-300 bg-gray-100 dark:bg-neutral-800 rounded-full hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors disabled:opacity-50"
-              disabled={Number(favSyncInterval) <= 5}
-            >
-              -
-            </button>
-            <input
-              type="number"
-              value={favSyncInterval}
-              onChange={(e) => handleFavSyncIntervalChange(e.target.value)}
-              onBlur={() => {
-                const num = Number(favSyncInterval);
-                if (isNaN(num) || num < 5) {
-                  handleFavSyncIntervalChange(15);
-                }
-              }}
-              className="w-16 text-center text-lg text-gray-700 dark:text-neutral-100 font-mono font-medium bg-transparent border-b border-transparent hover:border-gray-300 dark:hover:border-neutral-600 focus:border-pink-500 outline-none transition-colors"
-            />
-            <button
-              onClick={() => handleFavSyncIntervalChange(Number(favSyncInterval) + 5)}
-              className="w-8 h-8 flex items-center justify-center text-white bg-pink-500 rounded-full hover:bg-pink-600 transition-colors shadow-sm"
             >
               +
             </button>

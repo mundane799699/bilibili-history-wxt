@@ -889,6 +889,23 @@ export const saveFavFolders = async (folders: FavoriteFolder[]): Promise<void> =
   });
 };
 
+export const replaceFavFolders = async (folders: FavoriteFolder[]): Promise<void> => {
+  const db = await openDB();
+  const tx = db.transaction("favFolders", "readwrite");
+  const store = tx.objectStore("favFolders");
+
+  return new Promise((resolve, reject) => {
+    const clearRequest = store.clear();
+    clearRequest.onsuccess = () => {
+      folders.forEach((folder) => store.put(folder));
+    };
+    clearRequest.onerror = () => reject(clearRequest.error);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+};
+
 export const getFavFolders = async (mid?: number): Promise<FavoriteFolder[]> => {
   const db = await openDB();
   const tx = db.transaction("favFolders", "readonly");

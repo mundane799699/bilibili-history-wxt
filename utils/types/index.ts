@@ -73,6 +73,28 @@ export interface SyncHistoryRequest {
 export type SyncHistoryResponse =
   { success: true; message: string } | { success: false; error: string };
 
+export interface SyncFavoriteFolderRequest {
+  action: "syncFavoriteFolder";
+  folderId: number;
+  isFullSync: boolean;
+}
+
+export type SyncFavoriteFolderResponse =
+  | {
+      success: true;
+      message: string;
+      folderId: number;
+      mode: "incremental" | "full";
+    }
+  | { success: false; error: string };
+
+export interface RefreshFavoriteFoldersRequest {
+  action: "refreshFavoriteFolders";
+}
+
+export type RefreshFavoriteFoldersResponse =
+  { success: true; folderCount: number } | { success: false; error: string };
+
 export interface FavoriteFolder {
   id: number;
   fid: number;
