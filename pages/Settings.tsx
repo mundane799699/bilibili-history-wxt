@@ -26,7 +26,7 @@ import { checkStorageHealth, formatStorageSize, StorageHealthReport } from "../u
 
 const Settings = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [isSyncDelete, setIsSyncDelete] = useState(true);
+  const [isSyncDelete, setIsSyncDelete] = useState(false);
   const [isSyncDeleteFromBilibili, setIsSyncDeleteFromBilibili] = useState(true);
   const [isHideUserInfo, setIsHideUserInfo] = useState(false);
   const [hiddenMenus, setHiddenMenus] = useState<string[]>([]);
@@ -68,7 +68,7 @@ const Settings = () => {
   useEffect(() => {
     // 加载设置
     const loadSettings = async () => {
-      const syncDelete = await getStorageValue(IS_SYNC_DELETE, true);
+      const syncDelete = await getStorageValue(IS_SYNC_DELETE, false);
       const syncDeleteFromBilibili = await getStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, true);
       const hideUserInfo = await getStorageValue(HIDE_USER_INFO, false);
       const menus = await getStorageValue(HIDDEN_MENUS, []);
