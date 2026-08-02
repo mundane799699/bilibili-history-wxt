@@ -5,24 +5,58 @@ import { getStorageValue, setStorageValue } from "../utils/storage";
 
 const latestUpdate = UPDATE_HISTORY[0];
 
-export const UpdateNoticeModal = () => {
+interface UpdateNoticeModalProps {
+  onOpenChange?: (open: boolean) => void;
+  onReady?: () => void;
+}
+
+export const UpdateNoticeModal = ({ onOpenChange, onReady }: UpdateNoticeModalProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
+    let isActive = true;
+
     if (!latestUpdate) {
-      return;
+      onOpenChange?.(false);
+      onReady?.();
+      return undefined;
     }
 
-    getStorageValue<string>(LAST_SEEN_UPDATE_VERSION, "").then((lastSeenVersion) => {
-      setIsOpen(lastSeenVersion !== latestUpdate.version);
-    });
-  }, []);
+    getStorageValue<string>(LAST_SEEN_UPDATE_VERSION, "")
+      .then((lastSeenVersion) => {
+        if (!isActive) return;
+
+        const shouldOpen = lastSeenVersion !== latestUpdate.version;
+        setIsOpen(shouldOpen);
+        onOpenChange?.(shouldOpen);
+      })
+      .catch((error) => {
+        if (!isActive) return;
+
+        console.error("读取版本更新状态失败:", error);
+        setIsOpen(true);
+        onOpenChange?.(true);
+      })
+      .finally(() => {
+        if (isActive) onReady?.();
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [onOpenChange, onReady]);
 
   const handleClose = async () => {
-    if (latestUpdate) {
-      await setStorageValue(LAST_SEEN_UPDATE_VERSION, latestUpdate.version);
+    try {
+      if (latestUpdate) {
+        await setStorageValue(LAST_SEEN_UPDATE_VERSION, latestUpdate.version);
+      }
+    } catch (error) {
+      console.error("保存版本更新状态失败:", error);
+    } finally {
+      setIsOpen(false);
+      onOpenChange?.(false);
     }
-    setIsOpen(false);
   };
 
   if (!isOpen || !latestUpdate) {

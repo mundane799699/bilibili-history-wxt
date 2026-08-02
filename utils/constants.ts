@@ -27,6 +27,9 @@ export const HISTORY_LOAD_MODE = "history_load_mode";
 export const HISTORY_PAGE_SIZE = "history_page_size";
 export const LAST_SEEN_UPDATE_VERSION = "lastSeenUpdateVersion";
 export const STORAGE_LAST_WARNING = "storageLastWarning";
+export const BACKUP_REMINDER_LAST_DISMISSED_AT = "backupReminderLastDismissedAt";
+export const BACKUP_LAST_EXPORT_AT = "backupLastExportAt";
+export const BACKUP_LAST_RISK_WARNING_AT = "backupLastRiskWarningAt";
 
 // WebDAV 同步相关
 export const WEBDAV_CONFIG = "webdavConfig";
@@ -66,6 +69,7 @@ export const UPDATE_HISTORY = [
       "收藏夹支持一键增量/全量同步全部文件夹，并展示各文件夹同步结果",
       "默认关闭“B站删除记录时同步删除本地记录”，降低本地历史记录误删风险",
       "后台同步去掉自动同步收藏夹的逻辑",
+      "定期弹出数据备份提示，提醒用户备份历史记录，防止丢失",
     ],
   },
   {

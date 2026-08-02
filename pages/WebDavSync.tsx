@@ -9,6 +9,7 @@ import {
   WEBDAV_AUTO_SYNC_INTERVAL,
   WEBDAV_SYNC_ITEMS,
   DEFAULT_WEBDAV_SYNC_ITEMS,
+  BACKUP_LAST_EXPORT_AT,
   WebDavSyncItems,
   WebDavSyncKey,
 } from "@/utils/constants";
@@ -398,6 +399,11 @@ const WebDavSync = () => {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+      try {
+        await setStorageValue(BACKUP_LAST_EXPORT_AT, Date.now());
+      } catch (error) {
+        console.error("记录完整数据导出时间失败:", error);
+      }
 
       toast.success(
         `导出成功！历史 ${data.history.length} 条，音乐 ${data.likedMusic.length} 首，收藏夹 ${data.favFolders.length} 个，收藏 ${data.favResources.length} 项，订阅合集 ${data.subscribedCollections.length} 个，合集视频 ${data.subscribedCollectionResources.length} 项`,
