@@ -65,6 +65,14 @@ export interface SyncResponse {
   };
 }
 
+export interface SyncHistoryRequest {
+  action: "syncHistory";
+  isFullSync: boolean;
+}
+
+export type SyncHistoryResponse =
+  { success: true; message: string } | { success: false; error: string };
+
 export interface FavoriteFolder {
   id: number;
   fid: number;

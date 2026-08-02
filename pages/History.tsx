@@ -1,9 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { HistoryItem } from "../components/HistoryItem";
+import { HistorySyncModal } from "../components/HistorySyncModal";
+import { HistoryViewSettingsModal } from "../components/HistoryViewSettingsModal";
+import type { HistoryViewSettings } from "../components/HistoryViewSettingsModal";
 import { getHistory, getHistoryPage, getTotalHistoryCount } from "../utils/db";
 import { HistoryItem as HistoryItemType } from "../utils/types";
 import { useDebounce } from "use-debounce";
-import { RefreshCwIcon, ChevronDownIcon, Search, X, Filter, Minus, Plus } from "lucide-react";
+import {
+  RefreshCwIcon,
+  ChevronDownIcon,
+  Search,
+  X,
+  Filter,
+  CloudDownload,
+  Settings2,
+} from "lucide-react";
 import { Pagination } from "../components/Pagination";
 import {
   DATE_SELECTION_MODE,
@@ -29,7 +40,6 @@ export const History: React.FC = () => {
   const [isSearchKindDropdownOpen, setIsSearchKindDropdownOpen] = useState(false);
   const [selectedType, setSelectedType] = useState("all");
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
-  const [isLoadModeDropdownOpen, setIsLoadModeDropdownOpen] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [totalHistoryCount, setTotalHistoryCount] = useState(0);
@@ -40,6 +50,8 @@ export const History: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalFiltered, setTotalFiltered] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [isViewSettingsModalOpen, setIsViewSettingsModalOpen] = useState(false);
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -66,14 +78,6 @@ export const History: React.FC = () => {
     });
   }, []);
 
-  const handleColumnChange = (delta: number) => {
-    setGridColumns((prev) => {
-      const next = Math.max(2, Math.min(8, prev + delta));
-      setStorageValue(GRID_COLUMNS, next);
-      return next;
-    });
-  };
-
   const typeOptions = [
     { value: "all", label: "全部分类" },
     { value: "archive", label: "视频" },
@@ -85,7 +89,7 @@ export const History: React.FC = () => {
 
   const loadHistory = async (isAppend: boolean = false) => {
     if (isAppend && isLoadingRef.current) {
-      return;
+      return false;
     }
 
     try {
@@ -115,8 +119,10 @@ export const History: React.FC = () => {
 
       setHasMore(hasMore);
       hasMoreRef.current = hasMore;
+      return true;
     } catch (error) {
       console.error("Failed to load history:", error);
+      return false;
     } finally {
       setIsLoading(false);
       isLoadingRef.current = false;
@@ -130,7 +136,7 @@ export const History: React.FC = () => {
   // offset-based page load for pagination mode
   const loadPage = async (page: number) => {
     if (isLoadingRef.current) {
-      return;
+      return false;
     }
     try {
       setIsLoading(true);
@@ -149,8 +155,10 @@ export const History: React.FC = () => {
       window.scrollTo({ top: 0, behavior: "smooth" });
       setTotalFiltered(total);
       setCurrentPage(page);
+      return true;
     } catch (error) {
       console.error("Failed to load history:", error);
+      return false;
     } finally {
       setIsLoading(false);
       isLoadingRef.current = false;
@@ -159,10 +167,12 @@ export const History: React.FC = () => {
 
   const reload = () => {
     if (loadMode === "pagination") {
-      loadPage(1);
-    } else {
-      loadHistory(false);
+      return loadPage(1);
     }
+    if (loadMode === "scroll") {
+      return loadHistory(false);
+    }
+    return Promise.resolve(false);
   };
 
   useEffect(() => {
@@ -170,7 +180,7 @@ export const History: React.FC = () => {
     if (loadMode === null) {
       return;
     }
-    reload();
+    void reload();
   }, [debouncedKeyword, startDate, endDate, selectedType, searchType, loadMode, pageSize]);
 
   useEffect(() => {
@@ -180,6 +190,24 @@ export const History: React.FC = () => {
   const getTotalCount = async () => {
     const count = await getTotalHistoryCount();
     setTotalHistoryCount(count);
+    return count;
+  };
+
+  const handleSyncSuccess = async () => {
+    const [count, refreshed] = await Promise.all([getTotalCount(), reload()]);
+    if (!refreshed) {
+      throw new Error("历史记录列表刷新失败");
+    }
+    return count;
+  };
+
+  const handleViewSettingsSave = async (settings: HistoryViewSettings) => {
+    await Promise.all([
+      setStorageValue(HISTORY_LOAD_MODE, settings.loadMode),
+      setStorageValue(GRID_COLUMNS, settings.gridColumns),
+    ]);
+    setLoadMode(settings.loadMode);
+    setGridColumns(settings.gridColumns);
   };
 
   // Observer 只创建一次，通过 ref 访问最新状态
@@ -233,6 +261,30 @@ export const History: React.FC = () => {
         <div className="flex flex-col md:flex-row items-center justify-between px-6 py-4 gap-4 max-w-[1600px] mx-auto">
           {/* 左侧：统计与筛选 */}
           <div className="flex items-center gap-4 w-full md:w-auto">
+            <button
+              type="button"
+              onClick={() => setIsSyncModalOpen(true)}
+              className="inline-flex items-center gap-2 whitespace-nowrap rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-600 shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-100 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:border-blue-500/50 dark:hover:bg-blue-500/20"
+              title="同步历史记录"
+              aria-label="同步历史记录"
+            >
+              <CloudDownload className="h-4 w-4" />
+              <span>同步历史记录</span>
+            </button>
+
+            <button
+              onClick={() => {
+                void Promise.all([getTotalCount(), reload()]);
+              }}
+              className={`p-2  rounded-full bg-blue-50 text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm border border-blue-200 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:border-blue-500/50 dark:hover:bg-blue-500/20 hover:rotate-180 duration-500 ${
+                isLoading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+              disabled={isLoading}
+              title="刷新"
+            >
+              <RefreshCwIcon className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+            </button>
+
             <span className="text-sm font-medium text-gray-500 dark:text-neutral-400 bg-gray-50 dark:bg-neutral-900 px-3 py-1.5 rounded-full whitespace-nowrap border border-gray-100 dark:border-neutral-800">
               {totalHistoryCount} 条记录
             </span>
@@ -276,52 +328,8 @@ export const History: React.FC = () => {
             </div>
           </div>
 
-          {/* 中间：加载方式 + 搜索框 (带类型选择) */}
-          <div className="flex-1 w-full md:max-w-lg px-4 flex items-center gap-3">
-            {/* 加载方式下拉 */}
-            <div className="relative shrink-0">
-              <button
-                className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-neutral-900 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg text-sm text-gray-700 dark:text-neutral-200 transition-colors border border-gray-200/50 dark:border-neutral-800 whitespace-nowrap"
-                onClick={() => setIsLoadModeDropdownOpen(!isLoadModeDropdownOpen)}
-              >
-                <span>{loadMode === "scroll" ? "下拉加载" : "分页加载"}</span>
-                <ChevronDownIcon className="w-3.5 h-3.5 text-gray-400 dark:text-neutral-500" />
-              </button>
-
-              {isLoadModeDropdownOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-10"
-                    onClick={() => setIsLoadModeDropdownOpen(false)}
-                  ></div>
-                  <div className="absolute top-full left-0 mt-1 w-28 bg-white dark:bg-neutral-900 rounded-lg shadow-lg border border-gray-100 dark:border-neutral-800 py-1 z-20 animate-in fade-in zoom-in-95 duration-200">
-                    {(
-                      [
-                        { value: "pagination", label: "分页加载" },
-                        { value: "scroll", label: "下拉加载" },
-                      ] as const
-                    ).map((option) => (
-                      <button
-                        key={option.value}
-                        className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                          loadMode === option.value
-                            ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium"
-                            : "text-gray-600 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-800"
-                        }`}
-                        onClick={() => {
-                          setLoadMode(option.value);
-                          setStorageValue(HISTORY_LOAD_MODE, option.value);
-                          setIsLoadModeDropdownOpen(false);
-                        }}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-
+          {/* 中间：搜索框 (带类型选择) */}
+          <div className="flex-1 w-full md:max-w-lg px-4 flex items-center">
             <div className="relative group w-full flex items-center bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-full transition-all duration-300 shadow-sm hover:shadow-md focus-within:bg-white dark:focus-within:bg-neutral-900 focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-500/20 focus-within:border-blue-400 dark:focus-within:border-blue-500">
               {/* 搜索类型下拉 */}
               <div className="relative">
@@ -404,7 +412,7 @@ export const History: React.FC = () => {
             </div>
           </div>
 
-          {/* 右侧：日期、列数与刷新 */}
+          {/* 右侧：日期、刷新与视图设置 */}
           <div className="flex items-center gap-3 w-full md:w-auto justify-end">
             <DateRangePicker
               startDate={startDate}
@@ -416,41 +424,14 @@ export const History: React.FC = () => {
               mode={dateSelectionMode}
             />
 
-            {/* 列数调节 */}
-            <div className="flex items-center gap-1 bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-full px-1 py-0.5">
-              <button
-                onClick={() => handleColumnChange(-1)}
-                disabled={gridColumns <= 2}
-                className="p-1 text-gray-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                title="减少列数"
-              >
-                <Minus className="w-3.5 h-3.5" />
-              </button>
-              <span className="text-xs font-medium text-gray-600 dark:text-neutral-300 text-center tabular-nums whitespace-nowrap">
-                列数({gridColumns})
-              </span>
-              <button
-                onClick={() => handleColumnChange(1)}
-                disabled={gridColumns >= 8}
-                className="p-1 text-gray-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                title="增加列数"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
             <button
-              onClick={() => {
-                getTotalCount();
-                reload();
-              }}
-              className={`p-2 bg-white dark:bg-neutral-900 text-gray-500 dark:text-neutral-400 rounded-full hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm border border-gray-200 dark:border-neutral-800 hover:border-blue-200 dark:hover:border-blue-500/30 hover:rotate-180 duration-500 ${
-                isLoading ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-              disabled={isLoading}
-              title="刷新"
+              type="button"
+              onClick={() => setIsViewSettingsModalOpen(true)}
+              className="rounded-full border border-gray-200 bg-white p-2 text-gray-500 shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:border-blue-500/30 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
+              title="历史视图设置"
+              aria-label="历史视图设置"
             >
-              <RefreshCwIcon className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+              <Settings2 className="h-4 w-4" />
             </button>
           </div>
         </div>
@@ -521,6 +502,20 @@ export const History: React.FC = () => {
           )}
         </div>
       )}
+
+      <HistorySyncModal
+        open={isSyncModalOpen}
+        onClose={() => setIsSyncModalOpen(false)}
+        onSyncSuccess={handleSyncSuccess}
+      />
+
+      <HistoryViewSettingsModal
+        open={isViewSettingsModalOpen}
+        loadMode={loadMode ?? "pagination"}
+        gridColumns={gridColumns}
+        onClose={() => setIsViewSettingsModalOpen(false)}
+        onSave={handleViewSettingsSave}
+      />
     </div>
   );
 };

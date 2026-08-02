@@ -2,8 +2,8 @@ import {
   IS_SYNCING,
   HAS_FULL_SYNC,
   HAS_FULL_FAV_SYNC,
+  HISTORY_LAST_SYNC,
   SYNC_INTERVAL,
-  SYNC_TIME_REMAIN,
   IS_SYNC_DELETE_FROM_BILIBILI,
   IS_SYNCING_FAV,
   FAV_AUTO_SYNC_ENABLED,
@@ -44,9 +44,21 @@ import {
 } from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
 import { WebDavConfig, ensureDirectory, uploadFile, downloadFile } from "../utils/webdav";
-import { SubscribedCollection, SubscribedCollectionResource } from "../utils/types";
+import {
+  SubscribedCollection,
+  SubscribedCollectionResource,
+  SyncHistoryRequest,
+  SyncHistoryResponse,
+} from "../utils/types";
 
 export default defineBackground(() => {
+  const actionApi = browser.action ?? browser.browserAction;
+  actionApi.onClicked.addListener(() => {
+    void browser.tabs.create({
+      url: browser.runtime.getURL("/my-history.html"),
+    });
+  });
+
   // 初始化定时任务
   browser.runtime.onInstalled.addListener(async (details) => {
     // 设置每分钟同步一次
@@ -98,7 +110,8 @@ export default defineBackground(() => {
     }
   });
 
-  const intervalSync = async (syncInterval: number) => {
+  const intervalSync = async () => {
+    let syncStarted = false;
     try {
       // 检查是否正在同步
       const isSyncing = await getStorageValue(IS_SYNCING);
@@ -109,16 +122,16 @@ export default defineBackground(() => {
 
       // 设置同步状态为进行中
       await setStorageValue(IS_SYNCING, true);
+      syncStarted = true;
 
       // 执行增量同步
       await syncHistory(false);
     } catch (error) {
       console.error("定时同步失败:", error);
     } finally {
-      // 无论成功还是失败，都重置同步状态
-      await setStorageValue(IS_SYNCING, false);
-      // 重置当前同步剩余时间
-      await setStorageValue(SYNC_TIME_REMAIN, syncInterval);
+      if (syncStarted) {
+        await setStorageValue(IS_SYNCING, false);
+      }
     }
   };
 
@@ -152,19 +165,19 @@ export default defineBackground(() => {
     if (alarm.name === "syncHistory") {
       // 获取同步间隔
       const syncInterval = await getStorageValue(SYNC_INTERVAL, 1);
-      // 获取当前同步剩余时间
-      const syncRemain = await getStorageValue(SYNC_TIME_REMAIN, syncInterval);
-      // 当前同步剩余时间减1
-      const currentSyncRemain = syncRemain - 1;
-      // 如果当前同步剩余时间大于0，则不进行同步
-      if (currentSyncRemain > 0) {
-        console.log(`还需${currentSyncRemain}分钟进行历史记录同步，暂时跳过`);
-        // 更新同步剩余时间
-        await setStorageValue(SYNC_TIME_REMAIN, currentSyncRemain);
+      // 根据最近一次成功同步的时间判断是否需要同步
+      const lastSyncTime = await getStorageValue<number>(HISTORY_LAST_SYNC, 0);
+      const elapsed = Date.now() - lastSyncTime;
+      const intervalMs = syncInterval * 60 * 1000;
+
+      if (elapsed <= intervalMs) {
+        const remainingMinutes = Math.ceil((intervalMs - elapsed) / 60000);
+        console.log(`还需${remainingMinutes}分钟进行历史记录同步，暂时跳过`);
         return;
       }
-      // 使用提取的函数处理定时任务
-      intervalSync(syncInterval);
+
+      // 同步成功后，syncHistory 会更新最近一次同步时间
+      void intervalSync();
     } else if (alarm.name === "syncFavorites") {
       // 检查是否隐藏了收藏夹功能
       const hiddenMenus = await getStorageValue<string[]>(HIDDEN_MENUS, []);
@@ -214,7 +227,11 @@ export default defineBackground(() => {
   });
 
   // 处理同步历史记录的消息
-  const handleSyncHistory = async (message: any, sendResponse: (response: any) => void) => {
+  const handleSyncHistory = async (
+    message: SyncHistoryRequest,
+    sendResponse: (response: SyncHistoryResponse) => void,
+  ) => {
+    let syncStarted = false;
     try {
       // 检查是否正在同步
       const isSyncing = await getStorageValue(IS_SYNCING);
@@ -229,9 +246,10 @@ export default defineBackground(() => {
 
       // 设置同步状态为进行中
       await setStorageValue(IS_SYNCING, true);
+      syncStarted = true;
 
       // 获取前端传递的isFullSync参数，如果没有则根据历史记录判断
-      const forceFullSync = message.isFullSync || false;
+      const forceFullSync = message.isFullSync;
       let syncResult = "";
 
       if (forceFullSync) {
@@ -249,7 +267,6 @@ export default defineBackground(() => {
         } else {
           // 如果没有同步记录，执行全量同步
           await syncHistory(true);
-          await setStorageValue(HAS_FULL_SYNC, true);
           syncResult = "全量同步初始化成功";
           sendResponse({ success: true, message: syncResult });
         }
@@ -261,8 +278,9 @@ export default defineBackground(() => {
         error: error instanceof Error ? error.message : "未知错误",
       });
     } finally {
-      // 无论成功还是失败，都重置同步状态
-      await setStorageValue(IS_SYNCING, false);
+      if (syncStarted) {
+        await setStorageValue(IS_SYNCING, false);
+      }
     }
   };
 
@@ -350,7 +368,7 @@ export default defineBackground(() => {
 
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "syncHistory") {
-      handleSyncHistory(message, sendResponse);
+      handleSyncHistory(message as SyncHistoryRequest, sendResponse);
       return true; // 保持消息通道开放
     } else if (message.action === "getCookies") {
       browser.cookies.getAll({ domain: "bilibili.com" }, (cookies) => {
@@ -390,6 +408,7 @@ export default defineBackground(() => {
       let view_at = 0;
       const type = "all";
       const ps = 30;
+      console.log(`${isFullSync ? "全量" : "增量"}同步开始`);
 
       // 循环获取所有历史记录
       while (hasMore) {
@@ -432,7 +451,6 @@ export default defineBackground(() => {
             const firstItemExists = await getItem(store, firstItem.history.oid);
             const lastItemExists = await getItem(store, lastItem.history.oid);
             if (firstItemExists && lastItemExists) {
-              console.log("增量同步至此结束111");
               hasMore = false;
             }
           }
@@ -470,9 +488,14 @@ export default defineBackground(() => {
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       }
+      console.log(`${isFullSync ? "全量" : "增量"}同步结束`);
+
+      if (isFullSync) {
+        await setStorageValue(HAS_FULL_SYNC, true);
+      }
 
       // 更新最后同步时间
-      await browser.storage.local.set({ lastSync: Date.now() });
+      await setStorageValue(HISTORY_LAST_SYNC, Date.now());
 
       return true;
     } catch (error) {

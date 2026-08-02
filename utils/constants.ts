@@ -7,6 +7,8 @@ export const IS_SYNCING_FAV = "isSyncingFav";
 export const HAS_FULL_SYNC = "hasFullSync";
 export const HAS_FULL_FAV_SYNC = "hasFullFavSync";
 
+export const HISTORY_LAST_SYNC = "lastSync";
+
 export const SYNC_INTERVAL = "syncInterval";
 
 export const SYNC_TIME_REMAIN = "syncTimeRemain";
