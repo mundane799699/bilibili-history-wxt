@@ -9,6 +9,7 @@ import {
 import { Folder, Video, Search, X, ChevronDownIcon, CloudDownload } from "lucide-react";
 import { Pagination } from "../components/Pagination";
 import { FavoriteFolderSyncModal } from "../components/FavoriteFolderSyncModal";
+import { AllFavoriteFoldersSyncModal } from "../components/AllFavoriteFoldersSyncModal";
 
 export const Favorites = () => {
   const [folders, setFolders] = useState<FavoriteFolder[]>([]);
@@ -20,6 +21,7 @@ export const Favorites = () => {
   const [searchType, setSearchType] = useState<"all" | "title" | "up" | "bvid" | "avid">("all");
   const [isSearchKindDropdownOpen, setIsSearchKindDropdownOpen] = useState(false);
   const [syncTargetFolder, setSyncTargetFolder] = useState<FavoriteFolder | null>(null);
+  const [isAllFoldersSyncOpen, setIsAllFoldersSyncOpen] = useState(false);
   const pageSize = 50;
 
   const contentRef = useRef<HTMLDivElement>(null);
@@ -117,6 +119,18 @@ export const Favorites = () => {
     }
   };
 
+  const handleAllFoldersSyncComplete = async () => {
+    const foldersRefreshed = await loadFolders();
+    const resourcesRefreshed =
+      selectedFolderId !== null
+        ? await loadResources(selectedFolderId, { resetSearch: false })
+        : true;
+
+    if (!foldersRefreshed || !resourcesRefreshed) {
+      throw new Error("收藏夹页面刷新失败");
+    }
+  };
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     // Scroll to top of content
@@ -156,11 +170,22 @@ export const Favorites = () => {
     <div className="flex h-screen bg-gray-50 dark:bg-[#0a0a0a]">
       {/* 左侧收藏夹列表 */}
       <div className="w-64 bg-white dark:bg-neutral-900 border-r border-gray-200 dark:border-neutral-800 overflow-y-auto flex-shrink-0">
-        <div className="p-4 border-b border-gray-200 dark:border-neutral-800">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <Folder className="w-5 h-5" />
-            我的收藏夹
+        <div className="flex items-center justify-between gap-2 border-b border-gray-200 p-4 dark:border-neutral-800">
+          <h2 className="flex min-w-0 items-center gap-2 text-lg font-bold">
+            <Folder className="h-5 w-5 shrink-0" />
+            <span className="truncate">我的收藏夹</span>
           </h2>
+          <button
+            type="button"
+            onClick={() => setIsAllFoldersSyncOpen(true)}
+            disabled={folders.length === 0}
+            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-blue-200 bg-white/80 px-2 py-1 text-xs font-medium text-blue-600 shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-500/30 dark:bg-neutral-900/80 dark:text-blue-400 dark:hover:border-blue-500/50 dark:hover:bg-blue-500/20"
+            title="同步所有收藏夹"
+            aria-label="同步所有收藏夹"
+          >
+            <CloudDownload className="h-3.5 w-3.5" />
+            <span>同步所有</span>
+          </button>
         </div>
         <div className="p-2">
           {folders.map((folder) => (
@@ -385,6 +410,12 @@ export const Favorites = () => {
         folder={syncTargetFolder}
         onClose={() => setSyncTargetFolder(null)}
         onSyncSuccess={handleFolderSyncSuccess}
+      />
+      <AllFavoriteFoldersSyncModal
+        folders={folders}
+        open={isAllFoldersSyncOpen}
+        onClose={() => setIsAllFoldersSyncOpen(false)}
+        onSyncComplete={handleAllFoldersSyncComplete}
       />
     </div>
   );

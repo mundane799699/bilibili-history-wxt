@@ -278,6 +278,7 @@ export default defineBackground(() => {
     }
 
     let syncStarted = false;
+    let response: SyncFavoriteFolderResponse;
     try {
       const isSyncing = await getStorageValue(IS_SYNCING_FAV);
       if (isSyncing) {
@@ -290,23 +291,26 @@ export default defineBackground(() => {
 
       const folder = await syncFavoriteFolderById(folderId, message.isFullSync);
       const mode = message.isFullSync ? "full" : "incremental";
-      sendResponse({
+      response = {
         success: true,
         message: `「${folder.title}」${message.isFullSync ? "全量" : "增量"}同步成功`,
         folderId,
         mode,
-      });
+      };
     } catch (error) {
       console.error("同步单个收藏夹失败:", error);
-      sendResponse({
+      response = {
         success: false,
         error: error instanceof Error ? error.message : "未知错误",
-      });
+      };
     } finally {
       if (syncStarted) {
         await setStorageValue(IS_SYNCING_FAV, false);
       }
     }
+
+    // 先释放同步锁再响应，确保“同步所有”可以安全地串行请求下一个收藏夹。
+    sendResponse(response);
   };
 
   const handleRefreshFavoriteFolders = async (
