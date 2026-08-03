@@ -2,7 +2,7 @@
 
 > 状态：已实现
 >
-> 影响范围：`entrypoints/my-history/App.tsx`、`components/DataBackupReminderModal.tsx`
+> 影响范围：`entrypoints/my-history/App.tsx`、`components/DataBackupReminderModal.tsx`、`utils/constants.ts`
 >
 > 基线方案：[`data-backup-reminder-modal-design.md`](./data-backup-reminder-modal-design.md)
 
@@ -19,18 +19,17 @@
 - 导出失败时保留弹窗，显示错误提示，不开始新的 7 天周期，用户可以重试或主动关闭。
 - 继续保持版本更新弹窗优先、同一页面会话最多自动显示一次、欢迎页不显示等现有规则。
 
-本方案按“每隔 7 天就弹出一次”的字面含义采用固定周期：近期 JSON 导出或 WebDAV 同步不再抑制提醒；存储风险也不额外突破 7 天周期，只在到期显示时切换为更强的风险文案。
+本方案按“每隔 7 天就弹出一次”的字面含义采用固定周期：近期 JSON 导出或 WebDAV 同步不再抑制提醒。主应用不再执行存储健康检查，弹窗统一使用常规备份文案。
 
 ## 2. 当前行为与目标行为
 
-| 场景           | 当前行为                                        | 目标行为                            |
-| -------------- | ----------------------------------------------- | ----------------------------------- |
-| 常规提醒周期   | 30 天                                           | 7 天                                |
-| 近期已有备份   | 30 天内导出完整 JSON 或完成 WebDAV 同步时不显示 | 不影响固定 7 天提醒                 |
-| 新存储风险     | 可以无视常规周期立即显示                        | 不突破 7 天周期，到期时显示风险版本 |
-| 点击“立即备份” | 关闭弹窗并跳转到 `/settings`                    | 在当前页面直接下载历史记录 JSON     |
-| 导出内容       | 没有直接导出                                    | 与设置页“历史记录 + JSON”完全相同   |
-| 导出失败       | 不适用                                          | 弹窗保持打开，可重试                |
+| 场景           | 当前行为                                        | 目标行为                          |
+| -------------- | ----------------------------------------------- | --------------------------------- |
+| 常规提醒周期   | 30 天                                           | 7 天                              |
+| 近期已有备份   | 30 天内导出完整 JSON 或完成 WebDAV 同步时不显示 | 不影响固定 7 天提醒               |
+| 点击“立即备份” | 关闭弹窗并跳转到 `/settings`                    | 在当前页面直接下载历史记录 JSON   |
+| 导出内容       | 没有直接导出                                    | 与设置页“历史记录 + JSON”完全相同 |
+| 导出失败       | 不适用                                          | 弹窗保持打开，可重试              |
 
 ## 3. 需求边界
 
@@ -92,17 +91,19 @@ const reminderDue =
 
 这些状态仍可供 WebDAV 页面展示或其他功能使用，本次不删除常量和已保存的数据。
 
-### 4.3 存储风险处理
+### 4.3 不执行存储健康检查
 
-保留 `BackupReminderReason = "routine" | "storage-risk"` 和现有风险文案，但统一触发周期：
+主应用不再调用 `checkStorageHealth()`，也不保存或向布局透传存储健康状态。备份提醒只判断固定 7 天周期，不再区分常规提醒和存储风险提醒。
 
-1. 先判断 7 天周期是否到期。
-2. 未到期时不显示弹窗，即使出现新的存储风险也不提前弹出。
-3. 到期后根据当前存储健康检查结果选择 `routine` 或 `storage-risk` 文案。
+同步移除：
 
-因此，`BACKUP_LAST_RISK_WARNING_AT` 不再参与弹窗触发判断。该键暂时保留，不做数据清理。
+- `storageHealth`
+- `storageHealthChecked`
+- `storageHealthCheckFailed`
+- `BackupReminderReason`
+- `BACKUP_LAST_RISK_WARNING_AT`
 
-这一设计保证“每隔 7 天”是唯一且可预测的频率，代价是新的存储异常不会在 7 天周期内立即打断用户。
+设置页自身的存储状态展示属于独立功能，不受本方案影响。
 
 ### 4.4 仍然保留的显示约束
 
@@ -170,7 +171,6 @@ import { exportHistoryToJSON } from "../../utils/export";
 ```ts
 interface DataBackupReminderModalProps {
   open: boolean;
-  reason: BackupReminderReason;
   isBackingUp: boolean;
   onClose: () => void;
   onBackup: () => void;
@@ -220,8 +220,8 @@ BACKUP_REMINDER_LAST_DISMISSED_AT = Date.now();
 
 - 把提醒间隔从 30 天改为 7 天，并统一常规/风险提醒的时间判断。
 - 提醒判断只读取 `BACKUP_REMINDER_LAST_DISMISSED_AT`。
-- 根据到期时的存储健康状态决定提醒文案类型。
 - 移除“近期完整导出或 WebDAV 同步抑制提醒”的判断。
+- 移除应用启动时的存储健康检查、相关状态和组件属性透传。
 - 移除点击按钮后的 `/settings` 导航。
 - 调用 `exportHistoryToJSON()`，管理导出中、成功、失败和提醒记账。
 - 使用现有全局 `Toaster` 显示结果。
@@ -232,6 +232,7 @@ BACKUP_REMINDER_LAST_DISMISSED_AT = Date.now();
 
 - 新增 `isBackingUp` 属性。
 - 导出中禁用主按钮并显示“备份中...”。
+- 移除存储风险类型、风险图标和风险文案。
 - 保持现有焦点陷阱、`Escape`、遮罩关闭、焦点恢复、明暗主题和窄屏样式。
 - 不在展示组件内访问 IndexedDB、存储状态或执行导出。
 
@@ -245,7 +246,7 @@ BACKUP_REMINDER_LAST_DISMISSED_AT = Date.now();
 
 - `pages/Settings.tsx`：继续按当前方式调用 `exportHistoryToJSON()`。
 - `pages/WebDavSync.tsx`：继续维护全量导出和 `BACKUP_LAST_EXPORT_AT`。
-- `utils/constants.ts`：复用现有键，不新增键，也暂不删除旧键。
+- `utils/constants.ts`：移除不再使用的 `BACKUP_LAST_RISK_WARNING_AT`。
 - `entrypoints/background.ts`：WebDAV 后台同步不受影响。
 
 ## 7. 状态转换
@@ -259,10 +260,7 @@ BACKUP_REMINDER_LAST_DISMISSED_AT = Date.now();
   └─ 读取最近处理时间
          │
          ├─ 未满 7 天 ───────────────> 不显示
-         └─ 已满 7 天或从未记录
-                │
-                ├─ 当前存储有风险 ───> storage-risk 文案
-                └─ 当前存储正常 ─────> routine 文案
+         └─ 已满 7 天或从未记录 ─────> 显示常规备份提醒
 
 提醒已打开
   ├─ 了解/关闭/遮罩/Escape ──────────> 关闭 + 记录当前时间
@@ -281,7 +279,6 @@ BACKUP_REMINDER_LAST_DISMISSED_AT = Date.now();
 - 上次处理时间距当前超过 7 天时显示。
 - 任一关闭入口都会更新处理时间，之后 7 天内不再显示。
 - 近期完成过设置页 JSON 导出、WebDAV 全量导出或同步，也不抑制到期提醒。
-- 存储风险在 7 天内不提前弹出；到期时显示风险版本文案。
 - 同一页面会话内关闭后切换路由，不会再次自动显示。
 
 ### 8.2 直接导出
@@ -334,6 +331,5 @@ pnpm format:check
 请重点确认以下产品语义：
 
 1. “每隔 7 天”是否采用本文的固定周期，即近期已导出或已完成 WebDAV 同步也照常提醒。
-2. 新的存储风险是否也必须等待当前 7 天周期到期；本文选择“不提前打断”。
-3. “立即备份”是否只导出历史记录，与设置页“历史记录 + JSON”一致，而不是 WebDAV 页的全量数据包。
-4. 成功触发浏览器下载后即关闭弹窗并开始下一个周期，不等待也无法确认文件最终写入磁盘。
+2. “立即备份”是否只导出历史记录，与设置页“历史记录 + JSON”一致，而不是 WebDAV 页的全量数据包。
+3. 成功触发浏览器下载后即关闭弹窗并开始下一个周期，不等待也无法确认文件最终写入磁盘。

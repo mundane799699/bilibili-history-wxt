@@ -1,11 +1,8 @@
 import { useEffect, useRef } from "react";
-import { DatabaseBackup, ShieldAlert, X } from "lucide-react";
-
-export type BackupReminderReason = "routine" | "storage-risk";
+import { DatabaseBackup, X } from "lucide-react";
 
 interface DataBackupReminderModalProps {
   open: boolean;
-  reason: BackupReminderReason;
   isBackingUp: boolean;
   onClose: () => void;
   onBackup: () => void;
@@ -13,7 +10,6 @@ interface DataBackupReminderModalProps {
 
 export const DataBackupReminderModal = ({
   open,
-  reason,
   isBackingUp,
   onClose,
   onBackup,
@@ -74,8 +70,6 @@ export const DataBackupReminderModal = ({
 
   if (!open) return null;
 
-  const isStorageRisk = reason === "storage-risk";
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm animate-in fade-in duration-200"
@@ -102,11 +96,7 @@ export const DataBackupReminderModal = ({
 
         <div className="flex items-start gap-3 pr-10">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400">
-            {isStorageRisk ? (
-              <ShieldAlert className="h-5 w-5" />
-            ) : (
-              <DatabaseBackup className="h-5 w-5" />
-            )}
+            <DatabaseBackup className="h-5 w-5" />
           </div>
           <div>
             <h2
@@ -120,12 +110,6 @@ export const DataBackupReminderModal = ({
             </p>
           </div>
         </div>
-
-        {isStorageRisk && (
-          <div className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm leading-relaxed text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
-            检测到当前存储保护状态异常，建议立即备份。
-          </div>
-        )}
 
         <div className="mt-5 space-y-3 text-sm leading-relaxed text-gray-600 dark:text-neutral-300">
           <p>

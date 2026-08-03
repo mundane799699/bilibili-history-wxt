@@ -29,7 +29,6 @@ export const LAST_SEEN_UPDATE_VERSION = "lastSeenUpdateVersion";
 export const STORAGE_LAST_WARNING = "storageLastWarning";
 export const BACKUP_REMINDER_LAST_DISMISSED_AT = "backupReminderLastDismissedAt";
 export const BACKUP_LAST_EXPORT_AT = "backupLastExportAt";
-export const BACKUP_LAST_RISK_WARNING_AT = "backupLastRiskWarningAt";
 
 // WebDAV 同步相关
 export const WEBDAV_CONFIG = "webdavConfig";
