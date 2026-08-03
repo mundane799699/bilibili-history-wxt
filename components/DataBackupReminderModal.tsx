@@ -6,6 +6,7 @@ export type BackupReminderReason = "routine" | "storage-risk";
 interface DataBackupReminderModalProps {
   open: boolean;
   reason: BackupReminderReason;
+  isBackingUp: boolean;
   onClose: () => void;
   onBackup: () => void;
 }
@@ -13,6 +14,7 @@ interface DataBackupReminderModalProps {
 export const DataBackupReminderModal = ({
   open,
   reason,
+  isBackingUp,
   onClose,
   onBackup,
 }: DataBackupReminderModalProps) => {
@@ -149,10 +151,12 @@ export const DataBackupReminderModal = ({
           <button
             type="button"
             onClick={onBackup}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900"
+            disabled={isBackingUp}
+            aria-busy={isBackingUp}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-offset-neutral-900"
           >
             <DatabaseBackup className="h-4 w-4" />
-            立即备份
+            {isBackingUp ? "备份中..." : "立即备份"}
           </button>
         </div>
       </div>

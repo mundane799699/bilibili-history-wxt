@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { History } from "../../pages/History";
 import { About } from "../../pages/About";
 import { Sidebar } from "../../components/Sidebar";
 import Settings from "../../pages/Settings";
 import ScrollToTopButton from "../../components/ScrollToTopButton";
-import { Toaster } from "react-hot-toast";
+import toast, { Toaster } from "react-hot-toast";
 import Feedback from "../../pages/Feedback";
 import CloudSync from "../../pages/CloudSync";
 import WebDavSync from "../../pages/WebDavSync";
@@ -22,17 +22,12 @@ import {
 } from "../../components/DataBackupReminderModal";
 import SubscribedCollections from "../../pages/SubscribedCollections";
 import { checkStorageHealth, StorageHealthReport } from "../../utils/storageHealth";
-import {
-  BACKUP_LAST_EXPORT_AT,
-  BACKUP_LAST_RISK_WARNING_AT,
-  BACKUP_REMINDER_LAST_DISMISSED_AT,
-  WEBDAV_LAST_SYNC,
-} from "../../utils/constants";
+import { BACKUP_REMINDER_LAST_DISMISSED_AT } from "../../utils/constants";
 import { getStorageValue, setStorageValue } from "../../utils/storage";
+import { exportHistoryToJSON } from "../../utils/export";
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
-const ROUTINE_REMINDER_INTERVAL_MS = 30 * DAY_IN_MS;
-const RISK_REMINDER_INTERVAL_MS = 7 * DAY_IN_MS;
+const BACKUP_REMINDER_INTERVAL_MS = 7 * DAY_IN_MS;
 
 interface BackupReminderControllerProps {
   storageHealth: StorageHealthReport | null;
@@ -43,12 +38,12 @@ const BackupReminderController = ({
   storageHealth,
   storageHealthCheckFailed,
 }: BackupReminderControllerProps) => {
-  const location = useLocation();
-  const navigate = useNavigate();
   const hasEvaluatedRef = useRef(false);
   const hasShownThisSessionRef = useRef(false);
+  const isBackingUpRef = useRef(false);
   const [isOpen, setIsOpen] = useState(false);
   const [reason, setReason] = useState<BackupReminderReason>("routine");
+  const [isBackingUp, setIsBackingUp] = useState(false);
 
   useEffect(() => {
     if (hasEvaluatedRef.current || hasShownThisSessionRef.current) return;
@@ -58,47 +53,25 @@ const BackupReminderController = ({
 
     const evaluateReminder = async () => {
       try {
-        const [lastDismissedAt, lastExportAt, lastWebDavSyncAt, lastRiskWarningAt] =
-          await Promise.all([
-            getStorageValue<number>(BACKUP_REMINDER_LAST_DISMISSED_AT, 0),
-            getStorageValue<number>(BACKUP_LAST_EXPORT_AT, 0),
-            getStorageValue<number>(WEBDAV_LAST_SYNC, 0),
-            getStorageValue<number>(BACKUP_LAST_RISK_WARNING_AT, 0),
-          ]);
+        const lastDismissedAt = await getStorageValue<number>(BACKUP_REMINDER_LAST_DISMISSED_AT, 0);
 
         if (!isActive) return;
 
         const now = Date.now();
-        const latestBackupAt = Math.max(lastExportAt, lastWebDavSyncAt);
-        const hasRecentBackup = now - latestBackupAt < ROUTINE_REMINDER_INTERVAL_MS;
+        const reminderDue =
+          lastDismissedAt === 0 || now - lastDismissedAt >= BACKUP_REMINDER_INTERVAL_MS;
+
+        if (!reminderDue) return;
+
         const hasCurrentStorageRisk =
           storageHealthCheckFailed ||
           storageHealth === null ||
           !storageHealth.storageProtected ||
           storageHealth.errors.length > 0;
-        const hasUnacknowledgedStorageWarning =
-          (storageHealth?.lastWarning?.timestamp ?? 0) > lastRiskWarningAt;
-        const riskReminderCooldownElapsed = now - lastRiskWarningAt >= RISK_REMINDER_INTERVAL_MS;
 
-        if (
-          hasUnacknowledgedStorageWarning ||
-          (hasCurrentStorageRisk && riskReminderCooldownElapsed)
-        ) {
-          setReason("storage-risk");
-          setIsOpen(true);
-          hasShownThisSessionRef.current = true;
-          return;
-        }
-
-        const routineReminderDue =
-          !hasRecentBackup &&
-          (lastDismissedAt === 0 || now - lastDismissedAt >= ROUTINE_REMINDER_INTERVAL_MS);
-
-        if (routineReminderDue) {
-          setReason("routine");
-          setIsOpen(true);
-          hasShownThisSessionRef.current = true;
-        }
+        setReason(hasCurrentStorageRisk ? "storage-risk" : "routine");
+        setIsOpen(true);
+        hasShownThisSessionRef.current = true;
       } catch (error) {
         console.error("读取数据备份提醒状态失败:", error);
         if (!isActive) return;
@@ -122,25 +95,35 @@ const BackupReminderController = ({
 
     try {
       await setStorageValue(BACKUP_REMINDER_LAST_DISMISSED_AT, dismissedAt);
-      if (reason === "storage-risk") {
-        await setStorageValue(BACKUP_LAST_RISK_WARNING_AT, dismissedAt);
-      }
     } catch (error) {
       console.error("保存数据备份提醒状态失败:", error);
     }
-  }, [reason]);
+  }, []);
 
   const handleBackup = useCallback(async () => {
-    await dismissReminder();
-    if (location.pathname !== "/settings") {
-      navigate("/settings");
+    if (isBackingUpRef.current) return;
+
+    isBackingUpRef.current = true;
+    setIsBackingUp(true);
+
+    try {
+      await exportHistoryToJSON();
+      await dismissReminder();
+      toast.success("历史记录 JSON 已开始下载");
+    } catch (error) {
+      console.error("备份历史记录失败:", error);
+      toast.error("备份失败，请重试");
+    } finally {
+      isBackingUpRef.current = false;
+      setIsBackingUp(false);
     }
-  }, [dismissReminder, location.pathname, navigate]);
+  }, [dismissReminder]);
 
   return (
     <DataBackupReminderModal
       open={isOpen}
       reason={reason}
+      isBackingUp={isBackingUp}
       onClose={() => void dismissReminder()}
       onBackup={() => void handleBackup()}
     />
