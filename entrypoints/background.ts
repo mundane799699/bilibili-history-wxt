@@ -137,7 +137,6 @@ export default defineBackground(() => {
   });
 
   const intervalSync = async () => {
-    let syncStarted = false;
     try {
       // 检查是否正在同步
       const isSyncing = await getStorageValue(IS_SYNCING);
@@ -148,16 +147,13 @@ export default defineBackground(() => {
 
       // 设置同步状态为进行中
       await setStorageValue(IS_SYNCING, true);
-      syncStarted = true;
 
       // 执行增量同步
       await syncHistory(false);
     } catch (error) {
       console.error("定时同步失败:", error);
     } finally {
-      if (syncStarted) {
-        await setStorageValue(IS_SYNCING, false);
-      }
+      await setStorageValue(IS_SYNCING, false);
     }
   };
 
@@ -217,7 +213,6 @@ export default defineBackground(() => {
     message: SyncHistoryRequest,
     sendResponse: (response: SyncHistoryResponse) => void,
   ) => {
-    let syncStarted = false;
     try {
       // 检查是否正在同步
       const isSyncing = await getStorageValue(IS_SYNCING);
@@ -232,7 +227,6 @@ export default defineBackground(() => {
 
       // 设置同步状态为进行中
       await setStorageValue(IS_SYNCING, true);
-      syncStarted = true;
 
       // 获取前端传递的isFullSync参数，如果没有则根据历史记录判断
       const forceFullSync = message.isFullSync;
@@ -244,18 +238,9 @@ export default defineBackground(() => {
         syncResult = "全量同步成功";
         sendResponse({ success: true, message: syncResult });
       } else {
-        // 之前有没有全量同步过
-        const hasFullSync = await getStorageValue(HAS_FULL_SYNC, false);
-        if (hasFullSync) {
-          await syncHistory(false);
-          syncResult = "增量同步成功";
-          sendResponse({ success: true, message: syncResult });
-        } else {
-          // 如果没有同步记录，执行全量同步
-          await syncHistory(true);
-          syncResult = "全量同步初始化成功";
-          sendResponse({ success: true, message: syncResult });
-        }
+        await syncHistory(false);
+        syncResult = "增量同步成功";
+        sendResponse({ success: true, message: syncResult });
       }
     } catch (error) {
       console.error("同步失败:", error);
@@ -264,14 +249,11 @@ export default defineBackground(() => {
         error: error instanceof Error ? error.message : "未知错误",
       });
     } finally {
-      if (syncStarted) {
-        await setStorageValue(IS_SYNCING, false);
-      }
+      await setStorageValue(IS_SYNCING, false);
     }
   };
 
   const handleSyncFavorites = async (sendResponse: (response: any) => void) => {
-    let syncStarted = false;
     try {
       const isSyncing = await getStorageValue(IS_SYNCING_FAV);
       if (isSyncing) {
@@ -280,7 +262,6 @@ export default defineBackground(() => {
       }
 
       await setStorageValue(IS_SYNCING_FAV, true);
-      syncStarted = true;
       const hasFullFavSync = await getStorageValue(HAS_FULL_FAV_SYNC, false);
       if (!hasFullFavSync) {
         await syncFavorites(true);
@@ -296,9 +277,7 @@ export default defineBackground(() => {
         error: error instanceof Error ? error.message : "未知错误",
       });
     } finally {
-      if (syncStarted) {
-        await setStorageValue(IS_SYNCING_FAV, false);
-      }
+      await setStorageValue(IS_SYNCING_FAV, false);
     }
   };
 
@@ -316,7 +295,6 @@ export default defineBackground(() => {
       return;
     }
 
-    let syncStarted = false;
     let response: SyncFavoriteFolderResponse;
     try {
       const isSyncing = await getStorageValue(IS_SYNCING_FAV);
@@ -326,7 +304,6 @@ export default defineBackground(() => {
       }
 
       await setStorageValue(IS_SYNCING_FAV, true);
-      syncStarted = true;
 
       const folder = await syncFavoriteFolderById(folderId, message.isFullSync);
       const mode = message.isFullSync ? "full" : "incremental";
@@ -343,9 +320,7 @@ export default defineBackground(() => {
         error: error instanceof Error ? error.message : "未知错误",
       };
     } finally {
-      if (syncStarted) {
-        await setStorageValue(IS_SYNCING_FAV, false);
-      }
+      await setStorageValue(IS_SYNCING_FAV, false);
     }
 
     // 先释放同步锁再响应，确保“同步所有”可以安全地串行请求下一个收藏夹。
