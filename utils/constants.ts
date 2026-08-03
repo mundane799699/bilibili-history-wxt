@@ -58,6 +58,11 @@ export const THEME_MODE = "themeMode";
 
 export const UPDATE_HISTORY = [
   {
+    date: "2026-08-03",
+    version: "2.1.1",
+    changes: ["优化数据备份提醒：改为每 7 天显示一次，并支持在弹窗中直接导出历史记录 JSON"],
+  },
+  {
     date: "2026-08-02",
     version: "2.1.0",
     changes: [
