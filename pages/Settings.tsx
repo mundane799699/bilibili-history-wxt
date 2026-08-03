@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Check, HardDrive, RefreshCw } from "lucide-react";
+import { AlertTriangle, Check, FolderOpen, HardDrive, RefreshCw } from "lucide-react";
 import { clearHistory, saveHistory } from "../utils/db";
-import { getStorageValue, setStorageValue } from "../utils/storage";
+import { getStorageValue, setStorageValue, setStorageValues } from "../utils/storage";
 import {
   IS_SYNC_DELETE,
   SYNC_INTERVAL,
@@ -10,6 +10,19 @@ import {
   HIDDEN_MENUS,
   DATE_SELECTION_MODE,
   HISTORY_LOAD_MODE,
+  DEFAULT_LOCAL_HISTORY_BACKUP_INTERVAL_HOURS,
+  DEFAULT_LOCAL_HISTORY_BACKUP_RETENTION_COUNT,
+  LOCAL_HISTORY_BACKUP_DIRECTORY_NAME,
+  LOCAL_HISTORY_BACKUP_ENABLED,
+  LOCAL_HISTORY_BACKUP_INTERVAL_HOURS,
+  LOCAL_HISTORY_BACKUP_LAST_ATTEMPT_AT,
+  LOCAL_HISTORY_BACKUP_LAST_CLEANUP_WARNING,
+  LOCAL_HISTORY_BACKUP_LAST_ERROR,
+  LOCAL_HISTORY_BACKUP_LAST_FILE_NAME,
+  LOCAL_HISTORY_BACKUP_LAST_RECORD_COUNT,
+  LOCAL_HISTORY_BACKUP_LAST_SUCCESS_AT,
+  LOCAL_HISTORY_BACKUP_NEEDS_PERMISSION,
+  LOCAL_HISTORY_BACKUP_RETENTION_COUNT,
 } from "../utils/constants";
 import {
   exportHistoryToCSV,
@@ -18,11 +31,20 @@ import {
   exportLikedMusicToCSV,
 } from "../utils/export";
 import toast from "react-hot-toast";
-import { HistoryItem, LikedMusic } from "../utils/types";
+import { HistoryItem, LikedMusic, LocalHistoryBackupResult } from "../utils/types";
 import { importLikedMusic } from "../utils/db";
 import { Checkbox } from "../components/Checkbox";
 import { Select } from "../components/Select";
 import { checkStorageHealth, formatStorageSize, StorageHealthReport } from "../utils/storageHealth";
+import {
+  clearLocalBackupDirectoryHandle,
+  getLocalBackupDirectoryHandle,
+  saveLocalBackupDirectoryHandle,
+} from "../utils/localBackupHandle";
+import {
+  isLocalDirectoryBackupSupported,
+  validateLocalBackupDirectory,
+} from "../utils/localHistoryBackup";
 
 const Settings = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -49,6 +71,26 @@ const Settings = () => {
   const [isCheckingStorage, setIsCheckingStorage] = useState(false);
   const [storageHealthError, setStorageHealthError] = useState("");
 
+  const localBackupSupported = isLocalDirectoryBackupSupported();
+  const [localBackupEnabled, setLocalBackupEnabled] = useState(false);
+  const [localBackupIntervalHours, setLocalBackupIntervalHours] = useState(
+    DEFAULT_LOCAL_HISTORY_BACKUP_INTERVAL_HOURS,
+  );
+  const [localBackupRetentionCount, setLocalBackupRetentionCount] = useState(
+    DEFAULT_LOCAL_HISTORY_BACKUP_RETENTION_COUNT,
+  );
+  const [localBackupDirectoryName, setLocalBackupDirectoryName] = useState("");
+  const [localBackupDirectoryConfigured, setLocalBackupDirectoryConfigured] = useState(false);
+  const [localBackupLastAttemptAt, setLocalBackupLastAttemptAt] = useState(0);
+  const [localBackupLastSuccessAt, setLocalBackupLastSuccessAt] = useState(0);
+  const [localBackupLastFileName, setLocalBackupLastFileName] = useState("");
+  const [localBackupLastRecordCount, setLocalBackupLastRecordCount] = useState(0);
+  const [localBackupLastError, setLocalBackupLastError] = useState("");
+  const [localBackupCleanupWarning, setLocalBackupCleanupWarning] = useState("");
+  const [localBackupNeedsPermission, setLocalBackupNeedsPermission] = useState(false);
+  const [isSelectingLocalBackupDirectory, setIsSelectingLocalBackupDirectory] = useState(false);
+  const [isRunningLocalBackup, setIsRunningLocalBackup] = useState(false);
+
   const refreshStorageHealth = async (showSuccess = false) => {
     setIsCheckingStorage(true);
     setStorageHealthError("");
@@ -62,6 +104,69 @@ const Settings = () => {
       if (showSuccess) toast.error("存储保护状态检查失败");
     } finally {
       setIsCheckingStorage(false);
+    }
+  };
+
+  const loadLocalBackupSettings = async () => {
+    const [
+      enabled,
+      intervalHours,
+      retentionCount,
+      directoryName,
+      lastAttemptAt,
+      lastSuccessAt,
+      lastFileName,
+      lastRecordCount,
+      lastError,
+      cleanupWarning,
+    ] = await Promise.all([
+      getStorageValue(LOCAL_HISTORY_BACKUP_ENABLED, false),
+      getStorageValue(
+        LOCAL_HISTORY_BACKUP_INTERVAL_HOURS,
+        DEFAULT_LOCAL_HISTORY_BACKUP_INTERVAL_HOURS,
+      ),
+      getStorageValue(
+        LOCAL_HISTORY_BACKUP_RETENTION_COUNT,
+        DEFAULT_LOCAL_HISTORY_BACKUP_RETENTION_COUNT,
+      ),
+      getStorageValue(LOCAL_HISTORY_BACKUP_DIRECTORY_NAME, ""),
+      getStorageValue(LOCAL_HISTORY_BACKUP_LAST_ATTEMPT_AT, 0),
+      getStorageValue(LOCAL_HISTORY_BACKUP_LAST_SUCCESS_AT, 0),
+      getStorageValue(LOCAL_HISTORY_BACKUP_LAST_FILE_NAME, ""),
+      getStorageValue(LOCAL_HISTORY_BACKUP_LAST_RECORD_COUNT, 0),
+      getStorageValue(LOCAL_HISTORY_BACKUP_LAST_ERROR, ""),
+      getStorageValue(LOCAL_HISTORY_BACKUP_LAST_CLEANUP_WARNING, ""),
+    ]);
+
+    setLocalBackupEnabled(Boolean(enabled));
+    setLocalBackupIntervalHours(Number(intervalHours));
+    setLocalBackupRetentionCount(Number(retentionCount));
+    setLocalBackupDirectoryName(String(directoryName));
+    setLocalBackupLastAttemptAt(Number(lastAttemptAt));
+    setLocalBackupLastSuccessAt(Number(lastSuccessAt));
+    setLocalBackupLastFileName(String(lastFileName));
+    setLocalBackupLastRecordCount(Number(lastRecordCount));
+    setLocalBackupLastError(String(lastError));
+    setLocalBackupCleanupWarning(String(cleanupWarning));
+
+    try {
+      const handle = await getLocalBackupDirectoryHandle();
+      setLocalBackupDirectoryConfigured(Boolean(handle));
+      if (handle) {
+        try {
+          const permission = await handle.queryPermission({ mode: "readwrite" });
+          setLocalBackupNeedsPermission(permission !== "granted");
+        } catch (error) {
+          console.error("检查本地备份目录权限失败:", error);
+          setLocalBackupNeedsPermission(true);
+        }
+      } else {
+        setLocalBackupNeedsPermission(false);
+      }
+    } catch (error) {
+      console.error("读取本地备份目录状态失败:", error);
+      setLocalBackupDirectoryConfigured(false);
+      setLocalBackupLastError(error instanceof Error ? error.message : "读取备份目录失败");
     }
   };
 
@@ -86,6 +191,24 @@ const Settings = () => {
     };
     loadSettings();
     void refreshStorageHealth();
+    void loadLocalBackupSettings();
+  }, []);
+
+  useEffect(() => {
+    const handleStorageChange = (
+      changes: Record<string, Browser.storage.StorageChange>,
+      areaName: string,
+    ) => {
+      if (
+        areaName === "local" &&
+        Object.keys(changes).some((key) => key.startsWith("localHistoryBackup"))
+      ) {
+        void loadLocalBackupSettings();
+      }
+    };
+
+    browser.storage.onChanged.addListener(handleStorageChange);
+    return () => browser.storage.onChanged.removeListener(handleStorageChange);
   }, []);
 
   const handleSyncDeleteChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -142,13 +265,175 @@ const Settings = () => {
     }
   };
 
+  const ensureLocalBackupPermission = async (): Promise<FileSystemDirectoryHandle> => {
+    const handle = await getLocalBackupDirectoryHandle();
+    if (!handle) throw new Error("请先选择备份目录");
+
+    let permission = await handle.queryPermission({ mode: "readwrite" });
+    if (permission !== "granted") {
+      permission = await handle.requestPermission({ mode: "readwrite" });
+    }
+    if (permission !== "granted") throw new Error("没有获得备份目录读写权限");
+
+    await validateLocalBackupDirectory(handle);
+    await setStorageValues({
+      [LOCAL_HISTORY_BACKUP_NEEDS_PERMISSION]: false,
+      [LOCAL_HISTORY_BACKUP_LAST_ERROR]: "",
+    });
+    setLocalBackupNeedsPermission(false);
+    setLocalBackupLastError("");
+    return handle;
+  };
+
+  const runLocalBackupNow = async (allowEmpty = false): Promise<void> => {
+    if (isRunningLocalBackup) return;
+    setIsRunningLocalBackup(true);
+    try {
+      await ensureLocalBackupPermission();
+      const result = (await browser.runtime.sendMessage({
+        action: "runLocalHistoryBackup",
+        allowEmpty,
+      })) as LocalHistoryBackupResult;
+
+      if (!result.success) {
+        if (result.errorCode === "EMPTY_HISTORY_ANOMALY" && !allowEmpty) {
+          const confirmed = window.confirm(
+            "当前历史记录为 0 条，继续会生成空备份。旧备份不会在本次操作中被清理，确定继续吗？",
+          );
+          if (confirmed) {
+            setIsRunningLocalBackup(false);
+            await runLocalBackupNow(true);
+          }
+          return;
+        }
+        throw new Error(result.error || "历史记录备份失败");
+      }
+
+      await loadLocalBackupSettings();
+      if (result.cleanupWarning) {
+        toast.success(`历史记录备份成功；${result.cleanupWarning}`);
+      } else {
+        toast.success(`历史记录备份成功，共 ${result.recordCount ?? 0} 条`);
+      }
+    } catch (error) {
+      console.error("立即备份历史记录失败:", error);
+      const message = error instanceof Error ? error.message : "历史记录备份失败";
+      toast.error(message);
+      await loadLocalBackupSettings();
+    } finally {
+      setIsRunningLocalBackup(false);
+    }
+  };
+
+  const handleSelectLocalBackupDirectory = async () => {
+    if (!localBackupSupported || isSelectingLocalBackupDirectory) return;
+    setIsSelectingLocalBackupDirectory(true);
+    try {
+      const newHandle = await window.showDirectoryPicker({
+        id: "bilibili-history-backup",
+        mode: "readwrite",
+      });
+      await validateLocalBackupDirectory(newHandle);
+      await saveLocalBackupDirectoryHandle(newHandle);
+      await setStorageValues({
+        [LOCAL_HISTORY_BACKUP_DIRECTORY_NAME]: newHandle.name,
+        [LOCAL_HISTORY_BACKUP_NEEDS_PERMISSION]: false,
+        [LOCAL_HISTORY_BACKUP_LAST_ERROR]: "",
+        [LOCAL_HISTORY_BACKUP_LAST_CLEANUP_WARNING]: "",
+      });
+      await loadLocalBackupSettings();
+      toast.success(`已选择备份目录：${newHandle.name}`);
+      if (localBackupEnabled) await runLocalBackupNow();
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      console.error("选择本地备份目录失败:", error);
+      toast.error(error instanceof Error ? error.message : "选择备份目录失败");
+    } finally {
+      setIsSelectingLocalBackupDirectory(false);
+    }
+  };
+
+  const handleReauthorizeLocalBackupDirectory = async () => {
+    try {
+      await ensureLocalBackupPermission();
+      await loadLocalBackupSettings();
+      toast.success("备份目录已重新授权");
+    } catch (error) {
+      console.error("重新授权备份目录失败:", error);
+      toast.error(error instanceof Error ? error.message : "重新授权失败");
+    }
+  };
+
+  const handleRemoveLocalBackupDirectory = async () => {
+    try {
+      await setStorageValue(LOCAL_HISTORY_BACKUP_ENABLED, false);
+      await clearLocalBackupDirectoryHandle();
+      await setStorageValues({
+        [LOCAL_HISTORY_BACKUP_DIRECTORY_NAME]: "",
+        [LOCAL_HISTORY_BACKUP_LAST_ERROR]: "",
+        [LOCAL_HISTORY_BACKUP_LAST_CLEANUP_WARNING]: "",
+        [LOCAL_HISTORY_BACKUP_NEEDS_PERMISSION]: false,
+      });
+      setLocalBackupEnabled(false);
+      setLocalBackupDirectoryConfigured(false);
+      setLocalBackupDirectoryName("");
+      setLocalBackupNeedsPermission(false);
+      setLocalBackupLastError("");
+      setLocalBackupCleanupWarning("");
+      toast.success("已移除备份目录配置，已有备份文件不会被删除");
+    } catch (error) {
+      console.error("移除备份目录失败:", error);
+      toast.error(error instanceof Error ? error.message : "移除备份目录失败");
+    }
+  };
+
+  const handleLocalBackupToggle = async (enabled: boolean) => {
+    try {
+      if (enabled) {
+        await ensureLocalBackupPermission();
+      }
+      await setStorageValue(LOCAL_HISTORY_BACKUP_ENABLED, enabled);
+      setLocalBackupEnabled(enabled);
+      if (enabled) {
+        toast.success("已开启历史记录本地自动备份");
+        if (!localBackupLastSuccessAt) await runLocalBackupNow();
+      } else {
+        toast.success("已关闭历史记录本地自动备份");
+      }
+    } catch (error) {
+      console.error("切换历史记录本地自动备份失败:", error);
+      toast.error(error instanceof Error ? error.message : "操作失败");
+      await loadLocalBackupSettings();
+    }
+  };
+
+  const handleLocalBackupIntervalChange = async (value: string) => {
+    const intervalHours = Number(value);
+    setLocalBackupIntervalHours(intervalHours);
+    await setStorageValue(LOCAL_HISTORY_BACKUP_INTERVAL_HOURS, intervalHours);
+  };
+
+  const handleLocalBackupRetentionChange = async (value: string) => {
+    const retentionCount = Number(value);
+    setLocalBackupRetentionCount(retentionCount);
+    await setStorageValue(LOCAL_HISTORY_BACKUP_RETENTION_COUNT, retentionCount);
+  };
+
   const handleReset = async () => {
     try {
       setIsResetLoading(true);
       setResetStatus("正在清空历史记录...");
       await clearHistory();
+      setResetStatus("正在清理备份目录授权...");
+      await clearLocalBackupDirectoryHandle();
       setResetStatus("正在清理存储...");
       await browser.storage.local.clear();
+      setLocalBackupEnabled(false);
+      setLocalBackupDirectoryConfigured(false);
+      setLocalBackupDirectoryName("");
+      setLocalBackupLastError("");
+      setLocalBackupCleanupWarning("");
+      setLocalBackupNeedsPermission(false);
       setResetStatus("正在重新加载...");
       setResetResult("恢复出厂设置成功！");
     } catch (error) {
@@ -374,6 +659,206 @@ const Settings = () => {
             <p className="text-sm text-gray-500 dark:text-neutral-400">
               {isCheckingStorage ? "正在检查存储状态..." : storageHealthError || "暂无存储信息"}
             </p>
+          )}
+        </div>
+      </div>
+
+      {/* 历史记录本地目录自动备份 */}
+      <div className="w-full max-w-md mb-8 rounded-xl bg-gray-50 dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800">
+        <div className="p-5">
+          <div className="flex items-start gap-3 mb-5">
+            <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <FolderOpen className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-800 dark:text-neutral-100 mb-1">
+                自动备份历史记录到本地目录
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-neutral-400">
+                浏览器运行期间，定期把历史记录保存为 JSON 文件
+              </p>
+            </div>
+          </div>
+
+          {!localBackupSupported ? (
+            <div className="rounded-lg border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 px-3 py-3 text-sm text-amber-700 dark:text-amber-300">
+              当前浏览器暂不支持自动写入本地目录。你仍可以使用历史记录 JSON 手动导出或 WebDAV
+              自动备份。
+            </div>
+          ) : (
+            <div className="space-y-5">
+              <div className="rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-950/40 px-3 py-3">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500 dark:text-neutral-400 mb-1">备份目录</p>
+                    <p className="text-sm font-medium text-gray-800 dark:text-neutral-100 truncate">
+                      {localBackupDirectoryConfigured
+                        ? localBackupDirectoryName || "已选择目录"
+                        : "尚未选择"}
+                    </p>
+                  </div>
+                  {localBackupNeedsPermission && (
+                    <span className="shrink-0 text-xs font-medium text-amber-600 dark:text-amber-400">
+                      需要重新授权
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleSelectLocalBackupDirectory()}
+                    disabled={isSelectingLocalBackupDirectory || isRunningLocalBackup}
+                    className="px-3 py-2 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSelectingLocalBackupDirectory
+                      ? "正在选择..."
+                      : localBackupDirectoryConfigured
+                        ? "更换目录"
+                        : "选择目录"}
+                  </button>
+                  {localBackupDirectoryConfigured && localBackupNeedsPermission && (
+                    <button
+                      type="button"
+                      onClick={() => void handleReauthorizeLocalBackupDirectory()}
+                      disabled={isRunningLocalBackup}
+                      className="px-3 py-2 text-xs font-medium rounded-lg border border-amber-300 dark:border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors disabled:opacity-50"
+                    >
+                      重新授权
+                    </button>
+                  )}
+                  {localBackupDirectoryConfigured && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => void runLocalBackupNow()}
+                        disabled={isRunningLocalBackup || isSelectingLocalBackupDirectory}
+                        className="px-3 py-2 text-xs font-medium rounded-lg border border-blue-300 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors disabled:opacity-50"
+                      >
+                        {isRunningLocalBackup ? "备份中..." : "立即备份"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleRemoveLocalBackupDirectory()}
+                        disabled={isRunningLocalBackup || isSelectingLocalBackupDirectory}
+                        className="px-3 py-2 text-xs font-medium rounded-lg text-gray-500 dark:text-neutral-400 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors disabled:opacity-50"
+                      >
+                        移除目录
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-700 dark:text-neutral-200">
+                    启用自动备份
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">
+                    关闭后仍可使用“立即备份”
+                  </p>
+                </div>
+                <label
+                  className={`relative inline-flex items-center shrink-0 ${
+                    localBackupDirectoryConfigured ? "cursor-pointer" : "cursor-not-allowed"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={localBackupEnabled}
+                    disabled={
+                      !localBackupDirectoryConfigured ||
+                      isRunningLocalBackup ||
+                      isSelectingLocalBackupDirectory
+                    }
+                    onChange={(event) => void handleLocalBackupToggle(event.target.checked)}
+                    aria-label="启用历史记录本地自动备份"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 dark:bg-neutral-700 peer-focus:outline-none rounded-full peer peer-disabled:opacity-50 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-neutral-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Select
+                  label="备份周期"
+                  value={String(localBackupIntervalHours)}
+                  onChange={(value) => void handleLocalBackupIntervalChange(value)}
+                  disabled={!localBackupDirectoryConfigured}
+                  options={[
+                    // { value: String(1 / 60), label: "每 1 分钟（测试用）" },
+                    { value: "6", label: "每 6 小时" },
+                    { value: "12", label: "每 12 小时" },
+                    { value: "24", label: "每 24 小时" },
+                    { value: "72", label: "每 3 天" },
+                    { value: "168", label: "每 7 天" },
+                  ]}
+                />
+                <Select
+                  label="保留份数"
+                  value={String(localBackupRetentionCount)}
+                  onChange={(value) => void handleLocalBackupRetentionChange(value)}
+                  disabled={!localBackupDirectoryConfigured}
+                  options={[
+                    { value: "7", label: "7 份" },
+                    { value: "14", label: "14 份" },
+                    { value: "30", label: "30 份" },
+                    { value: "60", label: "60 份" },
+                  ]}
+                />
+              </div>
+
+              <div className="space-y-2 text-xs text-gray-500 dark:text-neutral-400">
+                <div className="flex items-center justify-between gap-3">
+                  <span>最近成功</span>
+                  <span className="text-right font-medium text-gray-700 dark:text-neutral-200">
+                    {localBackupLastSuccessAt
+                      ? new Date(localBackupLastSuccessAt).toLocaleString()
+                      : "尚未备份"}
+                  </span>
+                </div>
+                {localBackupLastFileName && (
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="shrink-0">最近文件</span>
+                    <span className="text-right break-all text-gray-700 dark:text-neutral-200">
+                      {localBackupLastFileName}
+                    </span>
+                  </div>
+                )}
+                {localBackupLastSuccessAt > 0 && (
+                  <div className="flex items-center justify-between gap-3">
+                    <span>历史记录</span>
+                    <span className="font-medium text-gray-700 dark:text-neutral-200">
+                      {localBackupLastRecordCount.toLocaleString()} 条
+                    </span>
+                  </div>
+                )}
+                {!localBackupLastSuccessAt && localBackupLastAttemptAt > 0 && (
+                  <div className="flex items-center justify-between gap-3">
+                    <span>最近尝试</span>
+                    <span>{new Date(localBackupLastAttemptAt).toLocaleString()}</span>
+                  </div>
+                )}
+              </div>
+
+              {(localBackupLastError || localBackupNeedsPermission) && (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{localBackupLastError || "备份目录权限已失效，请点击“重新授权”"}</span>
+                </div>
+              )}
+
+              {localBackupCleanupWarning && (
+                <div className="rounded-lg border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                  {localBackupCleanupWarning}
+                </div>
+              )}
+
+              <p className="text-xs leading-relaxed text-gray-400 dark:text-neutral-500">
+                自动备份仅包含历史记录。浏览器关闭或设备休眠期间不会执行，恢复运行后会补做。
+              </p>
+            </div>
           )}
         </div>
       </div>

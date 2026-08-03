@@ -1,6 +1,7 @@
 import { HistoryItem, LikedMusic } from "./types";
 import { getAllHistory, getAllLikedMusic } from "./db";
 import { getTypeTag, getContentUrl } from "./common";
+import { buildHistoryBackupJson } from "./localHistoryBackup";
 
 /**
  * 将历史记录转换为CSV格式
@@ -95,11 +96,7 @@ export const exportHistoryToCSV = async (): Promise<void> => {
  */
 export const exportHistoryToJSON = async (): Promise<void> => {
   try {
-    // 获取所有历史记录
-    const items = await getAllHistory();
-
-    // 转换为JSON字符串
-    const json = JSON.stringify(items, null, 2); // null, 2 用于格式化输出，使其更易读
+    const { json } = await buildHistoryBackupJson();
 
     // 创建Blob对象
     const blob = new Blob([json], { type: "application/json;charset=utf-8" });

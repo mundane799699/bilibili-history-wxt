@@ -30,6 +30,22 @@ export const STORAGE_LAST_WARNING = "storageLastWarning";
 export const BACKUP_REMINDER_LAST_DISMISSED_AT = "backupReminderLastDismissedAt";
 export const BACKUP_LAST_EXPORT_AT = "backupLastExportAt";
 
+// 历史记录本地目录自动备份
+export const LOCAL_HISTORY_BACKUP_ALARM = "localHistoryBackup";
+export const LOCAL_HISTORY_BACKUP_ENABLED = "localHistoryBackupEnabled";
+export const LOCAL_HISTORY_BACKUP_INTERVAL_HOURS = "localHistoryBackupIntervalHours";
+export const LOCAL_HISTORY_BACKUP_RETENTION_COUNT = "localHistoryBackupRetentionCount";
+export const LOCAL_HISTORY_BACKUP_DIRECTORY_NAME = "localHistoryBackupDirectoryName";
+export const LOCAL_HISTORY_BACKUP_LAST_ATTEMPT_AT = "localHistoryBackupLastAttemptAt";
+export const LOCAL_HISTORY_BACKUP_LAST_SUCCESS_AT = "localHistoryBackupLastSuccessAt";
+export const LOCAL_HISTORY_BACKUP_LAST_FILE_NAME = "localHistoryBackupLastFileName";
+export const LOCAL_HISTORY_BACKUP_LAST_RECORD_COUNT = "localHistoryBackupLastRecordCount";
+export const LOCAL_HISTORY_BACKUP_LAST_ERROR = "localHistoryBackupLastError";
+export const LOCAL_HISTORY_BACKUP_LAST_CLEANUP_WARNING = "localHistoryBackupLastCleanupWarning";
+export const LOCAL_HISTORY_BACKUP_NEEDS_PERMISSION = "localHistoryBackupNeedsPermission";
+export const DEFAULT_LOCAL_HISTORY_BACKUP_INTERVAL_HOURS = 24;
+export const DEFAULT_LOCAL_HISTORY_BACKUP_RETENTION_COUNT = 30;
+
 // WebDAV 同步相关
 export const WEBDAV_CONFIG = "webdavConfig";
 export const WEBDAV_LAST_SYNC = "webdavLastSync";

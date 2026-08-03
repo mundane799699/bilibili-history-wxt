@@ -14,6 +14,7 @@ import {
   DEFAULT_WEBDAV_SYNC_ITEMS,
   WebDavSyncItems,
   WebDavSyncKey,
+  LOCAL_HISTORY_BACKUP_ALARM,
 } from "../utils/constants";
 import {
   openDB,
@@ -51,9 +52,36 @@ import {
   SyncFavoriteFolderResponse,
   SyncHistoryRequest,
   SyncHistoryResponse,
+  LocalHistoryBackupRequest,
+  LocalHistoryBackupResult,
 } from "../utils/types";
+import { isLocalHistoryBackupDue, runLocalHistoryBackup } from "../utils/localHistoryBackup";
 
 export default defineBackground(() => {
+  let localHistoryBackupPromise: Promise<LocalHistoryBackupResult> | null = null;
+
+  const ensureLocalHistoryBackupAlarm = async (): Promise<void> => {
+    const alarm = await browser.alarms.get(LOCAL_HISTORY_BACKUP_ALARM);
+    if (!alarm || alarm.periodInMinutes !== 1) {
+      await browser.alarms.create(LOCAL_HISTORY_BACKUP_ALARM, {
+        periodInMinutes: 1,
+      });
+    }
+  };
+
+  const runLocalHistoryBackupOnce = (allowEmpty = false): Promise<LocalHistoryBackupResult> => {
+    if (localHistoryBackupPromise) return localHistoryBackupPromise;
+
+    localHistoryBackupPromise = runLocalHistoryBackup(allowEmpty).finally(() => {
+      localHistoryBackupPromise = null;
+    });
+    return localHistoryBackupPromise;
+  };
+
+  void ensureLocalHistoryBackupAlarm().catch((error) => {
+    console.error("初始化历史记录本地备份定时任务失败:", error);
+  });
+
   const actionApi = browser.action ?? browser.browserAction;
   actionApi.onClicked.addListener(() => {
     void browser.tabs.create({
@@ -170,6 +198,17 @@ export default defineBackground(() => {
 
       // 距离上次同步已超过设定间隔，执行备份
       autoSyncWebDav();
+    } else if (alarm.name === LOCAL_HISTORY_BACKUP_ALARM) {
+      try {
+        if (await isLocalHistoryBackupDue()) {
+          const result = await runLocalHistoryBackupOnce();
+          if (!result.success) {
+            console.warn("历史记录本地自动备份未完成:", result.error);
+          }
+        }
+      } catch (error) {
+        console.error("历史记录本地自动备份失败:", error);
+      }
     }
   });
 
@@ -383,6 +422,21 @@ export default defineBackground(() => {
     }
   };
 
+  const handleRunLocalHistoryBackup = async (
+    message: LocalHistoryBackupRequest,
+    sendResponse: (response: LocalHistoryBackupResult) => void,
+  ) => {
+    try {
+      sendResponse(await runLocalHistoryBackupOnce(Boolean(message.allowEmpty)));
+    } catch (error) {
+      sendResponse({
+        success: false,
+        errorCode: "WRITE_FAILED",
+        error: error instanceof Error ? error.message : "本地备份失败",
+      });
+    }
+  };
+
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "syncHistory") {
       handleSyncHistory(message as SyncHistoryRequest, sendResponse);
@@ -409,6 +463,9 @@ export default defineBackground(() => {
       return true;
     } else if (message.action === "syncSubscribedCollectionResources") {
       handleSyncSubscribedCollectionResources(message, sendResponse);
+      return true;
+    } else if (message.action === "runLocalHistoryBackup") {
+      handleRunLocalHistoryBackup(message as LocalHistoryBackupRequest, sendResponse);
       return true;
     }
   });

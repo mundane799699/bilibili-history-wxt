@@ -73,6 +73,29 @@ export interface SyncHistoryRequest {
 export type SyncHistoryResponse =
   { success: true; message: string } | { success: false; error: string };
 
+export type LocalHistoryBackupErrorCode =
+  | "NOT_ENABLED"
+  | "NO_DIRECTORY"
+  | "PERMISSION_REQUIRED"
+  | "EMPTY_HISTORY_ANOMALY"
+  | "READ_FAILED"
+  | "WRITE_FAILED";
+
+export interface LocalHistoryBackupRequest {
+  action: "runLocalHistoryBackup";
+  allowEmpty?: boolean;
+}
+
+export interface LocalHistoryBackupResult {
+  success: boolean;
+  fileName?: string;
+  recordCount?: number;
+  completedAt?: number;
+  cleanupWarning?: string;
+  errorCode?: LocalHistoryBackupErrorCode;
+  error?: string;
+}
+
 export interface SyncFavoriteFolderRequest {
   action: "syncFavoriteFolder";
   folderId: number;
