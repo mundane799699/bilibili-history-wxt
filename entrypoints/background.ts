@@ -1,11 +1,9 @@
 import {
-  IS_SYNCING,
   HAS_FULL_SYNC,
   HAS_FULL_FAV_SYNC,
   HISTORY_LAST_SYNC,
   SYNC_INTERVAL,
   IS_SYNC_DELETE_FROM_BILIBILI,
-  IS_SYNCING_FAV,
   WEBDAV_CONFIG,
   WEBDAV_LAST_SYNC,
   WEBDAV_AUTO_SYNC_ENABLED,
@@ -109,25 +107,18 @@ export default defineBackground(() => {
       setTimeout(async () => {
         // 并行执行初始化同步
         const initHistory = async () => {
-          await setStorageValue(IS_SYNCING, true);
           try {
             await syncHistory(true);
           } catch (e) {
             console.error("History init failed", e);
-          } finally {
-            await setStorageValue(IS_SYNCING, false);
           }
         };
         const initFav = async () => {
-          await setStorageValue(IS_SYNCING_FAV, true);
           try {
             await syncFavorites(true);
             await setStorageValue(HAS_FULL_FAV_SYNC, true);
           } catch (e) {
             console.error("Fav init failed", e);
-          } finally {
-            await setStorageValue(IS_SYNCING_FAV, false);
-            // Completion state will be handled inside syncFavorites too, but good to ensure
           }
         };
         initHistory();
@@ -138,22 +129,10 @@ export default defineBackground(() => {
 
   const intervalSync = async () => {
     try {
-      // 检查是否正在同步
-      const isSyncing = await getStorageValue(IS_SYNCING);
-      if (isSyncing) {
-        console.log("同步正在进行中，跳过本次定时同步");
-        return;
-      }
-
-      // 设置同步状态为进行中
-      await setStorageValue(IS_SYNCING, true);
-
       // 执行增量同步
       await syncHistory(false);
     } catch (error) {
       console.error("定时同步失败:", error);
-    } finally {
-      await setStorageValue(IS_SYNCING, false);
     }
   };
 
@@ -214,20 +193,6 @@ export default defineBackground(() => {
     sendResponse: (response: SyncHistoryResponse) => void,
   ) => {
     try {
-      // 检查是否正在同步
-      const isSyncing = await getStorageValue(IS_SYNCING);
-      if (isSyncing) {
-        console.log("同步正在进行中，请稍后再试");
-        sendResponse({
-          success: false,
-          error: "同步正在进行中，请稍后再试",
-        });
-        return;
-      }
-
-      // 设置同步状态为进行中
-      await setStorageValue(IS_SYNCING, true);
-
       // 获取前端传递的isFullSync参数，如果没有则根据历史记录判断
       const forceFullSync = message.isFullSync;
       let syncResult = "";
@@ -248,20 +213,11 @@ export default defineBackground(() => {
         success: false,
         error: error instanceof Error ? error.message : "未知错误",
       });
-    } finally {
-      await setStorageValue(IS_SYNCING, false);
     }
   };
 
   const handleSyncFavorites = async (sendResponse: (response: any) => void) => {
     try {
-      const isSyncing = await getStorageValue(IS_SYNCING_FAV);
-      if (isSyncing) {
-        sendResponse({ success: false, error: "收藏夹同步正在进行中" });
-        return;
-      }
-
-      await setStorageValue(IS_SYNCING_FAV, true);
       const hasFullFavSync = await getStorageValue(HAS_FULL_FAV_SYNC, false);
       if (!hasFullFavSync) {
         await syncFavorites(true);
@@ -276,8 +232,6 @@ export default defineBackground(() => {
         success: false,
         error: error instanceof Error ? error.message : "未知错误",
       });
-    } finally {
-      await setStorageValue(IS_SYNCING_FAV, false);
     }
   };
 
@@ -297,14 +251,6 @@ export default defineBackground(() => {
 
     let response: SyncFavoriteFolderResponse;
     try {
-      const isSyncing = await getStorageValue(IS_SYNCING_FAV);
-      if (isSyncing) {
-        sendResponse({ success: false, error: "收藏夹同步正在进行中，请稍后再试" });
-        return;
-      }
-
-      await setStorageValue(IS_SYNCING_FAV, true);
-
       const folder = await syncFavoriteFolderById(folderId, message.isFullSync);
       const mode = message.isFullSync ? "full" : "incremental";
       response = {
@@ -319,11 +265,8 @@ export default defineBackground(() => {
         success: false,
         error: error instanceof Error ? error.message : "未知错误",
       };
-    } finally {
-      await setStorageValue(IS_SYNCING_FAV, false);
     }
 
-    // 先释放同步锁再响应，确保“同步所有”可以安全地串行请求下一个收藏夹。
     sendResponse(response);
   };
 

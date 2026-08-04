@@ -1,9 +1,6 @@
 export const IS_SYNC_DELETE = "isSyncDelete";
 export const IS_SYNC_DELETE_FROM_BILIBILI = "isSyncDeleteFromBilibili";
 
-export const IS_SYNCING = "isSyncing";
-export const IS_SYNCING_FAV = "isSyncingFav";
-
 export const HAS_FULL_SYNC = "hasFullSync";
 export const HAS_FULL_FAV_SYNC = "hasFullFavSync";
 
