@@ -71,6 +71,11 @@ export const THEME_MODE = "themeMode";
 
 export const UPDATE_HISTORY = [
   {
+    date: "2026-08-04",
+    version: "2.1.3",
+    changes: ["修复同步历史记录一直卡在同步进行中的bug"],
+  },
+  {
     date: "2026-08-03",
     version: "2.1.2",
     changes: [
