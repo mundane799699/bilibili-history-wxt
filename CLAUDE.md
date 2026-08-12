@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-Bilibili 无限历史记录 — 基于 [WXT](https://wxt.dev/) + React 19 + TailwindCSS 3 的浏览器扩展（Chrome / Edge / Firefox），用于不限量保存并管理 B 站观看历史、收藏夹与喜欢的音乐，并支持 WebDAV / 自建云端 双向同步与 AI 语义检索（阿里云百炼 DashScope）。
+Bilibili 无限历史记录 — 基于 [WXT](https://wxt.dev/) + React 19 + TailwindCSS 3 的浏览器扩展（Chrome / Edge / Firefox），用于不限量保存并管理 B 站观看历史、收藏夹与喜欢的音乐，并支持 WebDAV / 自建云端双向同步与 OpenAI 兼容接口的 AI 语义检索。
 
 ## 常用命令
 
@@ -59,7 +59,7 @@ manifest 在 [wxt.config.ts](wxt.config.ts) 声明，关键权限：`storage / t
 - `history` (keyPath `id`，索引 `view_at`)
 - `likedMusic` (keyPath `bvid`，索引 `added_at`)
 - `favFolders` (keyPath `id`，索引 `mid`)
-- `favResources` (keyPath `id`，索引 `folder_id` / `fav_time`)
+- `favResources` (复合 keyPath `[folder_id, id]`，索引 `id` / `folder_id` / `fav_time`)
 
 **改 schema 必须 bump `DB_CONFIG.version` 并在 `onupgradeneeded` 里写迁移分支**。当前实现里有兜底 `if (!db.objectStoreNames.contains(...))` 用来修复历史版本里 else-if 互斥导致的 store 缺失，新加 store 时也要补到这段兜底里。`smartMerge*` 系列是 WebDAV 双向同步的合并基元，不要绕开它直接 `put` 远端数据。
 
@@ -82,7 +82,7 @@ manifest 在 [wxt.config.ts](wxt.config.ts) 声明，关键权限：`storage / t
 
 ### AI 搜索
 
-[pages/AISearch.tsx](pages/AISearch.tsx) 调阿里云百炼（DashScope）兼容 OpenAI 协议的流式接口，`apiKey` 存在 `DASHSCOPE_API_KEY`，搜索历史存在 `AI_SEARCH_HISTORY`。前端把最近 N 条历史拼进 prompt 让模型做语义匹配，不依赖 background。
+[pages/AISearch.tsx](pages/AISearch.tsx) 调用户配置的 OpenAI Chat Completions 兼容流式接口，Base URL、API Key 和模型分别存在 `OPENAI_BASE_URL`、`OPENAI_API_KEY`、`OPENAI_MODEL`，搜索历史存在 `AI_SEARCH_HISTORY`。前端把最近 N 条历史拼进 prompt 让模型做语义匹配，不依赖 background。
 
 ## 风格约定
 

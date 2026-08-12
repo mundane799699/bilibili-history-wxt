@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { HashRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { History } from "../../pages/History";
 import { About } from "../../pages/About";
 import { Sidebar } from "../../components/Sidebar";
@@ -17,8 +17,12 @@ import AISearch from "../../pages/AISearch";
 import Reward from "../../pages/Reward";
 import { UpdateNoticeModal } from "../../components/UpdateNoticeModal";
 import { DataBackupReminderModal } from "../../components/DataBackupReminderModal";
+import { FirstRunGuideModal } from "../../components/FirstRunGuideModal";
 import SubscribedCollections from "../../pages/SubscribedCollections";
-import { BACKUP_REMINDER_LAST_DISMISSED_AT } from "../../utils/constants";
+import {
+  BACKUP_REMINDER_LAST_DISMISSED_AT,
+  FIRST_RUN_GUIDE_COMPLETED,
+} from "../../utils/constants";
 import { getStorageValue, setStorageValue } from "../../utils/storage";
 import { exportHistoryToJSON } from "../../utils/export";
 
@@ -114,10 +118,13 @@ interface MainLayoutProps {
 
 const MainLayout = ({ children }: MainLayoutProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const isWelcome = location.pathname === "/welcome";
   const [isUpdateNoticeOpen, setIsUpdateNoticeOpen] = useState(false);
   const [isUpdateNoticeReady, setIsUpdateNoticeReady] = useState(false);
   const [canEvaluateBackupReminder, setCanEvaluateBackupReminder] = useState(false);
+  const [isFirstRunGuideOpen, setIsFirstRunGuideOpen] = useState(false);
+  const [isFirstRunGuideReady, setIsFirstRunGuideReady] = useState(false);
 
   const handleUpdateNoticeOpenChange = useCallback((open: boolean) => {
     setIsUpdateNoticeOpen(open);
@@ -129,7 +136,50 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
   useEffect(() => {
     if (isWelcome) {
+      setIsFirstRunGuideOpen(false);
+      setIsFirstRunGuideReady(false);
       setIsUpdateNoticeOpen(false);
+      setIsUpdateNoticeReady(false);
+      setCanEvaluateBackupReminder(false);
+      return;
+    }
+
+    let isActive = true;
+    setIsFirstRunGuideReady(false);
+    void getStorageValue(FIRST_RUN_GUIDE_COMPLETED, false)
+      .then((completed) => {
+        if (!isActive) return;
+        setIsFirstRunGuideOpen(!completed);
+        setIsFirstRunGuideReady(true);
+      })
+      .catch((error) => {
+        console.error("读取首次引导状态失败:", error);
+        if (!isActive) return;
+        setIsFirstRunGuideOpen(true);
+        setIsFirstRunGuideReady(true);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [isWelcome]);
+
+  useEffect(() => {
+    const handleGuideStorageChange = (
+      changes: Record<string, Browser.storage.StorageChange>,
+      areaName: string,
+    ) => {
+      if (areaName === "local" && changes[FIRST_RUN_GUIDE_COMPLETED]?.newValue === false) {
+        setIsFirstRunGuideOpen(true);
+        setIsFirstRunGuideReady(true);
+      }
+    };
+    browser.storage.onChanged.addListener(handleGuideStorageChange);
+    return () => browser.storage.onChanged.removeListener(handleGuideStorageChange);
+  }, []);
+
+  useEffect(() => {
+    if (isWelcome || !isFirstRunGuideReady || isFirstRunGuideOpen) {
       setIsUpdateNoticeReady(false);
       setCanEvaluateBackupReminder(false);
       return;
@@ -142,7 +192,20 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
     const timerId = window.setTimeout(() => setCanEvaluateBackupReminder(true), 300);
     return () => window.clearTimeout(timerId);
-  }, [isUpdateNoticeOpen, isUpdateNoticeReady, isWelcome]);
+  }, [
+    isFirstRunGuideOpen,
+    isFirstRunGuideReady,
+    isUpdateNoticeOpen,
+    isUpdateNoticeReady,
+    isWelcome,
+  ]);
+
+  const completeFirstRunGuide = useCallback(() => {
+    setIsFirstRunGuideOpen(false);
+    void setStorageValue(FIRST_RUN_GUIDE_COMPLETED, true).catch((error) => {
+      console.error("保存首次引导状态失败:", error);
+    });
+  }, []);
 
   return (
     <div className="flex h-screen dark:bg-[#0a0a0a] dark:text-neutral-100">
@@ -151,13 +214,20 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       <div className={`${!isWelcome ? "ml-40" : ""} w-full transition-all duration-300`}>
         {children}
       </div>
-      {!isWelcome && (
+      {!isWelcome && isFirstRunGuideReady && !isFirstRunGuideOpen && (
         <UpdateNoticeModal
           onOpenChange={handleUpdateNoticeOpenChange}
           onReady={handleUpdateNoticeReady}
         />
       )}
       {!isWelcome && canEvaluateBackupReminder && <BackupReminderController />}
+      {!isWelcome && isFirstRunGuideReady && (
+        <FirstRunGuideModal
+          open={isFirstRunGuideOpen}
+          onComplete={completeFirstRunGuide}
+          onNavigate={navigate}
+        />
+      )}
     </div>
   );
 };

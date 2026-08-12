@@ -1,0 +1,14 @@
+diff --git a/dist/virtual/background-entrypoint.mjs b/dist/virtual/background-entrypoint.mjs
+index 90c0301bb543f53f218d4ddba461aadaad8cb586..66c91048745ca84b3488498d0ad8652669c1e36c 100644
+--- a/dist/virtual/background-entrypoint.mjs
++++ b/dist/virtual/background-entrypoint.mjs
+@@ -56,7 +56,8 @@ function getDevServerWebSocket() {
+ /** https://developer.chrome.com/blog/longer-esw-lifetimes/ */
+ function keepServiceWorkerAlive() {
+ 	setInterval(async () => {
+-		await browser.runtime.getPlatformInfo();
++		// Extension reloads can invalidate the worker between interval ticks.
++		await browser.runtime.getPlatformInfo().catch(() => undefined);
+ 	}, 5e3);
+ }
+ //#endregion

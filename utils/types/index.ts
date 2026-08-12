@@ -42,7 +42,7 @@ export interface DBConfig {
       indexes: string[];
     };
     favResources: {
-      keyPath: string;
+      keyPath: string | string[];
       indexes: string[];
     };
     subscribedCollections: {
@@ -99,6 +99,7 @@ export interface LocalHistoryBackupResult {
 export interface SyncFavoriteFolderRequest {
   action: "syncFavoriteFolder";
   folderId: number;
+  folderTitle?: string;
   isFullSync: boolean;
 }
 
@@ -110,6 +111,47 @@ export type SyncFavoriteFolderResponse =
       mode: "incremental" | "full";
     }
   | { success: false; error: string };
+
+export interface SyncAllFavoriteFoldersRequest {
+  action: "syncAllFavoriteFolders";
+  folders: { id: number; title: string }[];
+  isFullSync: boolean;
+}
+
+export interface AllFavoriteFoldersSyncProgress {
+  status: "syncing" | "success" | "error";
+  mode: "full" | "incremental";
+  currentFolderTitle: string;
+  completedCount: number;
+  totalFolders: number;
+  failedFolders: { id: number; title: string; error: string }[];
+  folderIds: number[];
+  currentPage: number;
+  nextPage: number;
+  processedItems: number;
+  totalItems: number;
+  onlineResourceIds: number[];
+  startedAt: number;
+  updatedAt: number;
+  message?: string;
+}
+
+export type FavoriteFolderSyncProgressStatus = "syncing" | "success" | "error";
+
+export interface FavoriteFolderSyncProgress {
+  folderId: number;
+  folderTitle: string;
+  mode: "incremental" | "full";
+  status: FavoriteFolderSyncProgressStatus;
+  currentPage: number;
+  nextPage: number;
+  processedItems: number;
+  totalItems: number;
+  onlineResourceIds: number[];
+  startedAt: number;
+  updatedAt: number;
+  message?: string;
+}
 
 export interface RefreshFavoriteFoldersRequest {
   action: "refreshFavoriteFolders";

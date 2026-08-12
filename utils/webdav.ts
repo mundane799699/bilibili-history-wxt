@@ -14,6 +14,29 @@ export interface WebDavConfig {
   basePath: string;
 }
 
+const WEBDAV_OPERATION_LOCK = "webdavOperationLock";
+const LOCK_TTL_MS = 10 * 60 * 1000;
+
+export const withWebDavOperationLock = async <T>(task: () => Promise<T>): Promise<T> => {
+  const owner = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const current = await browser.storage.local.get(WEBDAV_OPERATION_LOCK);
+  const lock = current[WEBDAV_OPERATION_LOCK] as { owner: string; expiresAt: number } | undefined;
+  if (lock && lock.expiresAt > Date.now()) {
+    throw new Error("WebDAV 操作正在进行中，请稍后再试");
+  }
+  await browser.storage.local.set({
+    [WEBDAV_OPERATION_LOCK]: { owner, expiresAt: Date.now() + LOCK_TTL_MS },
+  });
+  try {
+    return await task();
+  } finally {
+    const latest = await browser.storage.local.get(WEBDAV_OPERATION_LOCK);
+    if ((latest[WEBDAV_OPERATION_LOCK] as { owner?: string } | undefined)?.owner === owner) {
+      await browser.storage.local.remove(WEBDAV_OPERATION_LOCK);
+    }
+  }
+};
+
 /**
  * 构造 Basic Auth 请求头
  */
@@ -134,13 +157,12 @@ export const downloadFile = async (
     }
 
     if (!response.ok) {
-      console.error(`WebDAV 下载文件 ${filename} 失败: HTTP ${response.status}`);
-      return null;
+      throw new Error(`WebDAV 下载文件 ${filename} 失败: HTTP ${response.status}`);
     }
 
     return await response.text();
   } catch (error) {
     console.error(`WebDAV 下载文件 ${filename} 失败:`, error);
-    return null;
+    throw error;
   }
 };

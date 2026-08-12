@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  wxt@0.20.27:
+    hash: 45c0a6c4d32227cc09f99aba8b714d2194a9bcd142b308c9118899bef0a13315
+    path: patches/wxt@0.20.27.patch
+
 importers:
 
   .:
@@ -53,7 +58,7 @@ importers:
         version: 19.2.3(@types/react@19.2.17)
       '@wxt-dev/module-react':
         specifier: ^1.1.3
-        version: 1.2.2(vite@8.1.3(@types/node@26.1.0)(esbuild@0.27.7)(jiti@1.21.7))(wxt@0.20.27(@types/node@26.1.0)(jiti@1.21.7)(rolldown@1.1.4))
+        version: 1.2.2(vite@8.1.3(@types/node@26.1.0)(esbuild@0.27.7)(jiti@1.21.7))(wxt@0.20.27(patch_hash=45c0a6c4d32227cc09f99aba8b714d2194a9bcd142b308c9118899bef0a13315)(@types/node@26.1.0)(jiti@1.21.7)(rolldown@1.1.4))
       autoprefixer:
         specifier: ^10.4.21
         version: 10.5.2(postcss@8.5.16)
@@ -71,7 +76,7 @@ importers:
         version: 5.8.3
       wxt:
         specifier: ^0.20.6
-        version: 0.20.27(@types/node@26.1.0)(jiti@1.21.7)(rolldown@1.1.4)
+        version: 0.20.27(patch_hash=45c0a6c4d32227cc09f99aba8b714d2194a9bcd142b308c9118899bef0a13315)(@types/node@26.1.0)(jiti@1.21.7)(rolldown@1.1.4)
 
 packages:
 
@@ -2628,11 +2633,11 @@ snapshots:
       '@types/filesystem': 0.0.36
       '@types/har-format': 1.2.16
 
-  '@wxt-dev/module-react@1.2.2(vite@8.1.3(@types/node@26.1.0)(esbuild@0.27.7)(jiti@1.21.7))(wxt@0.20.27(@types/node@26.1.0)(jiti@1.21.7)(rolldown@1.1.4))':
+  '@wxt-dev/module-react@1.2.2(vite@8.1.3(@types/node@26.1.0)(esbuild@0.27.7)(jiti@1.21.7))(wxt@0.20.27(patch_hash=45c0a6c4d32227cc09f99aba8b714d2194a9bcd142b308c9118899bef0a13315)(@types/node@26.1.0)(jiti@1.21.7)(rolldown@1.1.4))':
     dependencies:
       '@vitejs/plugin-react': 6.0.3(vite@8.1.3(@types/node@26.1.0)(esbuild@0.27.7)(jiti@1.21.7))
       vite: 8.1.3(@types/node@26.1.0)(esbuild@0.27.7)(jiti@1.21.7)
-      wxt: 0.20.27(@types/node@26.1.0)(jiti@1.21.7)(rolldown@1.1.4)
+      wxt: 0.20.27(patch_hash=45c0a6c4d32227cc09f99aba8b714d2194a9bcd142b308c9118899bef0a13315)(@types/node@26.1.0)(jiti@1.21.7)(rolldown@1.1.4)
     transitivePeerDependencies:
       - '@rolldown/plugin-babel'
       - babel-plugin-react-compiler
@@ -4284,7 +4289,7 @@ snapshots:
       is-wsl: 3.1.1
       powershell-utils: 0.1.0
 
-  wxt@0.20.27(@types/node@26.1.0)(jiti@1.21.7)(rolldown@1.1.4):
+  wxt@0.20.27(patch_hash=45c0a6c4d32227cc09f99aba8b714d2194a9bcd142b308c9118899bef0a13315)(@types/node@26.1.0)(jiti@1.21.7)(rolldown@1.1.4):
     dependencies:
       '@1natsu/wait-element': 4.2.0
       '@aklinker1/rollup-plugin-visualizer': 5.12.0

@@ -4,12 +4,17 @@ import {
   CheckCircle2,
   CloudDownload,
   Database,
+  Minimize2,
   RefreshCw,
   X,
   Zap,
 } from "lucide-react";
+import toast from "react-hot-toast";
+import { FAVORITE_FOLDER_SYNC_PROGRESS } from "../utils/constants";
+import { setStorageValue } from "../utils/storage";
 import {
   FavoriteFolder,
+  FavoriteFolderSyncProgress,
   SyncFavoriteFolderRequest,
   SyncFavoriteFolderResponse,
 } from "../utils/types";
@@ -35,10 +40,15 @@ export const FavoriteFolderSyncModal = ({
   const [isFullSync, setIsFullSync] = useState(false);
   const [syncPhase, setSyncPhase] = useState<SyncPhase>("idle");
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
+  const [progress, setProgress] = useState<FavoriteFolderSyncProgress | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
 
   const isSyncing = syncPhase === "syncing";
+  const progressPercent =
+    progress && progress.totalItems > 0
+      ? Math.min(100, Math.round((progress.processedItems / progress.totalItems) * 100))
+      : 0;
 
   useEffect(() => {
     if (!folder) return;
@@ -46,6 +56,57 @@ export const FavoriteFolderSyncModal = ({
     setIsFullSync(false);
     setSyncPhase("idle");
     setSyncResult(null);
+    setProgress(null);
+
+    let isActive = true;
+    const applyProgress = (next: FavoriteFolderSyncProgress | null) => {
+      if (!isActive || !next || next.folderId !== folder.id) return;
+
+      setProgress(next);
+      setIsFullSync(next.mode === "full");
+      if (next.status === "syncing") {
+        setSyncPhase("syncing");
+        return;
+      }
+
+      if (next.status === "success") {
+        setSyncResult({ message: next.message || "收藏夹同步成功" });
+        setSyncPhase("success");
+        return;
+      }
+
+      setSyncResult({ message: next.message || "未知错误" });
+      setSyncPhase("error");
+    };
+
+    const loadProgress = async () => {
+      try {
+        const next = (await browser.runtime.sendMessage({
+          action: "getFavoriteFolderSyncProgress",
+        })) as FavoriteFolderSyncProgress | null;
+        applyProgress(next);
+      } catch (error) {
+        console.error("读取收藏夹同步进度失败:", error);
+      }
+    };
+
+    const handleStorageChange = (
+      changes: { [key: string]: Browser.storage.StorageChange },
+      areaName: string,
+    ) => {
+      if (areaName !== "local" || !changes[FAVORITE_FOLDER_SYNC_PROGRESS]) return;
+      applyProgress(
+        (changes[FAVORITE_FOLDER_SYNC_PROGRESS].newValue as FavoriteFolderSyncProgress) || null,
+      );
+    };
+
+    browser.storage.onChanged.addListener(handleStorageChange);
+    void loadProgress();
+
+    return () => {
+      isActive = false;
+      browser.storage.onChanged.removeListener(handleStorageChange);
+    };
   }, [folder]);
 
   useEffect(() => {
@@ -98,7 +159,16 @@ export const FavoriteFolderSyncModal = ({
   }, [folder, isSyncing, onClose]);
 
   const handleClose = () => {
-    if (!isSyncing) onClose();
+    if (isSyncing) return;
+    if (syncPhase === "success" && progress?.folderId === folder?.id) {
+      void setStorageValue(FAVORITE_FOLDER_SYNC_PROGRESS, null);
+    }
+    onClose();
+  };
+
+  const handleBackgroundSync = () => {
+    toast.success("同步已转入后台，任务会继续执行");
+    onClose();
   };
 
   const handleSync = async () => {
@@ -106,11 +176,13 @@ export const FavoriteFolderSyncModal = ({
 
     setSyncPhase("syncing");
     setSyncResult(null);
+    setProgress(null);
 
     try {
       const request: SyncFavoriteFolderRequest = {
         action: "syncFavoriteFolder",
         folderId: folder.id,
+        folderTitle: folder.title,
         isFullSync,
       };
       const response = (await browser.runtime.sendMessage(request)) as
@@ -295,11 +367,30 @@ export const FavoriteFolderSyncModal = ({
         {syncPhase === "syncing" && (
           <div
             role="status"
-            className="mt-5 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300"
+            className="mt-5 rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300"
           >
-            <RefreshCw className="h-5 w-5 shrink-0 animate-spin" />
-            <p className="text-sm font-medium">
-              正在{isFullSync ? "全量" : "增量"}同步「{folder.title}」...
+            <div className="flex items-center gap-3">
+              <RefreshCw className="h-5 w-5 shrink-0 animate-spin" />
+              <p className="text-sm font-medium">
+                正在{isFullSync ? "全量" : "增量"}同步「{folder.title}」...
+              </p>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-blue-100 dark:bg-blue-950/60">
+              <div
+                className={`h-full rounded-full bg-blue-600 transition-[width] duration-300 dark:bg-blue-400 ${
+                  !isFullSync ? "animate-pulse" : ""
+                }`}
+                style={{
+                  width: progress?.totalItems ? `${Math.max(4, progressPercent)}%` : "4%",
+                }}
+              />
+            </div>
+            <p className="mt-2 text-xs text-blue-600 dark:text-blue-300">
+              {progress?.currentPage
+                ? progress.totalItems > 0
+                  ? `已检查 ${progress.processedItems} / ${progress.totalItems} 条（${progressPercent}%），第 ${progress.currentPage} 页`
+                  : `已检查 ${progress.processedItems} 条，第 ${progress.currentPage} 页`
+                : "正在获取合集信息..."}
             </p>
           </div>
         )}
@@ -349,14 +440,25 @@ export const FavoriteFolderSyncModal = ({
             </button>
           ) : (
             <>
-              <button
-                type="button"
-                onClick={handleClose}
-                disabled={isSyncing}
-                className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
-              >
-                {syncPhase === "error" ? "关闭" : "取消"}
-              </button>
+              {!isSyncing && (
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                >
+                  {syncPhase === "error" ? "关闭" : "取消"}
+                </button>
+              )}
+              {isSyncing && (
+                <button
+                  type="button"
+                  onClick={handleBackgroundSync}
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                >
+                  <Minimize2 className="h-4 w-4" />
+                  后台同步
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleSync}

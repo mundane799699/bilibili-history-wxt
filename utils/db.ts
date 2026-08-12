@@ -10,7 +10,7 @@ import { recordStorageWarning } from "./storageHealth";
 
 const DB_CONFIG: DBConfig = {
   name: "bilibiliHistory",
-  version: 6,
+  version: 7,
   stores: {
     history: {
       keyPath: "id",
@@ -25,8 +25,8 @@ const DB_CONFIG: DBConfig = {
       indexes: ["mid"],
     },
     favResources: {
-      keyPath: "id",
-      indexes: ["folder_id", "fav_time"],
+      keyPath: ["folder_id", "id"],
+      indexes: ["id", "folder_id", "fav_time"],
     },
     subscribedCollections: {
       keyPath: "id",
@@ -74,8 +74,9 @@ export const openDB = (): Promise<IDBDatabase> => {
         favFoldersStore.createIndex("mid", "mid", { unique: false });
 
         const favResourcesStore = db.createObjectStore("favResources", {
-          keyPath: "id",
+          keyPath: ["folder_id", "id"],
         });
+        favResourcesStore.createIndex("id", "id", { unique: false });
         favResourcesStore.createIndex("folder_id", "folder_id", { unique: false });
         favResourcesStore.createIndex("fav_time", "fav_time", { unique: false });
 
@@ -133,6 +134,40 @@ export const openDB = (): Promise<IDBDatabase> => {
         };
       }
 
+      if (oldVersion >= 1 && oldVersion < 7 && db.objectStoreNames.contains("favResources")) {
+        const oldStore = transaction.objectStore("favResources");
+        const getAllRequest = oldStore.getAll();
+        getAllRequest.onsuccess = () => {
+          const resources = getAllRequest.result;
+          db.deleteObjectStore("favResources");
+          const newStore = db.createObjectStore("favResources", {
+            keyPath: ["folder_id", "id"],
+          });
+          newStore.createIndex("id", "id", { unique: false });
+          newStore.createIndex("folder_id", "folder_id", { unique: false });
+          newStore.createIndex("fav_time", "fav_time", { unique: false });
+          let skipped = 0;
+          resources.forEach((resource) => {
+            const folderId = Number(resource.folder_id);
+            const id = Number(resource.id);
+            if (
+              Number.isSafeInteger(folderId) &&
+              folderId > 0 &&
+              Number.isSafeInteger(id) &&
+              id > 0
+            ) {
+              newStore.put({ ...resource, folder_id: folderId, id });
+            } else {
+              skipped++;
+            }
+          });
+          if (skipped > 0) {
+            console.warn(`收藏资源迁移跳过 ${skipped} 条无效记录`);
+          }
+        };
+        getAllRequest.onerror = () => transaction.abort();
+      }
+
       // 兜底修复：检查并补创建所有缺失的 store
       // 修复旧版本 else-if 互斥导致部分 store 未创建的问题
       if (!db.objectStoreNames.contains("history")) {
@@ -160,8 +195,9 @@ export const openDB = (): Promise<IDBDatabase> => {
       if (!db.objectStoreNames.contains("favResources")) {
         console.log("补创建favResources表");
         const favResourcesStore = db.createObjectStore("favResources", {
-          keyPath: "id",
+          keyPath: ["folder_id", "id"],
         });
+        favResourcesStore.createIndex("id", "id", { unique: false });
         favResourcesStore.createIndex("folder_id", "folder_id", { unique: false });
         favResourcesStore.createIndex("fav_time", "fav_time", { unique: false });
       }
@@ -953,7 +989,7 @@ export const saveFavResources = async (resources: FavoriteResource[]): Promise<v
 
       // 检查是否是失效视频
       if (res.title === "已失效视频") {
-        const getReq = store.get(res.id);
+        const getReq = store.get([res.folder_id, res.id]);
         getReq.onsuccess = () => {
           const oldData = getReq.result as FavoriteResource;
           let dataToSave = res;
@@ -1013,9 +1049,9 @@ export const checkIsFavorited = async (id: number): Promise<boolean> => {
   const store = tx.objectStore("favResources");
 
   return new Promise((resolve) => {
-    const request = store.get(id);
+    const request = store.index("id").count(id);
     request.onsuccess = () => {
-      resolve(!!request.result);
+      resolve(request.result > 0);
     };
     request.onerror = () => {
       resolve(false);
@@ -1127,7 +1163,7 @@ export const getAllSubscribedCollectionResources = async (): Promise<
   });
 };
 
-export const deleteFavResources = async (ids: number[]): Promise<void> => {
+export const deleteFavResources = async (folderId: number, ids: number[]): Promise<void> => {
   const db = await openDB();
   const tx = db.transaction("favResources", "readwrite");
   const store = tx.objectStore("favResources");
@@ -1143,7 +1179,7 @@ export const deleteFavResources = async (ids: number[]): Promise<void> => {
 
     ids.forEach((id) => {
       if (operationsFailed) return;
-      const request = store.delete(id);
+      const request = store.delete([folderId, id]);
       request.onsuccess = () => operationsCompleted++;
       request.onerror = () => {
         if (!operationsFailed) {
@@ -1379,7 +1415,7 @@ export const smartMergeFavResources = async (
     const total = remoteItems.length;
 
     remoteItems.forEach((remoteItem) => {
-      const getReq = store.get(remoteItem.id);
+      const getReq = store.get([remoteItem.folder_id, remoteItem.id]);
       getReq.onsuccess = () => {
         const localItem = getReq.result as FavoriteResource | undefined;
 

@@ -11,6 +11,7 @@ export interface ExpandableMenuProps {
     title: string;
     to: string;
   }[];
+  tourId?: string;
 }
 
 const ExpandableMenu = ({
@@ -19,6 +20,7 @@ const ExpandableMenu = ({
   to,
   isOpen: initialIsOpen = false,
   subMenus,
+  tourId,
 }: ExpandableMenuProps) => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(initialIsOpen);
@@ -38,6 +40,7 @@ const ExpandableMenu = ({
   return (
     <div className="cursor-pointer">
       <div
+        data-tour={tourId}
         className={`py-4 flex items-center  pl-6 hover:text-pink-500 text-sm ${
           location.pathname === to ? "text-pink-500" : "text-slate-600 dark:text-neutral-300"
         }`}
