@@ -13,6 +13,8 @@ import {
   WebDavSyncItems,
   WebDavSyncKey,
   LOCAL_HISTORY_BACKUP_ALARM,
+  FAVORITE_FOLDER_SYNC_PROGRESS,
+  ALL_FAVORITE_FOLDERS_SYNC_PROGRESS,
 } from "../utils/constants";
 import {
   openDB,
@@ -40,7 +42,13 @@ import {
 } from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
 import { recordStorageWarning } from "../utils/storageHealth";
-import { WebDavConfig, ensureDirectory, uploadFile, downloadFile } from "../utils/webdav";
+import {
+  WebDavConfig,
+  ensureDirectory,
+  uploadFile,
+  downloadFile,
+  withWebDavOperationLock,
+} from "../utils/webdav";
 import {
   FavoriteFolder,
   RefreshFavoriteFoldersResponse,
@@ -52,11 +60,71 @@ import {
   SyncHistoryResponse,
   LocalHistoryBackupRequest,
   LocalHistoryBackupResult,
+  FavoriteFolderSyncProgress,
+  SyncAllFavoriteFoldersRequest,
+  AllFavoriteFoldersSyncProgress,
 } from "../utils/types";
 import { isLocalHistoryBackupDue, runLocalHistoryBackup } from "../utils/localHistoryBackup";
 
 export default defineBackground(() => {
   let localHistoryBackupPromise: Promise<LocalHistoryBackupResult> | null = null;
+  let webDavSyncPromise: Promise<void> | null = null;
+  let favoriteSyncPromise: Promise<unknown> | null = null;
+  let favoriteFolderSyncPromise: Promise<FavoriteFolder> | null = null;
+  let allFavoriteFoldersSyncPromise: Promise<void> | null = null;
+
+  const isSameFolderCheckpoint = (
+    progress: FavoriteFolderSyncProgress | null,
+    folderId: number,
+    mode: "full" | "incremental",
+  ) =>
+    progress?.status !== "success" &&
+    progress?.folderId === folderId &&
+    progress.mode === mode &&
+    progress.nextPage > 1;
+
+  const isSameAllFoldersCheckpoint = (
+    progress: AllFavoriteFoldersSyncProgress | null,
+    folderIds: number[],
+    mode: "full" | "incremental",
+  ) =>
+    progress?.status !== "success" &&
+    progress?.mode === mode &&
+    Array.isArray(progress.folderIds) &&
+    progress.folderIds.length === folderIds.length &&
+    progress.folderIds.every((id, index) => id === folderIds[index]) &&
+    (progress.completedCount > 0 || progress.nextPage > 1);
+
+  const startFavoriteSync = <T>(task: () => Promise<T>): Promise<T> | null => {
+    if (favoriteSyncPromise) return null;
+    const promise = task();
+    favoriteSyncPromise = promise;
+    return promise;
+  };
+
+  const finishFavoriteSync = (task: Promise<unknown>): void => {
+    if (favoriteSyncPromise === task) favoriteSyncPromise = null;
+  };
+
+  async function updateFavoriteFolderSyncProgress(
+    progress: FavoriteFolderSyncProgress | null,
+  ): Promise<void> {
+    if (progress === null) {
+      await browser.storage.local.remove(FAVORITE_FOLDER_SYNC_PROGRESS);
+      return;
+    }
+    await setStorageValue(FAVORITE_FOLDER_SYNC_PROGRESS, progress);
+  }
+
+  async function updateAllFavoriteFoldersSyncProgress(
+    progress: AllFavoriteFoldersSyncProgress | null,
+  ): Promise<void> {
+    if (progress === null) {
+      await browser.storage.local.remove(ALL_FAVORITE_FOLDERS_SYNC_PROGRESS);
+      return;
+    }
+    await setStorageValue(ALL_FAVORITE_FOLDERS_SYNC_PROGRESS, progress);
+  }
 
   const ensureLocalHistoryBackupAlarm = async (): Promise<void> => {
     const alarm = await browser.alarms.get(LOCAL_HISTORY_BACKUP_ALARM);
@@ -115,8 +183,14 @@ export default defineBackground(() => {
         };
         const initFav = async () => {
           try {
-            await syncFavorites(true);
-            await setStorageValue(HAS_FULL_FAV_SYNC, true);
+            const task = startFavoriteSync(() => syncFavorites(true));
+            if (!task) return;
+            try {
+              await task;
+              await setStorageValue(HAS_FULL_FAV_SYNC, true);
+            } finally {
+              finishFavoriteSync(task);
+            }
           } catch (e) {
             console.error("Fav init failed", e);
           }
@@ -172,7 +246,12 @@ export default defineBackground(() => {
       }
 
       // 距离上次同步已超过设定间隔，执行备份
-      autoSyncWebDav();
+      if (!webDavSyncPromise) {
+        webDavSyncPromise = withWebDavOperationLock(autoSyncWebDav).finally(() => {
+          webDavSyncPromise = null;
+        });
+      }
+      await webDavSyncPromise;
     } else if (alarm.name === LOCAL_HISTORY_BACKUP_ALARM) {
       try {
         if (await isLocalHistoryBackupDue()) {
@@ -217,14 +296,18 @@ export default defineBackground(() => {
   };
 
   const handleSyncFavorites = async (sendResponse: (response: any) => void) => {
-    try {
+    const task = startFavoriteSync(async () => {
       const hasFullFavSync = await getStorageValue(HAS_FULL_FAV_SYNC, false);
-      if (!hasFullFavSync) {
-        await syncFavorites(true);
-        await setStorageValue(HAS_FULL_FAV_SYNC, true);
-      } else {
-        await syncFavorites(false);
-      }
+      await syncFavorites(!hasFullFavSync);
+      if (!hasFullFavSync) await setStorageValue(HAS_FULL_FAV_SYNC, true);
+    });
+    if (!task) {
+      sendResponse({ success: false, error: "收藏夹同步正在进行中，请稍后再试" });
+      return;
+    }
+
+    try {
+      await task;
       sendResponse({ success: true, message: "收藏夹同步成功" });
     } catch (error) {
       console.error("同步收藏夹失败:", error);
@@ -232,6 +315,8 @@ export default defineBackground(() => {
         success: false,
         error: error instanceof Error ? error.message : "未知错误",
       });
+    } finally {
+      finishFavoriteSync(task);
     }
   };
 
@@ -249,25 +334,361 @@ export default defineBackground(() => {
       return;
     }
 
+    if (favoriteSyncPromise) {
+      sendResponse({ success: false, error: "收藏夹同步正在进行中，请稍后再试" });
+      return;
+    }
+
+    const mode = message.isFullSync ? "full" : "incremental";
+    const previousProgress = await getStorageValue<FavoriteFolderSyncProgress | null>(
+      FAVORITE_FOLDER_SYNC_PROGRESS,
+      null,
+    );
+    const checkpoint = isSameFolderCheckpoint(previousProgress, folderId, mode)
+      ? previousProgress
+      : null;
+    const startedAt = checkpoint?.startedAt ?? Date.now();
+    const task = startFavoriteSync(() =>
+      syncFavoriteFolderById(folderId, message.isFullSync, startedAt, checkpoint),
+    );
+    if (!task) {
+      sendResponse({ success: false, error: "收藏夹同步正在进行中，请稍后再试" });
+      return;
+    }
+    favoriteFolderSyncPromise = task;
+
     let response: SyncFavoriteFolderResponse;
     try {
-      const folder = await syncFavoriteFolderById(folderId, message.isFullSync);
-      const mode = message.isFullSync ? "full" : "incremental";
+      const folder = await favoriteFolderSyncPromise;
+      const messageText = `「${folder.title}」${message.isFullSync ? "全量" : "增量"}同步成功`;
+      const progress = await getStorageValue<FavoriteFolderSyncProgress | null>(
+        FAVORITE_FOLDER_SYNC_PROGRESS,
+        null,
+      );
+      await updateFavoriteFolderSyncProgress({
+        ...(progress || {
+          folderId,
+          folderTitle: folder.title,
+          mode,
+          currentPage: 0,
+          nextPage: 1,
+          processedItems: 0,
+          totalItems: folder.media_count,
+          onlineResourceIds: [],
+          startedAt,
+        }),
+        folderId,
+        folderTitle: folder.title,
+        mode,
+        status: "success",
+        updatedAt: Date.now(),
+        message: messageText,
+      });
       response = {
         success: true,
-        message: `「${folder.title}」${message.isFullSync ? "全量" : "增量"}同步成功`,
+        message: messageText,
         folderId,
         mode,
       };
     } catch (error) {
       console.error("同步单个收藏夹失败:", error);
-      response = {
-        success: false,
-        error: error instanceof Error ? error.message : "未知错误",
-      };
+      const errorMessage = error instanceof Error ? error.message : "未知错误";
+      const progress = await getStorageValue<FavoriteFolderSyncProgress | null>(
+        FAVORITE_FOLDER_SYNC_PROGRESS,
+        null,
+      );
+      if (progress) {
+        await updateFavoriteFolderSyncProgress({
+          ...progress,
+          status: "error",
+          updatedAt: Date.now(),
+          message: errorMessage,
+        });
+      }
+      response = { success: false, error: errorMessage };
+    } finally {
+      favoriteFolderSyncPromise = null;
+      finishFavoriteSync(task);
+    }
+    sendResponse(response);
+  };
+
+  const handleSyncAllFavoriteFolders = async (
+    message: SyncAllFavoriteFoldersRequest,
+    sendResponse: (response: { success: boolean; error?: string }) => void,
+  ) => {
+    if (favoriteSyncPromise) {
+      sendResponse({ success: false, error: "收藏夹同步正在进行中，请稍后再试" });
+      return;
     }
 
-    sendResponse(response);
+    const { folders, isFullSync } = message;
+    if (!folders || folders.length === 0) {
+      sendResponse({ success: false, error: "没有需要同步的收藏夹" });
+      return;
+    }
+
+    const mode = isFullSync ? "full" : "incremental";
+    const folderIds = folders.map((folder) => folder.id);
+    const previousProgress = await getStorageValue<AllFavoriteFoldersSyncProgress | null>(
+      ALL_FAVORITE_FOLDERS_SYNC_PROGRESS,
+      null,
+    );
+    const checkpoint = isSameAllFoldersCheckpoint(previousProgress, folderIds, mode)
+      ? previousProgress
+      : null;
+    const startedAt = checkpoint?.startedAt ?? Date.now();
+
+    const task = startFavoriteSync(async () => {
+      const failedIds = new Set((checkpoint?.failedFolders ?? []).map((folder) => folder.id));
+      const firstFailedIndex = folders.findIndex((folder) => failedIds.has(folder.id));
+      let completedCount =
+        firstFailedIndex >= 0
+          ? firstFailedIndex
+          : Math.min(checkpoint?.completedCount ?? 0, folders.length);
+      const failedFolders = [...(checkpoint?.failedFolders ?? [])];
+
+      await updateAllFavoriteFoldersSyncProgress({
+        status: "syncing",
+        mode,
+        currentFolderTitle: folders[completedCount]?.title ?? "",
+        completedCount,
+        totalFolders: folders.length,
+        failedFolders,
+        folderIds,
+        currentPage: checkpoint?.currentPage ?? 0,
+        nextPage: checkpoint?.nextPage ?? 1,
+        processedItems: checkpoint?.processedItems ?? 0,
+        totalItems: checkpoint?.totalItems ?? 0,
+        onlineResourceIds: checkpoint?.onlineResourceIds ?? [],
+        startedAt,
+        updatedAt: Date.now(),
+      });
+
+      const { sessdata, folders: onlineFolders } = await getFavoriteFoldersFromBilibili();
+      const onlineFoldersById = new Map(onlineFolders.map((folder) => [folder.id, folder]));
+
+      for (let index = completedCount; index < folders.length; index++) {
+        const folder = folders[index];
+        const resumeFolder = checkpoint && index === checkpoint.completedCount ? checkpoint : null;
+        let currentPage = resumeFolder?.currentPage ?? 0;
+        let nextPage = resumeFolder?.nextPage ?? 1;
+        let processedItems = resumeFolder?.processedItems ?? 0;
+        let totalItems = resumeFolder?.totalItems ?? 0;
+        let onlineResourceIds = resumeFolder?.onlineResourceIds ?? [];
+
+        await updateAllFavoriteFoldersSyncProgress({
+          status: "syncing",
+          mode,
+          currentFolderTitle: folder.title,
+          completedCount,
+          totalFolders: folders.length,
+          failedFolders,
+          folderIds,
+          currentPage,
+          nextPage,
+          processedItems,
+          totalItems,
+          onlineResourceIds,
+          startedAt,
+          updatedAt: Date.now(),
+        });
+
+        let folderFailed = false;
+        try {
+          const onlineFolder = onlineFoldersById.get(folder.id);
+          if (!onlineFolder) throw new Error("收藏夹不存在或无权访问");
+
+          await saveFavFolders([onlineFolder]);
+          await syncFavoriteFolderResources(
+            onlineFolder,
+            sessdata,
+            isFullSync,
+            async (update) => {
+              currentPage = update.currentPage;
+              nextPage = update.nextPage;
+              processedItems = update.processedItems;
+              totalItems = update.totalItems;
+              onlineResourceIds = update.onlineResourceIds;
+              await updateAllFavoriteFoldersSyncProgress({
+                status: "syncing",
+                mode,
+                currentFolderTitle: folder.title,
+                completedCount,
+                totalFolders: folders.length,
+                failedFolders,
+                folderIds,
+                currentPage,
+                nextPage,
+                processedItems,
+                totalItems,
+                onlineResourceIds,
+                startedAt,
+                updatedAt: Date.now(),
+              });
+            },
+            resumeFolder,
+          );
+        } catch (error) {
+          folderFailed = true;
+          const existingFailureIndex = failedFolders.findIndex((item) => item.id === folder.id);
+          const failure = {
+            id: folder.id,
+            title: folder.title,
+            error: error instanceof Error ? error.message : "未知错误",
+          };
+          if (existingFailureIndex >= 0) failedFolders[existingFailureIndex] = failure;
+          else failedFolders.push(failure);
+        }
+
+        const currentFailureIndex = failedFolders.findIndex((item) => item.id === folder.id);
+        if (folderFailed) {
+          // 保留失败文件夹的分页断点，重试时从失败页继续。
+          await updateAllFavoriteFoldersSyncProgress({
+            status: "error",
+            mode,
+            currentFolderTitle: folder.title,
+            completedCount,
+            totalFolders: folders.length,
+            failedFolders,
+            folderIds,
+            currentPage,
+            nextPage,
+            processedItems,
+            totalItems,
+            onlineResourceIds,
+            startedAt,
+            updatedAt: Date.now(),
+            message: failedFolders[currentFailureIndex].error,
+          });
+          break;
+        } else if (currentFailureIndex >= 0) {
+          // 重试成功后移除旧失败记录。
+          failedFolders.splice(currentFailureIndex, 1);
+        }
+        completedCount++;
+        await updateAllFavoriteFoldersSyncProgress({
+          status: "syncing",
+          mode,
+          currentFolderTitle: folders[completedCount]?.title ?? "",
+          completedCount,
+          totalFolders: folders.length,
+          failedFolders,
+          folderIds,
+          currentPage: 0,
+          nextPage: 1,
+          processedItems: 0,
+          totalItems: 0,
+          onlineResourceIds: [],
+          startedAt,
+          updatedAt: Date.now(),
+        });
+      }
+
+      await updateAllFavoriteFoldersSyncProgress({
+        status: failedFolders.length > 0 ? "error" : "success",
+        mode,
+        currentFolderTitle: "",
+        completedCount,
+        totalFolders: folders.length,
+        failedFolders,
+        folderIds,
+        currentPage: 0,
+        nextPage: 1,
+        processedItems: 0,
+        totalItems: 0,
+        onlineResourceIds: [],
+        startedAt,
+        updatedAt: Date.now(),
+        ...(failedFolders.length > 0
+          ? { message: `有 ${failedFolders.length} 个收藏夹同步失败` }
+          : {}),
+      });
+    });
+    if (!task) {
+      sendResponse({ success: false, error: "收藏夹同步正在进行中，请稍后再试" });
+      return;
+    }
+    allFavoriteFoldersSyncPromise = task;
+
+    try {
+      await task;
+      sendResponse({ success: true });
+    } catch (error) {
+      console.error("同步所有收藏夹失败:", error);
+      const progress = await getStorageValue<AllFavoriteFoldersSyncProgress | null>(
+        ALL_FAVORITE_FOLDERS_SYNC_PROGRESS,
+        null,
+      );
+      const errorMessage = error instanceof Error ? error.message : "未知错误";
+      await updateAllFavoriteFoldersSyncProgress({
+        ...(progress ?? {
+          mode,
+          currentFolderTitle: "",
+          completedCount: 0,
+          totalFolders: folders.length,
+          failedFolders: [],
+          folderIds,
+          currentPage: 0,
+          nextPage: 1,
+          processedItems: 0,
+          totalItems: 0,
+          onlineResourceIds: [],
+          startedAt,
+        }),
+        status: "error",
+        updatedAt: Date.now(),
+        message: errorMessage,
+      });
+      sendResponse({ success: false, error: errorMessage });
+    } finally {
+      allFavoriteFoldersSyncPromise = null;
+      finishFavoriteSync(task);
+    }
+  };
+
+  const handleGetFavoriteFolderSyncProgress = async (sendResponse: (response: unknown) => void) => {
+    const progress = await getStorageValue<FavoriteFolderSyncProgress | null>(
+      FAVORITE_FOLDER_SYNC_PROGRESS,
+      null,
+    );
+
+    if (progress?.status === "syncing" && !favoriteFolderSyncPromise) {
+      const interruptedProgress: FavoriteFolderSyncProgress = {
+        ...progress,
+        status: "error",
+        updatedAt: Date.now(),
+        message: "同步任务已中断，可点击重试继续",
+      };
+      await updateFavoriteFolderSyncProgress(interruptedProgress);
+      sendResponse(interruptedProgress);
+      return;
+    }
+
+    sendResponse(progress);
+  };
+
+  const handleGetAllFavoriteFoldersSyncProgress = async (
+    sendResponse: (response: unknown) => void,
+  ) => {
+    const progress = await getStorageValue<AllFavoriteFoldersSyncProgress | null>(
+      ALL_FAVORITE_FOLDERS_SYNC_PROGRESS,
+      null,
+    );
+
+    if (progress?.status === "syncing" && !allFavoriteFoldersSyncPromise) {
+      const interruptedProgress: AllFavoriteFoldersSyncProgress = {
+        ...progress,
+        status: "error",
+        updatedAt: Date.now(),
+        message: "同步任务已中断，可点击重试继续",
+      };
+      await updateAllFavoriteFoldersSyncProgress(interruptedProgress);
+      sendResponse(interruptedProgress);
+      return;
+    }
+
+    sendResponse(progress);
   };
 
   const handleRefreshFavoriteFolders = async (
@@ -372,6 +793,15 @@ export default defineBackground(() => {
       return true;
     } else if (message.action === "syncFavoriteFolder") {
       handleSyncFavoriteFolder(message as SyncFavoriteFolderRequest, sendResponse);
+      return true;
+    } else if (message.action === "syncAllFavoriteFolders") {
+      handleSyncAllFavoriteFolders(message as SyncAllFavoriteFoldersRequest, sendResponse);
+      return true;
+    } else if (message.action === "getFavoriteFolderSyncProgress") {
+      handleGetFavoriteFolderSyncProgress(sendResponse);
+      return true;
+    } else if (message.action === "getAllFavoriteFoldersSyncProgress") {
+      handleGetAllFavoriteFoldersSyncProgress(sendResponse);
       return true;
     } else if (message.action === "refreshFavoriteFolders") {
       handleRefreshFavoriteFolders(sendResponse);
@@ -615,15 +1045,35 @@ export default defineBackground(() => {
     folder: FavoriteFolder,
     sessdata: string,
     isFullSync: boolean,
+    reportProgress?: (update: {
+      currentPage: number;
+      nextPage: number;
+      processedItems: number;
+      totalItems: number;
+      onlineResourceIds: number[];
+    }) => Promise<void>,
+    checkpoint?: Pick<
+      FavoriteFolderSyncProgress | AllFavoriteFoldersSyncProgress,
+      "nextPage" | "processedItems" | "onlineResourceIds"
+    > | null,
   ): Promise<void> {
     console.log(`正在同步收藏夹: ${folder.title} (${isFullSync ? "全量" : "增量"})`);
 
     const localResources = await getFavResources(folder.id);
     const existingResourceIds = new Set(localResources.map((item) => item.id));
-    const onlineResourceIds = new Set<number>();
+    const onlineResourceIds = new Set<number>(checkpoint?.onlineResourceIds ?? []);
 
-    let page = 1;
+    let page = Math.max(1, checkpoint?.nextPage ?? 1);
     let allPagesFetched = false;
+    let processedItems = checkpoint?.processedItems ?? 0;
+
+    await reportProgress?.({
+      currentPage: Math.max(0, page - 1),
+      nextPage: page,
+      processedItems,
+      totalItems: folder.media_count,
+      onlineResourceIds: [...onlineResourceIds],
+    });
 
     while (true) {
       const { medias, hasMore } = await fetchFavoriteFolderPage(folder, page, sessdata);
@@ -631,6 +1081,13 @@ export default defineBackground(() => {
       if (medias.length === 0) {
         if (hasMore) throw new Error(`收藏夹「${folder.title}」分页数据异常`);
         allPagesFetched = true;
+        await reportProgress?.({
+          currentPage: page,
+          nextPage: page + 1,
+          processedItems,
+          totalItems: folder.media_count,
+          onlineResourceIds: [...onlineResourceIds],
+        });
         break;
       }
 
@@ -654,6 +1111,14 @@ export default defineBackground(() => {
         bv_id: media.bv_id || media.bvid,
       }));
       await saveFavResources(resources);
+      processedItems += resources.length;
+      await reportProgress?.({
+        currentPage: page,
+        nextPage: page + 1,
+        processedItems,
+        totalItems: folder.media_count,
+        onlineResourceIds: [...onlineResourceIds],
+      });
 
       if (!hasMore) {
         allPagesFetched = true;
@@ -675,7 +1140,7 @@ export default defineBackground(() => {
         .map((item) => item.id);
 
       if (idsToDelete.length > 0) {
-        await deleteFavResources(idsToDelete);
+        await deleteFavResources(folder.id, idsToDelete);
         console.log(`从收藏夹 "${folder.title}" 删除了 ${idsToDelete.length} 个已取消收藏的项目`);
       }
     }
@@ -684,13 +1149,44 @@ export default defineBackground(() => {
   async function syncFavoriteFolderById(
     folderId: number,
     isFullSync: boolean,
+    startedAt: number,
+    checkpoint: FavoriteFolderSyncProgress | null,
   ): Promise<FavoriteFolder> {
     const { sessdata, folders } = await getFavoriteFoldersFromBilibili();
     const folder = folders.find((item) => item.id === folderId);
     if (!folder) throw new Error("收藏夹不存在或无权访问");
 
     await saveFavFolders([folder]);
-    await syncFavoriteFolderResources(folder, sessdata, isFullSync);
+    await updateFavoriteFolderSyncProgress({
+      folderId,
+      folderTitle: folder.title,
+      mode: isFullSync ? "full" : "incremental",
+      status: "syncing",
+      currentPage: 0,
+      nextPage: checkpoint?.nextPage ?? 1,
+      processedItems: checkpoint?.processedItems ?? 0,
+      totalItems: folder.media_count,
+      onlineResourceIds: checkpoint?.onlineResourceIds ?? [],
+      startedAt,
+      updatedAt: Date.now(),
+    });
+    await syncFavoriteFolderResources(
+      folder,
+      sessdata,
+      isFullSync,
+      async (update) => {
+        await updateFavoriteFolderSyncProgress({
+          folderId,
+          folderTitle: folder.title,
+          mode: isFullSync ? "full" : "incremental",
+          status: "syncing",
+          ...update,
+          startedAt,
+          updatedAt: Date.now(),
+        });
+      },
+      checkpoint,
+    );
     return folder;
   }
 
@@ -890,7 +1386,9 @@ export default defineBackground(() => {
       }
 
       console.log(`开始 WebDAV 双向同步（${items.map((i) => i.label).join("、")}）...`);
-      await ensureDirectory(config);
+      if (!(await ensureDirectory(config))) {
+        throw new Error("WebDAV 备份目录创建失败");
+      }
 
       // ===== 第一步：拉取远端数据并合并到本地 =====
       console.log("[WebDAV 同步] 步骤 1/2：拉取并合并远端数据...");
@@ -906,7 +1404,9 @@ export default defineBackground(() => {
       const summary: string[] = [];
       for (const item of items) {
         const data = await item.getAll();
-        await uploadFile(config, item.file, JSON.stringify(data));
+        if (!(await uploadFile(config, item.file, JSON.stringify(data)))) {
+          throw new Error(`WebDAV 上传${item.label}失败`);
+        }
         summary.push(`${item.label} ${data.length}`);
       }
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { DatabaseBackup, Eye, EyeOff } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { getStorageValue, setStorageValue } from "@/utils/storage";
 import {
@@ -10,6 +10,7 @@ import {
   WEBDAV_SYNC_ITEMS,
   DEFAULT_WEBDAV_SYNC_ITEMS,
   BACKUP_LAST_EXPORT_AT,
+  MANUAL_BACKUP_ITEMS,
   WebDavSyncItems,
   WebDavSyncKey,
 } from "@/utils/constants";
@@ -19,6 +20,7 @@ import {
   ensureDirectory,
   uploadFile,
   downloadFile,
+  withWebDavOperationLock,
 } from "@/utils/webdav";
 import {
   getAllHistory,
@@ -38,6 +40,7 @@ import {
   smartMergeSubscribedCollectionResources,
 } from "@/utils/db";
 import { HistoryItem, LikedMusic, FavoriteFolder, SubscribedCollection } from "@/utils/types";
+import { LocalHistoryBackupPanel } from "@/components/LocalHistoryBackupPanel";
 
 /** Per-dataset definition: remote file name, label, local reader, and remote-merge strategy */
 interface DataItemDef {
@@ -100,6 +103,19 @@ const DATA_ITEMS: DataItemDef[] = [
   },
 ];
 
+let webDavOperation: Promise<void> | null = null;
+
+const runWebDavOperation = async (task: () => Promise<void>): Promise<void> => {
+  if (webDavOperation) throw new Error("WebDAV 操作正在进行中，请稍后再试");
+  const promise = task();
+  webDavOperation = promise;
+  try {
+    await promise;
+  } finally {
+    if (webDavOperation === promise) webDavOperation = null;
+  }
+};
+
 /** 备份/恢复进度信息 */
 interface SyncProgress {
   current: number;
@@ -132,6 +148,8 @@ const WebDavSync = () => {
 
   // ===== 同步数据项勾选（持久化，后台自动同步共用） =====
   const [selectedKeys, setSelectedKeys] = useState<WebDavSyncItems>(DEFAULT_WEBDAV_SYNC_ITEMS);
+  const [manualBackupItems, setManualBackupItems] =
+    useState<WebDavSyncItems>(DEFAULT_WEBDAV_SYNC_ITEMS);
 
   const toggleSelected = (key: WebDavSyncKey) =>
     setSelectedKeys((prev) => {
@@ -173,6 +191,12 @@ const WebDavSync = () => {
       );
       // Merge over defaults so newly added keys get a value
       setSelectedKeys({ ...DEFAULT_WEBDAV_SYNC_ITEMS, ...syncItems });
+
+      const savedManualItems = await getStorageValue<WebDavSyncItems>(
+        MANUAL_BACKUP_ITEMS,
+        DEFAULT_WEBDAV_SYNC_ITEMS,
+      );
+      setManualBackupItems({ ...DEFAULT_WEBDAV_SYNC_ITEMS, ...savedManualItems });
     };
     loadConfig();
   }, []);
@@ -226,33 +250,36 @@ const WebDavSync = () => {
     const items = getSelectedItems();
     if (items.length === 0) return;
 
-    setIsBackingUp(true);
-    setSyncProgress({ current: 0, total: items.length, message: "准备备份数据..." });
-
     try {
-      // 确保远程目录存在
-      await ensureDirectory(config);
+      await runWebDavOperation(() =>
+        withWebDavOperationLock(async () => {
+          setIsBackingUp(true);
+          setSyncProgress({ current: 0, total: items.length, message: "准备备份数据..." });
+          // 确保远程目录存在
+          if (!(await ensureDirectory(config))) throw new Error("WebDAV 备份目录创建失败");
 
-      const summary: string[] = [];
-      for (const [i, item] of items.entries()) {
-        setSyncProgress({
-          current: i,
-          total: items.length,
-          message: `正在备份${item.label}...`,
-        });
-        const data = await item.getAll();
-        const ok = await uploadFile(config, item.file, JSON.stringify(data));
-        if (!ok) throw new Error(`上传${item.label}失败`);
-        summary.push(`${item.label} ${data.length} 条`);
-      }
+          const summary: string[] = [];
+          for (const [i, item] of items.entries()) {
+            setSyncProgress({
+              current: i,
+              total: items.length,
+              message: `正在备份${item.label}...`,
+            });
+            const data = await item.getAll();
+            const ok = await uploadFile(config, item.file, JSON.stringify(data));
+            if (!ok) throw new Error(`上传${item.label}失败`);
+            summary.push(`${item.label} ${data.length} 条`);
+          }
 
-      // 记录同步时间（数值时间戳）
-      const now = Date.now();
-      await setStorageValue(WEBDAV_LAST_SYNC, now);
-      setLastSync(now);
+          // 记录同步时间（数值时间戳）
+          const now = Date.now();
+          await setStorageValue(WEBDAV_LAST_SYNC, now);
+          setLastSync(now);
 
-      setSyncProgress({ current: items.length, total: items.length, message: "备份完成！" });
-      toast.success(`备份完成！${summary.join("，")}`);
+          setSyncProgress({ current: items.length, total: items.length, message: "备份完成！" });
+          toast.success(`备份完成！${summary.join("，")}`);
+        }),
+      );
     } catch (error: any) {
       console.error("WebDAV 备份失败:", error);
       toast.error(error.message || "备份失败，请检查配置");
@@ -274,47 +301,50 @@ const WebDavSync = () => {
     if (items.length === 0) return;
     const total = items.length * 2;
 
-    setIsBackingUp(true);
-    setSyncProgress({ current: 0, total, message: "准备双向同步..." });
-
     try {
-      await ensureDirectory(config);
+      await runWebDavOperation(() =>
+        withWebDavOperationLock(async () => {
+          setIsBackingUp(true);
+          setSyncProgress({ current: 0, total, message: "准备双向同步..." });
+          if (!(await ensureDirectory(config))) throw new Error("WebDAV 备份目录创建失败");
 
-      // 第一步：拉取远端数据并合并
-      let totalMerged = 0;
-      let totalSkipped = 0;
+          // 第一步：拉取远端数据并合并
+          let totalMerged = 0;
+          let totalSkipped = 0;
 
-      for (const [i, item] of items.entries()) {
-        setSyncProgress({ current: i, total, message: `步骤 1/2：拉取${item.label}...` });
-        const remote = await downloadFile(config, item.file);
-        if (remote) {
-          const result = await item.merge(JSON.parse(remote));
-          totalMerged += result.merged;
-          totalSkipped += result.skipped;
-        }
-      }
+          for (const [i, item] of items.entries()) {
+            setSyncProgress({ current: i, total, message: `步骤 1/2：拉取${item.label}...` });
+            const remote = await downloadFile(config, item.file);
+            if (remote) {
+              const result = await item.merge(JSON.parse(remote));
+              totalMerged += result.merged;
+              totalSkipped += result.skipped;
+            }
+          }
 
-      // 第二步：推送合并后的最新数据
-      let totalPushed = 0;
-      for (const [i, item] of items.entries()) {
-        setSyncProgress({
-          current: items.length + i,
-          total,
-          message: `步骤 2/2：推送${item.label}...`,
-        });
-        const data = await item.getAll();
-        const ok = await uploadFile(config, item.file, JSON.stringify(data));
-        if (!ok) throw new Error(`上传${item.label}失败`);
-        totalPushed += data.length;
-      }
+          // 第二步：推送合并后的最新数据
+          let totalPushed = 0;
+          for (const [i, item] of items.entries()) {
+            setSyncProgress({
+              current: items.length + i,
+              total,
+              message: `步骤 2/2：推送${item.label}...`,
+            });
+            const data = await item.getAll();
+            const ok = await uploadFile(config, item.file, JSON.stringify(data));
+            if (!ok) throw new Error(`上传${item.label}失败`);
+            totalPushed += data.length;
+          }
 
-      const now = Date.now();
-      await setStorageValue(WEBDAV_LAST_SYNC, now);
-      setLastSync(now);
+          const now = Date.now();
+          await setStorageValue(WEBDAV_LAST_SYNC, now);
+          setLastSync(now);
 
-      setSyncProgress({ current: total, total, message: "双向同步完成！" });
-      toast.success(
-        `双向同步完成！合并 ${totalMerged} 条，跳过 ${totalSkipped} 条，推送 ${totalPushed} 条`,
+          setSyncProgress({ current: total, total, message: "双向同步完成！" });
+          toast.success(
+            `双向同步完成！合并 ${totalMerged} 条，跳过 ${totalSkipped} 条，推送 ${totalPushed} 条`,
+          );
+        }),
       );
     } catch (error: any) {
       console.error("WebDAV 双向同步失败:", error);
@@ -336,34 +366,41 @@ const WebDavSync = () => {
     const items = getSelectedItems();
     if (items.length === 0) return;
 
-    setIsRestoring(true);
-    setSyncProgress({ current: 0, total: items.length, message: "正在从 WebDAV 下载数据..." });
-
     try {
-      let totalMerged = 0;
-      let totalSkipped = 0;
+      await runWebDavOperation(() =>
+        withWebDavOperationLock(async () => {
+          setIsRestoring(true);
+          setSyncProgress({
+            current: 0,
+            total: items.length,
+            message: "正在从 WebDAV 下载数据...",
+          });
+          let totalMerged = 0;
+          let totalSkipped = 0;
 
-      for (const [i, item] of items.entries()) {
-        setSyncProgress({
-          current: i,
-          total: items.length,
-          message: `正在恢复${item.label}...`,
-        });
-        const remote = await downloadFile(config, item.file);
-        if (remote) {
-          const result = await item.merge(JSON.parse(remote));
-          totalMerged += result.merged;
-          totalSkipped += result.skipped;
-        }
-      }
+          for (const [i, item] of items.entries()) {
+            setSyncProgress({
+              current: i,
+              total: items.length,
+              message: `正在恢复${item.label}...`,
+            });
+            const remote = await downloadFile(config, item.file);
+            if (remote) {
+              const result = await item.merge(JSON.parse(remote));
+              totalMerged += result.merged;
+              totalSkipped += result.skipped;
+            }
+          }
 
-      // 记录同步时间
-      const now = Date.now();
-      await setStorageValue(WEBDAV_LAST_SYNC, now);
-      setLastSync(now);
+          // 记录同步时间
+          const now = Date.now();
+          await setStorageValue(WEBDAV_LAST_SYNC, now);
+          setLastSync(now);
 
-      setSyncProgress({ current: items.length, total: items.length, message: "恢复完成！" });
-      toast.success(`恢复完成！合并 ${totalMerged} 条，跳过 ${totalSkipped} 条（本地更新）`);
+          setSyncProgress({ current: items.length, total: items.length, message: "恢复完成！" });
+          toast.success(`恢复完成！合并 ${totalMerged} 条，跳过 ${totalSkipped} 条（本地更新）`);
+        }),
+      );
     } catch (error: any) {
       console.error("WebDAV 恢复失败:", error);
       toast.error(error.message || "恢复失败，请检查配置");
@@ -376,18 +413,25 @@ const WebDavSync = () => {
   // ===== 手动导出全部数据 =====
 
   const handleExportAll = async () => {
+    const selectedItems = DATA_ITEMS.filter((item) => manualBackupItems[item.key]);
+    if (selectedItems.length === 0) {
+      toast.error("请至少选择一项要备份的数据");
+      return;
+    }
+
     setIsExporting(true);
     try {
-      const data = {
+      const data: Record<string, unknown> = {
         exportTime: new Date().toISOString(),
         version: "1.0",
-        history: await getAllHistory(),
-        likedMusic: await getAllLikedMusic(),
-        favFolders: await getAllFavFolders(),
-        favResources: await getAllFavResources(),
-        subscribedCollections: await getAllSubscribedCollections(),
-        subscribedCollectionResources: await getAllSubscribedCollectionResources(),
       };
+
+      const counts: string[] = [];
+      for (const item of selectedItems) {
+        const items = await item.getAll();
+        data[item.key] = items;
+        counts.push(`${item.label} ${items.length} 条`);
+      }
 
       const json = JSON.stringify(data, null, 2);
       const blob = new Blob([json], { type: "application/json;charset=utf-8" });
@@ -405,9 +449,7 @@ const WebDavSync = () => {
         console.error("记录完整数据导出时间失败:", error);
       }
 
-      toast.success(
-        `导出成功！历史 ${data.history.length} 条，音乐 ${data.likedMusic.length} 首，收藏夹 ${data.favFolders.length} 个，收藏 ${data.favResources.length} 项，订阅合集 ${data.subscribedCollections.length} 个，合集视频 ${data.subscribedCollectionResources.length} 项`,
-      );
+      toast.success(`导出成功：${counts.join("，")}`);
     } catch (error) {
       console.error("导出数据失败:", error);
       toast.error("导出失败，请重试");
@@ -545,433 +587,519 @@ const WebDavSync = () => {
   };
 
   return (
-    <div className="max-w-[800px] mx-auto p-6 pb-20 min-h-screen bg-gray-50/30 dark:bg-[#0a0a0a] text-gray-900 dark:text-neutral-100">
-      <h1 className="text-3xl font-bold mb-2">WebDAV 同步</h1>
-      <p className="text-gray-500 dark:text-neutral-400 text-sm mb-8">
-        通过 WebDAV 或手动导出/导入来备份和恢复你的数据。
-      </p>
-
-      {/* ===== WebDAV 配置区域 ===== */}
-      <div className="mb-8 rounded-xl bg-white dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden">
-        <div className="p-5 border-b border-gray-100 dark:border-neutral-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-500/10 dark:to-indigo-500/10">
-          <h2 className="text-lg font-bold text-gray-800 dark:text-neutral-100 flex items-center gap-2">
-            <svg
-              className="w-5 h-5 text-blue-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"
-              />
-            </svg>
-            WebDAV 服务器配置
-          </h2>
-          <p className="text-xs text-gray-500 dark:text-neutral-400 mt-1">
-            支持坚果云、NextCloud、群晖 NAS 等 WebDAV 服务
-          </p>
-          <button
-            className="text-xs text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 mt-1 cursor-pointer"
-            onClick={() => {
-              const url = browser.runtime.getURL("/webdav-tutorial.html");
-              browser.tabs.create({ url });
-            }}
-          >
-            配置教程
-          </button>
+    <div className="mx-auto min-h-screen max-w-7xl bg-gray-50/30 p-6 pb-20 text-gray-900 dark:bg-[#0a0a0a] dark:text-neutral-100">
+      <div className="mb-8 flex items-start gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+          <DatabaseBackup className="h-5 w-5" />
         </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">自动/手动备份</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">
+            集中管理本地目录、WebDAV 和 JSON 文件备份。
+          </p>
+        </div>
+      </div>
 
-        <div className="p-5 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1">
-              服务器地址
-            </label>
-            <input
-              type="url"
-              placeholder="例如：https://dav.jianguoyun.com/dav"
-              value={config.serverUrl}
-              onChange={(e) => setConfig({ ...config, serverUrl: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500/25 focus:border-transparent outline-none transition-all text-sm"
-            />
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+        <div className="space-y-6">
+          <div className="border-b border-gray-200 pb-2 dark:border-neutral-800">
+            <h2 className="text-base font-bold text-gray-800 dark:text-neutral-200">自动同步</h2>
+            <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">
+              自动备份至 WebDAV / 本地
+            </p>
+          </div>
+          <div data-tour="backup-local">
+            <LocalHistoryBackupPanel />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1">
-                用户名
-              </label>
-              <input
-                type="text"
-                placeholder="WebDAV 用户名"
-                value={config.username}
-                onChange={(e) => setConfig({ ...config, username: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500/25 focus:border-transparent outline-none transition-all text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1">
-                密码
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="WebDAV 密码 / 应用密码"
-                  value={config.password}
-                  onChange={(e) => setConfig({ ...config, password: e.target.value })}
-                  className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500/25 focus:border-transparent outline-none transition-all text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-neutral-500 dark:hover:text-neutral-300 transition-colors"
-                  aria-label={showPassword ? "隐藏密码" : "显示密码"}
+          {/* ===== WebDAV 配置区域 ===== */}
+          <div
+            data-tour="backup-webdav"
+            className="mb-8 rounded-xl bg-white dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden"
+          >
+            <div className="p-5 border-b border-gray-100 dark:border-neutral-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-500/10 dark:to-indigo-500/10">
+              <h2 className="text-lg font-bold text-gray-800 dark:text-neutral-100 flex items-center gap-2">
+                <svg
+                  className="w-5 h-5 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"
+                  />
+                </svg>
+                WebDAV 服务器配置
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-neutral-400 mt-1">
+                支持坚果云、NextCloud、群晖 NAS 等 WebDAV 服务
+              </p>
+              <button
+                className="text-xs text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 mt-1 cursor-pointer"
+                onClick={() => {
+                  const url = browser.runtime.getURL("/webdav-tutorial.html");
+                  browser.tabs.create({ url });
+                }}
+              >
+                配置教程
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1">
+                  服务器地址
+                </label>
+                <input
+                  type="url"
+                  placeholder="例如：https://dav.jianguoyun.com/dav"
+                  value={config.serverUrl}
+                  onChange={(e) => setConfig({ ...config, serverUrl: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500/25 focus:border-transparent outline-none transition-all text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1">
+                    用户名
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="WebDAV 用户名"
+                    value={config.username}
+                    onChange={(e) => setConfig({ ...config, username: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500/25 focus:border-transparent outline-none transition-all text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1">
+                    密码
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="WebDAV 密码 / 应用密码"
+                      value={config.password}
+                      onChange={(e) => setConfig({ ...config, password: e.target.value })}
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500/25 focus:border-transparent outline-none transition-all text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-neutral-500 dark:hover:text-neutral-300 transition-colors"
+                      aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1">
+                  远程路径
+                </label>
+                <input
+                  type="text"
+                  placeholder="/bilibili-history/"
+                  value={config.basePath}
+                  onChange={(e) => setConfig({ ...config, basePath: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500/25 focus:border-transparent outline-none transition-all text-sm"
+                />
+              </div>
+
+              <p className="text-xs text-gray-400 dark:text-neutral-500 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  />
+                </svg>
+                你的凭证仅保存在本地浏览器存储中，不会上传到任何第三方服务器
+              </p>
+
+              <div className="flex gap-3 pt-1">
+                <button
+                  onClick={handleTestConnection}
+                  disabled={isTesting || !config.serverUrl}
+                  className="px-4 py-2 text-sm font-medium bg-white dark:bg-neutral-900 text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-500/40 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isTesting ? "测试中..." : "测试连接"}
+                </button>
+                <button
+                  onClick={handleSaveConfig}
+                  disabled={isSaving || !config.serverUrl}
+                  className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? "保存中..." : "保存配置"}
                 </button>
               </div>
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1">
-              远程路径
-            </label>
-            <input
-              type="text"
-              placeholder="/bilibili-history/"
-              value={config.basePath}
-              onChange={(e) => setConfig({ ...config, basePath: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500/25 focus:border-transparent outline-none transition-all text-sm"
-            />
-          </div>
-
-          <p className="text-xs text-gray-400 dark:text-neutral-500 flex items-center gap-1">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-              />
-            </svg>
-            你的凭证仅保存在本地浏览器存储中，不会上传到任何第三方服务器
-          </p>
-
-          <div className="flex gap-3 pt-1">
-            <button
-              onClick={handleTestConnection}
-              disabled={isTesting || !config.serverUrl}
-              className="px-4 py-2 text-sm font-medium bg-white dark:bg-neutral-900 text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-500/40 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isTesting ? "测试中..." : "测试连接"}
-            </button>
-            <button
-              onClick={handleSaveConfig}
-              disabled={isSaving || !config.serverUrl}
-              className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSaving ? "保存中..." : "保存配置"}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ===== WebDAV 同步操作区域 ===== */}
-      <div className="mb-8 rounded-xl bg-white dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden">
-        <div className="p-5 border-b border-gray-100 dark:border-neutral-800 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-500/10 dark:to-teal-500/10">
-          <h2 className="text-lg font-bold text-gray-800 dark:text-neutral-100 flex items-center gap-2">
-            <svg
-              className="w-5 h-5 text-emerald-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-            WebDAV 同步
-          </h2>
-          {lastSync && (
-            <p className="text-xs text-gray-500 dark:text-neutral-400 mt-1">
-              上次同步：{new Date(lastSync).toLocaleString()}
-            </p>
-          )}
-        </div>
-
-        <div className="p-5">
-          {/* 进度条 */}
-          {syncProgress && (
-            <div className="mb-5 p-4 bg-blue-50 dark:bg-blue-500/10 rounded-lg border border-blue-200 dark:border-blue-500/20 animate-in fade-in">
-              <div className="flex justify-between mb-1">
-                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                  {syncProgress.message}
-                </span>
-                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                  {progressPercent}%
-                </span>
-              </div>
-              <div className="w-full bg-blue-200 dark:bg-blue-500/20 rounded-full h-2">
-                <div
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${progressPercent}%` }}
-                ></div>
-              </div>
-            </div>
-          )}
-
-          {/* 同步数据项勾选 */}
-          <div className="mb-5">
-            <p className="text-sm font-medium text-gray-700 dark:text-neutral-300 mb-2">同步内容</p>
-            <div className="flex flex-wrap gap-x-5 gap-y-2">
-              {DATA_ITEMS.map((item) => (
-                <label
-                  key={item.key}
-                  className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-neutral-400 cursor-pointer select-none"
+          {/* ===== WebDAV 自动同步设置区域 ===== */}
+          <div
+            data-tour="backup-webdav-auto"
+            className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
+          >
+            <div className="border-b border-gray-100 bg-gradient-to-r from-orange-50 to-amber-50 p-5 dark:border-neutral-800 dark:from-orange-500/10 dark:to-amber-500/10">
+              <h2 className="flex items-center gap-2 text-lg font-bold text-gray-800 dark:text-neutral-100">
+                <svg
+                  className="h-5 w-5 text-orange-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  <input
-                    type="checkbox"
-                    checked={selectedKeys[item.key]}
-                    onChange={() => toggleSelected(item.key)}
-                    className="w-4 h-4 rounded border-gray-300 dark:border-neutral-600 text-emerald-500 focus:ring-emerald-500 dark:bg-neutral-800"
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
-                  {item.label}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <button
-              onClick={() => setShowBackupDialog(true)}
-              disabled={isBackingUp || isRestoring || !config.serverUrl}
-              className="flex items-center justify-center gap-2 px-5 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3-3m0 0l3 3m-3-3v12"
-                />
-              </svg>
-              {isBackingUp ? "备份中..." : "备份到 WebDAV"}
-            </button>
-
-            <button
-              onClick={handleRestore}
-              disabled={isBackingUp || isRestoring || !config.serverUrl}
-              className="flex items-center justify-center gap-2 px-5 py-3 bg-teal-500 hover:bg-teal-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3 3m0 0l-3-3m3 3V8"
-                />
-              </svg>
-              {isRestoring ? "恢复中..." : "从 WebDAV 恢复"}
-            </button>
-          </div>
-
-          <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-500/10 rounded-lg border border-amber-200 dark:border-amber-500/20">
-            <p className="text-xs text-amber-700 dark:text-amber-300">
-              <strong>提示：</strong>
-              恢复数据时会智能合并，仅当远端数据更新时才覆盖本地记录，不会丢失本地较新的数据。
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* ===== 自动同步设置区域 ===== */}
-      <div className="mb-8 rounded-xl bg-white dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden">
-        <div className="p-5 border-b border-gray-100 dark:border-neutral-800 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-500/10 dark:to-amber-500/10">
-          <h2 className="text-lg font-bold text-gray-800 dark:text-neutral-100 flex items-center gap-2">
-            <svg
-              className="w-5 h-5 text-orange-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            自动同步
-          </h2>
-          <p className="text-xs text-gray-500 dark:text-neutral-400 mt-1">
-            开启后会在后台定时自动备份数据到 WebDAV
-          </p>
-        </div>
-
-        <div className="p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-sm font-medium text-gray-700 dark:text-neutral-300">
-                启用自动同步
-              </span>
-              <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">
-                在后台定时将数据自动备份到 WebDAV 服务器
+                </svg>
+                自动同步
+              </h2>
+              <p className="mt-1 text-xs text-gray-500 dark:text-neutral-400">
+                自动备份至 WebDAV / 本地
               </p>
             </div>
-            <button
-              onClick={() => handleAutoSyncToggle(!autoSyncEnabled)}
-              disabled={!config.serverUrl}
-              title="切换自动同步"
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none ${
-                autoSyncEnabled ? "bg-orange-500" : "bg-gray-300 dark:bg-neutral-700"
-              } ${!config.serverUrl ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 shadow-sm ${
-                  autoSyncEnabled ? "translate-x-6" : "translate-x-1"
-                }`}
-              />
-            </button>
+
+            <div className="space-y-4 p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-medium text-gray-700 dark:text-neutral-300">
+                    启用 WebDAV 自动同步
+                  </span>
+                  <p className="mt-0.5 text-xs text-gray-500 dark:text-neutral-400">
+                    在后台定时将已选数据备份至 WebDAV
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleAutoSyncToggle(!autoSyncEnabled)}
+                  disabled={!config.serverUrl}
+                  title="切换 WebDAV 自动同步"
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none ${
+                    autoSyncEnabled ? "bg-orange-500" : "bg-gray-300 dark:bg-neutral-700"
+                  } ${!config.serverUrl ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                      autoSyncEnabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {autoSyncEnabled && (
+                <div className="flex items-center gap-3">
+                  <label className="whitespace-nowrap text-sm font-medium text-gray-700 dark:text-neutral-300">
+                    同步间隔
+                  </label>
+                  <select
+                    value={autoSyncInterval}
+                    onChange={(e) => handleIntervalChange(Number(e.target.value))}
+                    title="自动同步间隔"
+                    className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-orange-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:ring-orange-500/25"
+                  >
+                    <option value={15}>每 15 分钟</option>
+                    <option value={30}>每 30 分钟</option>
+                    <option value={60}>每 1 小时</option>
+                    <option value={120}>每 2 小时</option>
+                    <option value={360}>每 6 小时</option>
+                    <option value={720}>每 12 小时</option>
+                    <option value={1440}>每 24 小时</option>
+                  </select>
+                </div>
+              )}
+
+              {!config.serverUrl && (
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-neutral-700 dark:bg-neutral-800">
+                  <p className="text-xs text-gray-500 dark:text-neutral-400">
+                    请先在上方配置并保存 WebDAV 服务器信息后再开启自动同步。
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
-
-          {autoSyncEnabled && (
-            <div className="flex items-center gap-3">
-              <label className="text-sm font-medium text-gray-700 dark:text-neutral-300 whitespace-nowrap">
-                同步间隔
-              </label>
-              <select
-                value={autoSyncInterval}
-                onChange={(e) => handleIntervalChange(Number(e.target.value))}
-                title="自动同步间隔"
-                className="flex-1 px-3 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-orange-500 dark:focus:ring-orange-500/25 focus:border-transparent outline-none transition-all text-sm bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-100"
-              >
-                <option value={15}>每 15 分钟</option>
-                <option value={30}>每 30 分钟</option>
-                <option value={60}>每 1 小时</option>
-                <option value={120}>每 2 小时</option>
-                <option value={360}>每 6 小时</option>
-                <option value={720}>每 12 小时</option>
-                <option value={1440}>每 24 小时</option>
-              </select>
-            </div>
-          )}
-
-          {!config.serverUrl && (
-            <div className="p-3 bg-gray-50 dark:bg-neutral-800 rounded-lg border border-gray-200 dark:border-neutral-700">
-              <p className="text-xs text-gray-500 dark:text-neutral-400">
-                请先在上方配置并保存 WebDAV 服务器信息后再开启自动同步。
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ===== 手动导出/导入区域 ===== */}
-      <div className="mb-8 rounded-xl bg-white dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden">
-        <div className="p-5 border-b border-gray-100 dark:border-neutral-800 bg-gradient-to-r from-purple-50 to-fuchsia-50 dark:from-purple-500/10 dark:to-fuchsia-500/10">
-          <h2 className="text-lg font-bold text-gray-800 dark:text-neutral-100 flex items-center gap-2">
-            <svg
-              className="w-5 h-5 text-purple-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
-            手动导出 / 导入
-          </h2>
-          <p className="text-xs text-gray-500 dark:text-neutral-400 mt-1">
-            导出所有数据为单个 JSON 文件，或从 JSON 文件导入恢复
-          </p>
         </div>
 
-        <div className="p-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <button
-              onClick={handleExportAll}
-              disabled={isExporting}
-              className="flex items-center justify-center gap-2 px-5 py-3 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                />
-              </svg>
-              {isExporting ? "导出中..." : "导出全部数据"}
-            </button>
-
-            <button
-              onClick={handleImportAll}
-              disabled={isImporting}
-              className="flex items-center justify-center gap-2 px-5 py-3 bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-                />
-              </svg>
-              {isImporting ? "导入中..." : "导入数据"}
-            </button>
-          </div>
-
-          <div className="mt-4 p-3 bg-gray-50 dark:bg-neutral-800 rounded-lg border border-gray-200 dark:border-neutral-700">
-            <p className="text-xs text-gray-600 dark:text-neutral-300">
-              <strong>说明：</strong>
-              导出文件包含历史记录、喜欢的音乐、收藏夹、收藏资源、订阅合集和合集视频的完整数据。
-              导入时会智能合并，同时兼容旧版导出的单独历史记录或音乐 JSON 文件。
+        <div className="space-y-6">
+          <div className="border-b border-gray-200 pb-2 dark:border-neutral-800">
+            <h2 className="text-base font-bold text-gray-800 dark:text-neutral-200">
+              手动备份与恢复
+            </h2>
+            <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">
+              按需备份、恢复或同步本地与 WebDAV 数据
             </p>
           </div>
-        </div>
-      </div>
 
-      {/* ===== 使用说明 ===== */}
-      <div className="rounded-xl bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 p-5">
-        <h3 className="text-base font-semibold mb-3 text-gray-800 dark:text-neutral-100">
-          使用说明
-        </h3>
-        <ul className="text-sm text-gray-600 dark:text-neutral-300 space-y-2">
-          <li className="flex items-start gap-2">
-            <span className="text-blue-500 mt-0.5 shrink-0">•</span>
-            <span>
-              <strong>WebDAV 同步</strong>：将数据备份到你自己的 WebDAV
-              服务器（如坚果云、NextCloud），实现跨设备同步
-            </span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-blue-500 mt-0.5 shrink-0">•</span>
-            <span>
-              <strong>手动导出/导入</strong>：将数据导出为 JSON 文件保存到本地，需要时再导入恢复
-            </span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-blue-500 mt-0.5 shrink-0">•</span>
-            <span>
-              <strong>智能合并</strong>
-              ：恢复或导入数据时，只有更新的远端记录才会覆盖本地，不会丢失本地较新的数据
-            </span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-amber-500 mt-0.5 shrink-0">•</span>
-            <span>此功能完全免费，数据存储在你自己的服务器或本地，不经过任何第三方</span>
-          </li>
-        </ul>
+          {/* ===== WebDAV 同步操作区域 ===== */}
+          <div
+            data-tour="backup-sync"
+            className="mb-8 rounded-xl bg-white dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden"
+          >
+            <div className="p-5 border-b border-gray-100 dark:border-neutral-800 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-500/10 dark:to-teal-500/10">
+              <h2 className="text-lg font-bold text-gray-800 dark:text-neutral-100 flex items-center gap-2">
+                <svg
+                  className="w-5 h-5 text-emerald-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                WebDAV 同步
+              </h2>
+              {lastSync && (
+                <p className="text-xs text-gray-500 dark:text-neutral-400 mt-1">
+                  上次同步：{new Date(lastSync).toLocaleString()}
+                </p>
+              )}
+            </div>
+
+            <div className="p-5">
+              {/* 进度条 */}
+              {syncProgress && (
+                <div className="mb-5 p-4 bg-blue-50 dark:bg-blue-500/10 rounded-lg border border-blue-200 dark:border-blue-500/20 animate-in fade-in">
+                  <div className="flex justify-between mb-1">
+                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                      {syncProgress.message}
+                    </span>
+                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                      {progressPercent}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-blue-200 dark:bg-blue-500/20 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${progressPercent}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+
+              {/* 同步数据项勾选 */}
+              <div className="mb-5">
+                <p className="text-sm font-medium text-gray-700 dark:text-neutral-300 mb-2">
+                  同步内容
+                </p>
+                <div className="flex flex-wrap gap-x-5 gap-y-2">
+                  {DATA_ITEMS.map((item) => (
+                    <label
+                      key={item.key}
+                      className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-neutral-400 cursor-pointer select-none"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedKeys[item.key]}
+                        onChange={() => toggleSelected(item.key)}
+                        className="w-4 h-4 rounded border-gray-300 dark:border-neutral-600 text-emerald-500 focus:ring-emerald-500 dark:bg-neutral-800"
+                      />
+                      {item.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button
+                  onClick={() => setShowBackupDialog(true)}
+                  disabled={isBackingUp || isRestoring || !config.serverUrl}
+                  className="flex items-center justify-center gap-2 px-5 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3-3m0 0l3 3m-3-3v12"
+                    />
+                  </svg>
+                  {isBackingUp ? "备份中..." : "备份到 WebDAV"}
+                </button>
+
+                <button
+                  onClick={handleRestore}
+                  disabled={isBackingUp || isRestoring || !config.serverUrl}
+                  className="flex items-center justify-center gap-2 px-5 py-3 bg-teal-500 hover:bg-teal-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3 3m0 0l-3-3m3 3V8"
+                    />
+                  </svg>
+                  {isRestoring ? "恢复中..." : "从 WebDAV 恢复"}
+                </button>
+              </div>
+
+              <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-500/10 rounded-lg border border-amber-200 dark:border-amber-500/20">
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  <strong>提示：</strong>
+                  恢复数据时会智能合并，仅当远端数据更新时才覆盖本地记录，不会丢失本地较新的数据。
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* ===== 手动导出/导入区域 ===== */}
+          <div
+            data-tour="backup-manual"
+            className="mb-8 rounded-xl bg-white dark:bg-neutral-900 shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden"
+          >
+            <div className="p-5 border-b border-gray-100 dark:border-neutral-800 bg-gradient-to-r from-purple-50 to-fuchsia-50 dark:from-purple-500/10 dark:to-fuchsia-500/10">
+              <h2 className="text-lg font-bold text-gray-800 dark:text-neutral-100 flex items-center gap-2">
+                <svg
+                  className="w-5 h-5 text-purple-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                手动备份 / 恢复
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-neutral-400 mt-1">
+                默认备份全部数据，也可以只选择需要的部分
+              </p>
+            </div>
+
+            <div className="p-5">
+              <div className="mb-5">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-gray-700 dark:text-neutral-300">
+                    备份内容
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setManualBackupItems(DEFAULT_WEBDAV_SYNC_ITEMS);
+                      void setStorageValue(MANUAL_BACKUP_ITEMS, DEFAULT_WEBDAV_SYNC_ITEMS);
+                    }}
+                    className="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                  >
+                    全部选择
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {DATA_ITEMS.map((item) => (
+                    <label
+                      key={item.key}
+                      className="flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={manualBackupItems[item.key]}
+                        onChange={() => {
+                          const next = {
+                            ...manualBackupItems,
+                            [item.key]: !manualBackupItems[item.key],
+                          };
+                          setManualBackupItems(next);
+                          void setStorageValue(MANUAL_BACKUP_ITEMS, next);
+                        }}
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-neutral-600 dark:bg-neutral-800"
+                      />
+                      <span>{item.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button
+                  onClick={handleExportAll}
+                  disabled={isExporting}
+                  className="flex items-center justify-center gap-2 px-5 py-3 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                    />
+                  </svg>
+                  {isExporting ? "备份中..." : "下载备份文件"}
+                </button>
+
+                <button
+                  onClick={handleImportAll}
+                  disabled={isImporting}
+                  className="flex items-center justify-center gap-2 px-5 py-3 bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                    />
+                  </svg>
+                  {isImporting ? "导入中..." : "导入数据"}
+                </button>
+              </div>
+
+              <div className="mt-4 p-3 bg-gray-50 dark:bg-neutral-800 rounded-lg border border-gray-200 dark:border-neutral-700">
+                <p className="text-xs text-gray-600 dark:text-neutral-300">
+                  <strong>说明：</strong>
+                  导出文件只包含上方已勾选的数据。恢复时会智能合并，同时兼容旧版导出的单独历史记录或音乐
+                  JSON 文件。
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* ===== 使用说明 ===== */}
+          <div className="rounded-xl bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 p-5">
+            <h3 className="text-base font-semibold mb-3 text-gray-800 dark:text-neutral-100">
+              使用说明
+            </h3>
+            <ul className="text-sm text-gray-600 dark:text-neutral-300 space-y-2">
+              <li className="flex items-start gap-2">
+                <span className="text-blue-500 mt-0.5 shrink-0">•</span>
+                <span>
+                  <strong>WebDAV 同步</strong>：将数据备份到你自己的 WebDAV
+                  服务器（如坚果云、NextCloud），实现跨设备同步
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-blue-500 mt-0.5 shrink-0">•</span>
+                <span>
+                  <strong>手动导出/导入</strong>：将数据导出为 JSON 文件保存到本地，需要时再导入恢复
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-blue-500 mt-0.5 shrink-0">•</span>
+                <span>
+                  <strong>智能合并</strong>
+                  ：恢复或导入数据时，只有更新的远端记录才会覆盖本地，不会丢失本地较新的数据
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-amber-500 mt-0.5 shrink-0">•</span>
+                <span>此功能完全免费，数据存储在你自己的服务器或本地，不经过任何第三方</span>
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
 
       {/* ===== 备份模式选择对话框 ===== */}

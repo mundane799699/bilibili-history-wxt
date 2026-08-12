@@ -26,6 +26,7 @@ const menuList = [
     title: "历史记录",
     icon: <HistoryIcon className="w-4 h-4" />,
     to: "/",
+    tourId: "history-menu",
   },
   {
     title: "收藏夹",
@@ -72,9 +73,10 @@ const menuList = [
     to: "/cloud-sync",
   },
   {
-    title: "WebDAV",
+    title: "自动/手动备份",
     icon: <HardDriveDownload className="w-4 h-4" />,
     to: "/webdav-sync",
+    tourId: "backup-menu",
   },
   {
     title: "赞赏",
@@ -98,7 +100,14 @@ export const Sidebar = () => {
 
   useEffect(() => {
     getStorageValue(HIDE_USER_INFO, false).then(setHideUserInfo);
-    getStorageValue(HIDDEN_MENUS, []).then(setHiddenMenus);
+    getStorageValue<string[]>(HIDDEN_MENUS, []).then((menus) => {
+      // Keep the renamed entry hidden for users who previously hid "WebDAV".
+      setHiddenMenus(
+        menus.includes("WebDAV") && !menus.includes("自动/手动备份")
+          ? [...menus, "自动/手动备份"]
+          : menus,
+      );
+    });
     getStorageValue<ThemeMode>(THEME_MODE, "light").then((m) =>
       setThemeMode(m === "dark" ? "dark" : "light"),
     );

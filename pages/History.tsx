@@ -44,7 +44,7 @@ export const History: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [totalHistoryCount, setTotalHistoryCount] = useState(0);
   const [dateSelectionMode, setDateSelectionMode] = useState<"range" | "single">("range");
-  const [gridColumns, setGridColumns] = useState(4);
+  const [gridColumns, setGridColumns] = useState<number | "auto">(4);
   // null means the stored value is not loaded yet
   const [loadMode, setLoadMode] = useState<"pagination" | "scroll" | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -67,7 +67,7 @@ export const History: React.FC = () => {
     getStorageValue(DATE_SELECTION_MODE, "range").then((mode) => {
       setDateSelectionMode(mode as "range" | "single");
     });
-    getStorageValue<number>(GRID_COLUMNS, 4).then((cols) => {
+    getStorageValue<number | "auto">(GRID_COLUMNS, 4).then((cols) => {
       setGridColumns(cols);
     });
     getStorageValue<number>(HISTORY_PAGE_SIZE, DEFAULT_PAGE_SIZE).then((size) => {
@@ -257,7 +257,10 @@ export const History: React.FC = () => {
 
   return (
     <div>
-      <div className="sticky top-0 bg-white/95 dark:bg-[#0a0a0a]/95 backdrop-blur-sm z-20 border-b border-gray-100 dark:border-neutral-800 shadow-sm transition-all duration-300">
+      <div
+        data-tour="history-toolbar"
+        className="sticky top-0 bg-white/95 dark:bg-[#0a0a0a]/95 backdrop-blur-sm z-20 border-b border-gray-100 dark:border-neutral-800 shadow-sm transition-all duration-300"
+      >
         <div className="flex flex-col md:flex-row items-center justify-between px-6 py-4 gap-4 max-w-[1600px] mx-auto">
           {/* 左侧：统计与筛选 */}
           <div className="flex items-center gap-4 w-full md:w-auto">
@@ -440,7 +443,10 @@ export const History: React.FC = () => {
       <div
         className="p-6 pt-2 grid gap-5 mx-auto w-full"
         style={{
-          gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
+          gridTemplateColumns:
+            gridColumns === "auto"
+              ? "repeat(auto-fill, minmax(280px, 1fr))"
+              : `repeat(${gridColumns}, minmax(0, 1fr))`,
         }}
       >
         {history.map((item) => (

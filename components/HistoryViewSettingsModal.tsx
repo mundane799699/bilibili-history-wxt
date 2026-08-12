@@ -5,7 +5,7 @@ export type HistoryLoadMode = "pagination" | "scroll";
 
 export interface HistoryViewSettings {
   loadMode: HistoryLoadMode;
-  gridColumns: number;
+  gridColumns: number | "auto";
 }
 
 interface HistoryViewSettingsModalProps extends HistoryViewSettings {
@@ -45,7 +45,7 @@ export const HistoryViewSettingsModal = ({
   onSave,
 }: HistoryViewSettingsModalProps) => {
   const [draftLoadMode, setDraftLoadMode] = useState<HistoryLoadMode>(loadMode);
-  const [draftGridColumns, setDraftGridColumns] = useState(gridColumns);
+  const [draftGridColumns, setDraftGridColumns] = useState<number | "auto">(gridColumns);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -115,9 +115,14 @@ export const HistoryViewSettingsModal = ({
   };
 
   const handleColumnChange = (delta: number) => {
-    setDraftGridColumns((current) =>
-      Math.max(MIN_GRID_COLUMNS, Math.min(MAX_GRID_COLUMNS, current + delta)),
-    );
+    if (draftGridColumns === "auto") {
+      setDraftGridColumns(4); // Default to 4 when switching from auto
+      return;
+    }
+    setDraftGridColumns((current) => {
+      const currentNum = current as number;
+      return Math.max(MIN_GRID_COLUMNS, Math.min(MAX_GRID_COLUMNS, currentNum + delta));
+    });
   };
 
   const handleSave = async () => {
@@ -185,7 +190,7 @@ export const HistoryViewSettingsModal = ({
           <legend className="text-sm font-semibold text-gray-800 dark:text-neutral-200">
             加载方式
           </legend>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="mt-3 grid gap-3 grid-cols-1">
             {loadModeOptions.map((option) => {
               const Icon = option.icon;
               const isSelected = draftLoadMode === option.value;
@@ -233,31 +238,45 @@ export const HistoryViewSettingsModal = ({
             <div>
               <p className="text-sm font-semibold text-gray-800 dark:text-neutral-200">每行列数</p>
               <p className="mt-1 text-xs text-gray-500 dark:text-neutral-400">
-                可设置为 {MIN_GRID_COLUMNS} 至 {MAX_GRID_COLUMNS} 列。
+                可设置为 {MIN_GRID_COLUMNS} 至 {MAX_GRID_COLUMNS} 列或自适应。
               </p>
             </div>
-            <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-1 dark:border-neutral-700 dark:bg-neutral-800/70">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => handleColumnChange(-1)}
-                disabled={isSaving || draftGridColumns <= MIN_GRID_COLUMNS}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-white hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30 dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-blue-400"
-                aria-label="减少列数"
+                onClick={() => setDraftGridColumns("auto")}
+                disabled={isSaving}
+                className={`text-xs px-3 py-1.5 rounded-md transition-colors border ${
+                  draftGridColumns === "auto"
+                    ? "border-blue-500 bg-blue-50 text-blue-600 dark:border-blue-500 dark:bg-blue-500/10 dark:text-blue-400"
+                    : "border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 dark:border-neutral-700 dark:bg-neutral-800/70 dark:text-neutral-300 dark:hover:bg-neutral-700"
+                }`}
               >
-                <Minus className="h-4 w-4" />
+                自适应
               </button>
-              <span className="min-w-12 text-center text-sm font-semibold tabular-nums text-gray-800 dark:text-neutral-200">
-                {draftGridColumns} 列
-              </span>
-              <button
-                type="button"
-                onClick={() => handleColumnChange(1)}
-                disabled={isSaving || draftGridColumns >= MAX_GRID_COLUMNS}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-white hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30 dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-blue-400"
-                aria-label="增加列数"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1 dark:border-neutral-700 dark:bg-neutral-800/70">
+                <button
+                  type="button"
+                  onClick={() => handleColumnChange(-1)}
+                  disabled={isSaving || (draftGridColumns !== "auto" && draftGridColumns <= MIN_GRID_COLUMNS)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-white hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30 dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-blue-400"
+                  aria-label="减少列数"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <span className="min-w-12 text-center text-sm font-semibold tabular-nums text-gray-800 dark:text-neutral-200">
+                  {draftGridColumns === "auto" ? "自动" : `${draftGridColumns} 列`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleColumnChange(1)}
+                  disabled={isSaving || (draftGridColumns !== "auto" && draftGridColumns >= MAX_GRID_COLUMNS)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-white hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30 dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-blue-400"
+                  aria-label="增加列数"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>

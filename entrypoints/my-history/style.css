@@ -7,6 +7,13 @@ body {
   padding: 0;
 }
 
+[data-tour-active="true"] {
+  position: relative;
+  z-index: 62 !important;
+  box-shadow: 0 0 0 4px rgb(59 130 246 / 70%);
+  border-radius: 8px;
+}
+
 html.dark body {
   background-color: #0a0a0a;
   color: #fafafa;

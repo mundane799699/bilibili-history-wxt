@@ -13,6 +13,8 @@ export const SYNC_TIME_REMAIN = "syncTimeRemain";
 export const FAV_AUTO_SYNC_ENABLED = "favAutoSyncEnabled"; // auto favorites sync switch, default false
 export const FAV_SYNC_INTERVAL = "favSyncInterval"; // 单位：分钟，默认 60*24 (1天)
 export const FAV_SYNC_TIME_REMAIN = "favSyncTimeRemain"; // 单位：分钟
+export const FAVORITE_FOLDER_SYNC_PROGRESS = "favoriteFolderSyncProgress";
+export const ALL_FAVORITE_FOLDERS_SYNC_PROGRESS = "allFavoriteFoldersSyncProgress";
 
 export const HIDE_USER_INFO = "hideUserInfo";
 export const HIDDEN_MENUS = "hiddenMenus"; // Array of hidden titles
@@ -26,6 +28,8 @@ export const LAST_SEEN_UPDATE_VERSION = "lastSeenUpdateVersion";
 export const STORAGE_LAST_WARNING = "storageLastWarning";
 export const BACKUP_REMINDER_LAST_DISMISSED_AT = "backupReminderLastDismissedAt";
 export const BACKUP_LAST_EXPORT_AT = "backupLastExportAt";
+export const MANUAL_BACKUP_ITEMS = "manualBackupItems";
+export const FIRST_RUN_GUIDE_COMPLETED = "firstRunGuideCompleted";
 
 // 历史记录本地目录自动备份
 export const LOCAL_HISTORY_BACKUP_ALARM = "localHistoryBackup";
@@ -50,20 +54,23 @@ export const WEBDAV_AUTO_SYNC_ENABLED = "webdavAutoSyncEnabled";
 export const WEBDAV_AUTO_SYNC_INTERVAL = "webdavAutoSyncInterval"; // 单位：分钟，默认 30
 export const WEBDAV_SYNC_ITEMS = "webdavSyncItems"; // 勾选的同步数据项，页面与后台自动同步共用
 
-/** 各数据项是否参与 WebDAV 同步，默认只同步历史记录 */
+/** 各数据项是否参与备份，新配置默认全部选中 */
 export const DEFAULT_WEBDAV_SYNC_ITEMS = {
   history: true,
-  likedMusic: false,
-  favFolders: false,
-  favResources: false,
-  subscribedCollections: false,
-  subscribedCollectionResources: false,
+  likedMusic: true,
+  favFolders: true,
+  favResources: true,
+  subscribedCollections: true,
+  subscribedCollectionResources: true,
 };
 
 export type WebDavSyncItems = typeof DEFAULT_WEBDAV_SYNC_ITEMS;
 export type WebDavSyncKey = keyof WebDavSyncItems;
 
-export const DASHSCOPE_API_KEY = "dashscopeApiKey";
+export const OPENAI_API_KEY = "openaiApiKey";
+export const OPENAI_BASE_URL = "openaiBaseUrl";
+export const OPENAI_MODEL = "openaiModel";
+export const DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1";
 export const AI_SEARCH_HISTORY = "aiSearchHistory";
 
 // "light" | "dark"

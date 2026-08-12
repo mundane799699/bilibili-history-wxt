@@ -1,8 +1,26 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, Loader2, KeyRound, Sparkles, Clock, Trash2, ChevronRight } from "lucide-react";
+import {
+  Search,
+  Loader2,
+  KeyRound,
+  Sparkles,
+  Clock,
+  Trash2,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  Settings2,
+  X,
+} from "lucide-react";
 import { getAllHistory } from "../utils/db";
-import { DASHSCOPE_API_KEY, AI_SEARCH_HISTORY } from "../utils/constants";
-import { getStorageValue, setStorageValue } from "../utils/storage";
+import {
+  AI_SEARCH_HISTORY,
+  DEFAULT_OPENAI_BASE_URL,
+  OPENAI_API_KEY,
+  OPENAI_BASE_URL,
+  OPENAI_MODEL,
+} from "../utils/constants";
+import { getStorageValue, setStorageValue, setStorageValues } from "../utils/storage";
 
 export interface AISearchRecord {
   id: string;
@@ -12,8 +30,22 @@ export interface AISearchRecord {
   timestamp: number;
 }
 
+const getChatCompletionsUrl = (baseUrl: string): string => {
+  const normalizedUrl = baseUrl.trim().replace(/\/+$/, "");
+  return normalizedUrl.endsWith("/chat/completions")
+    ? normalizedUrl
+    : `${normalizedUrl}/chat/completions`;
+};
+
 export const AISearch: React.FC = () => {
   const [apiKey, setApiKey] = useState("");
+  const [baseUrl, setBaseUrl] = useState(DEFAULT_OPENAI_BASE_URL);
+  const [model, setModel] = useState("");
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [draftApiKey, setDraftApiKey] = useState("");
+  const [draftBaseUrl, setDraftBaseUrl] = useState(DEFAULT_OPENAI_BASE_URL);
+  const [draftModel, setDraftModel] = useState("");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -26,22 +58,47 @@ export const AISearch: React.FC = () => {
   const [historyLogs, setHistoryLogs] = useState<AISearchRecord[]>([]);
 
   useEffect(() => {
-    getStorageValue(DASHSCOPE_API_KEY, "").then((key) => {
-      setApiKey(key as string);
-    });
-    getStorageValue(AI_SEARCH_HISTORY, []).then((logs) => {
-      setHistoryLogs(logs as AISearchRecord[]);
+    Promise.all([
+      getStorageValue(OPENAI_API_KEY, ""),
+      getStorageValue(OPENAI_BASE_URL, DEFAULT_OPENAI_BASE_URL),
+      getStorageValue(OPENAI_MODEL, ""),
+      getStorageValue(AI_SEARCH_HISTORY, [] as AISearchRecord[]),
+    ]).then(([savedApiKey, savedBaseUrl, savedModel, logs]) => {
+      setApiKey(savedApiKey);
+      setBaseUrl(savedBaseUrl);
+      setModel(savedModel);
+      setHistoryLogs(logs);
     });
   }, []);
 
-  const saveApiKey = (val: string) => {
-    setApiKey(val);
-    setStorageValue(DASHSCOPE_API_KEY, val);
+  const openConfig = () => {
+    setDraftApiKey(apiKey);
+    setDraftBaseUrl(baseUrl);
+    setDraftModel(model);
+    setShowApiKey(false);
+    setIsConfigOpen(true);
+  };
+
+  const saveConfig = async () => {
+    const nextApiKey = draftApiKey.trim();
+    const nextBaseUrl = draftBaseUrl.trim().replace(/\/+$/, "");
+    const nextModel = draftModel.trim();
+    if (!nextApiKey || !nextBaseUrl || !nextModel) return;
+
+    await setStorageValues({
+      [OPENAI_API_KEY]: nextApiKey,
+      [OPENAI_BASE_URL]: nextBaseUrl,
+      [OPENAI_MODEL]: nextModel,
+    });
+    setApiKey(nextApiKey);
+    setBaseUrl(nextBaseUrl);
+    setModel(nextModel);
+    setIsConfigOpen(false);
   };
 
   const startSearch = async () => {
-    if (!apiKey) {
-      alert("请先填写阿里云百炼 API Key");
+    if (!apiKey || !baseUrl || !model) {
+      openConfig();
       return;
     }
     if (!query.trim()) return;
@@ -76,27 +133,23 @@ export const AISearch: React.FC = () => {
 ${historyTextStr}
 `;
 
-      // 2. 调阿里云接口 SSE 流式读取
-      const res = await fetch(
-        "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            Accept: "text/event-stream",
-          },
-          body: JSON.stringify({
-            model: "qwen3.5-plus",
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: query },
-            ],
-            stream: true,
-            enable_thinking: true,
-          }),
+      // 2. 调 OpenAI 兼容接口，按 SSE 流式读取响应
+      const res = await fetch(getChatCompletionsUrl(baseUrl), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
         },
-      );
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: query },
+          ],
+          stream: true,
+        }),
+      });
 
       if (!res.ok) {
         throw new Error("HTTP " + res.status + ": " + (await res.text()));
@@ -106,13 +159,34 @@ ${historyTextStr}
       const decoder = new TextDecoder();
       let buffer = "";
 
+      const appendPayload = (payload: any) => {
+        const choice = payload?.choices?.[0];
+        const delta = choice?.delta;
+        const message = choice?.message;
+        const reasoningPart =
+          delta?.reasoning_content ??
+          delta?.reasoning ??
+          message?.reasoning_content ??
+          message?.reasoning;
+        const contentPart = delta?.content ?? message?.content;
+        if (typeof reasoningPart === "string") {
+          finalReasoning += reasoningPart;
+          setReasoning((prev) => prev + reasoningPart);
+        }
+        if (typeof contentPart === "string") {
+          setIsAnswering(true);
+          finalContent += contentPart;
+          setContent((prev) => prev + contentPart);
+        }
+      };
+
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
           buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
+          const lines = buffer.split(/\r?\n/);
           buffer = lines.pop() || ""; // 保留不完整的一行
 
           for (const line of lines) {
@@ -124,28 +198,24 @@ ${historyTextStr}
 
               try {
                 const payload = JSON.parse(dataStr);
-                const delta = payload.choices?.[0]?.delta;
-
-                if (delta) {
-                  // 处理思考过程
-                  if (delta.reasoning_content) {
-                    finalReasoning += delta.reasoning_content;
-                    setReasoning((prev) => prev + delta.reasoning_content);
-                  }
-
-                  // 处理完整的回复
-                  if (delta.content) {
-                    setIsAnswering(true);
-                    finalContent += delta.content;
-                    setContent((prev) => prev + delta.content);
-                  }
-                }
+                appendPayload(payload);
               } catch (e) {
                 // Ignore parse errors on half-chunks
               }
             }
           }
         }
+        buffer += decoder.decode();
+        const trailingLine = buffer.trim();
+        if (trailingLine.startsWith("data:")) {
+          const dataStr = trailingLine.slice(5).trim();
+          if (dataStr && dataStr !== "[DONE]") appendPayload(JSON.parse(dataStr));
+        } else if (trailingLine.startsWith("{")) {
+          appendPayload(JSON.parse(trailingLine));
+        }
+      } else {
+        const payload = await res.json();
+        appendPayload(payload);
       }
 
       if (finalContent) {
@@ -244,16 +314,15 @@ ${historyTextStr}
           </h1>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-lg px-3 py-1.5 focus-within:ring-2 focus-within:ring-indigo-100 dark:focus-within:ring-indigo-500/20 focus-within:border-indigo-400 dark:focus-within:border-indigo-500 focus-within:bg-white dark:focus-within:bg-neutral-900 transition-all">
-              <KeyRound className="w-4 h-4 text-gray-400 dark:text-neutral-500 mr-2" />
-              <input
-                type="password"
-                className="bg-transparent border-none focus:ring-0 text-sm w-48 p-0 text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 focus:outline-none"
-                placeholder="DashScope API Key"
-                value={apiKey}
-                onChange={(e) => saveApiKey(e.target.value)}
-              />
-            </div>
+            <button
+              type="button"
+              onClick={openConfig}
+              className="inline-flex h-9 max-w-52 items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm font-medium text-gray-700 transition-colors hover:border-indigo-300 hover:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-indigo-500 dark:hover:bg-neutral-800 dark:focus:ring-indigo-500/20"
+              title="配置 OpenAI 兼容接口"
+            >
+              <Settings2 className="h-4 w-4 shrink-0 text-indigo-500" />
+              <span className="truncate">{model || "配置模型"}</span>
+            </button>
             <select
               value={searchCount}
               onChange={(e) => setSearchCount(Number(e.target.value))}
@@ -303,9 +372,9 @@ ${historyTextStr}
                   {loading ? "搜索中" : "开始搜索"}
                 </button>
               </div>
-              {!apiKey && (
+              {(!apiKey || !baseUrl || !model) && (
                 <p className="text-xs text-red-500 dark:text-red-400 mt-3 ml-1">
-                  * 首次使用请先在右上角配置阿里云百炼(DashScope) API Key 才能调用大模型。
+                  * 首次使用请先在右上角配置 OpenAI 兼容接口。
                 </p>
               )}
             </div>
@@ -362,6 +431,114 @@ ${historyTextStr}
           </div>
         </div>
       </div>
+
+      {isConfigOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setIsConfigOpen(false);
+          }}
+        >
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void saveConfig();
+            }}
+            className="relative w-full max-w-lg rounded-lg border border-gray-200 bg-white p-6 shadow-xl dark:border-neutral-800 dark:bg-neutral-900"
+          >
+            <button
+              type="button"
+              onClick={() => setIsConfigOpen(false)}
+              className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+              aria-label="关闭模型配置"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div className="flex items-center gap-3 pr-10">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+                <Settings2 className="h-5 w-5" />
+              </div>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-neutral-100">
+                OpenAI 兼容配置
+              </h2>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700 dark:text-neutral-300">
+                  Base URL
+                </span>
+                <input
+                  type="url"
+                  required
+                  value={draftBaseUrl}
+                  onChange={(event) => setDraftBaseUrl(event.target.value)}
+                  placeholder={DEFAULT_OPENAI_BASE_URL}
+                  className="mt-2 h-11 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-800 outline-none transition-colors focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:border-indigo-500 dark:focus:bg-neutral-800 dark:focus:ring-indigo-500/20"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700 dark:text-neutral-300">
+                  API Key
+                </span>
+                <span className="relative mt-2 block">
+                  <KeyRound className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-gray-400 dark:text-neutral-500" />
+                  <input
+                    type={showApiKey ? "text" : "password"}
+                    required
+                    value={draftApiKey}
+                    onChange={(event) => setDraftApiKey(event.target.value)}
+                    autoComplete="off"
+                    className="h-11 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-11 text-sm text-gray-800 outline-none transition-colors focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:border-indigo-500 dark:focus:bg-neutral-800 dark:focus:ring-indigo-500/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey((visible) => !visible)}
+                    className="absolute right-1.5 top-1.5 inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-neutral-500 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+                    aria-label={showApiKey ? "隐藏 API Key" : "显示 API Key"}
+                  >
+                    {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </span>
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700 dark:text-neutral-300">
+                  模型
+                </span>
+                <input
+                  type="text"
+                  required
+                  value={draftModel}
+                  onChange={(event) => setDraftModel(event.target.value)}
+                  placeholder="例如 gpt-4.1-mini"
+                  autoComplete="off"
+                  className="mt-2 h-11 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-800 outline-none transition-colors focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:border-indigo-500 dark:focus:bg-neutral-800 dark:focus:ring-indigo-500/20"
+                />
+              </label>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3 border-t border-gray-100 pt-5 dark:border-neutral-800">
+              <button
+                type="button"
+                onClick={() => setIsConfigOpen(false)}
+                className="h-10 rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              >
+                取消
+              </button>
+              <button
+                type="submit"
+                disabled={!draftApiKey.trim() || !draftBaseUrl.trim() || !draftModel.trim()}
+                className="h-10 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300 dark:bg-indigo-500 dark:hover:bg-indigo-600 dark:disabled:bg-indigo-500/40"
+              >
+                保存
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 };
