@@ -4,7 +4,6 @@ import {
   HISTORY_LAST_SYNC,
   SYNC_INTERVAL,
   IS_SYNC_DELETE_FROM_BILIBILI,
-  WEBDAV_CONFIG,
   WEBDAV_LAST_SYNC,
   WEBDAV_AUTO_SYNC_ENABLED,
   WEBDAV_AUTO_SYNC_INTERVAL,
@@ -39,15 +38,17 @@ import {
   smartMergeSubscribedCollectionResources,
   replaceSubscribedCollections,
   replaceSubscribedCollectionResources,
+  getDeletedHistoryIds,
+  addDeletedHistoryIds,
 } from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
 import { recordStorageWarning } from "../utils/storageHealth";
 import {
-  WebDavConfig,
   ensureDirectory,
   uploadFile,
   downloadFile,
   withWebDavOperationLock,
+  loadWebDavConfig,
 } from "../utils/webdav";
 import {
   FavoriteFolder,
@@ -745,13 +746,19 @@ export default defineBackground(() => {
 
   // 处理删除历史记录的消息
   const handleDeleteHistoryItem = async (message: any, sendResponse: (response: any) => void) => {
+    const id = Number(message?.id);
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      sendResponse({ success: false, error: "历史记录信息不完整" });
+      return;
+    }
     try {
       const syncDeleteFromBilibili = await getStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, true);
       if (!syncDeleteFromBilibili) {
         sendResponse({ success: true, message: "同步删除未开启" });
         return;
       }
-      await deleteHistoryItem(message.id);
+      await deleteHistoryItem(id);
+      await addDeletedHistoryIds([id]);
       sendResponse({ success: true, message: "历史记录删除成功" });
     } catch (error) {
       sendResponse({
@@ -836,6 +843,10 @@ export default defineBackground(() => {
       let view_at = 0;
       const type = "all";
       const ps = 30;
+      // 增量同步的兜底翻页上限，防止"首尾记录均不存在于本地"时无限翻页。
+      // 超出后按服务端 is_end 或空列表正常收尾，不影响正确性，只是多拉几页。
+      const MAX_INCREMENTAL_PAGES = 500;
+      let incrementalPages = 0;
       console.log(`${isFullSync ? "全量" : "增量"}同步开始`);
 
       // 循环获取所有历史记录
@@ -862,9 +873,12 @@ export default defineBackground(() => {
 
         const { cursor, list } = data;
         // 更新分页参数
-        hasMore = list.length > 0;
+        // 服务端返回 is_end 或空列表才代表真正翻完。仅依赖 list.length 会在
+        // 最后一页 cursor 归零后重新从头返回数据，造成死循环。
+        hasMore = list.length > 0 && !cursor.is_end;
         max = cursor.max;
         view_at = cursor.view_at;
+        incrementalPages++;
 
         if (list.length > 0) {
           // 为每批数据创建新的事务
@@ -880,11 +894,18 @@ export default defineBackground(() => {
             const lastItemExists = await getItem(store, lastItem.history.oid);
             if (firstItemExists && lastItemExists) {
               hasMore = false;
+            } else if (incrementalPages >= MAX_INCREMENTAL_PAGES) {
+              console.warn(
+                `增量同步已超过 ${MAX_INCREMENTAL_PAGES} 页仍未遇到本地边界，停止翻页（不影响已同步数据）`,
+              );
+              hasMore = false;
             }
           }
 
           // 批量存储历史记录
           for (const item of list) {
+            // 保留旧记录已有的 uploaded 标记，避免重复上传
+            const existing = await getItem(store, item.history.oid);
             // put是异步的
             store.put({
               id: item.history.oid,
@@ -902,7 +923,7 @@ export default defineBackground(() => {
               duration: item.duration,
               is_fav: item.is_fav === 1, // 保存是否收藏字段
               timestamp: Date.now(),
-              uploaded: false,
+              uploaded: existing?.uploaded === true,
             });
           }
 
@@ -1232,7 +1253,7 @@ export default defineBackground(() => {
     const currentMid = await getCurrentBilibiliMid(sessdata);
     const pageSize = 50;
     let page = 1;
-    let total = Infinity;
+    let total = 0;
     const collections: SubscribedCollection[] = [];
 
     while (collections.length < total) {
@@ -1262,7 +1283,8 @@ export default defineBackground(() => {
         })),
       );
 
-      if (list.length < pageSize) break;
+      if (collections.length >= total) break;
+      if (list.length === 0) break; // 空页保护，防止接口异常导致死循环
       page += 1;
     }
 
@@ -1308,6 +1330,7 @@ export default defineBackground(() => {
       );
 
       hasMore = Boolean(data.data?.has_more);
+      if (hasMore && medias.length === 0) break; // 空页保护，防止接口异常导致死循环
       page += 1;
     }
 
@@ -1369,7 +1392,7 @@ export default defineBackground(() => {
   // WebDAV 自动双向同步：拉取 → 合并 → 推送（仅同步用户勾选的数据项）
   async function autoSyncWebDav(): Promise<void> {
     try {
-      const config = await getStorageValue<WebDavConfig | null>(WEBDAV_CONFIG, null);
+      const config = await loadWebDavConfig();
       if (!config || !config.serverUrl) {
         console.log("WebDAV 未配置，跳过自动同步");
         return;
@@ -1392,10 +1415,15 @@ export default defineBackground(() => {
 
       // ===== 第一步：拉取远端数据并合并到本地 =====
       console.log("[WebDAV 同步] 步骤 1/2：拉取并合并远端数据...");
+      const deletedHistoryIds = await getDeletedHistoryIds();
       for (const item of items) {
         const remote = await downloadFile(config, item.file);
         if (remote) {
-          await item.merge(JSON.parse(remote));
+          if (item.key === "history") {
+            await smartMergeHistory(JSON.parse(remote), deletedHistoryIds);
+          } else {
+            await item.merge(JSON.parse(remote));
+          }
         }
       }
 

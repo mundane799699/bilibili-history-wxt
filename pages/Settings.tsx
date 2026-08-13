@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Check, HardDrive, RefreshCw } from "lucide-react";
-import { clearHistory } from "../utils/db";
+import { clearHistory, deleteDB } from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
 import {
   IS_SYNC_DELETE,
@@ -148,6 +148,8 @@ const Settings = () => {
       await clearLocalBackupDirectoryHandle();
       setResetStatus("正在清理存储...");
       await browser.storage.local.clear();
+      setResetStatus("正在删除全部本地数据...");
+      await deleteDB();
       setResetStatus("正在重新加载...");
       setResetResult("恢复出厂设置成功！");
     } catch (error) {

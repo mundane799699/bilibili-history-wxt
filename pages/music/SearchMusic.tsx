@@ -100,6 +100,7 @@ const SearchMusic = () => {
       // 获取音频URL
       const response = await fetch(
         `https://api.bilibili.com/x/web-interface/view?bvid=${item.bvid}`,
+        { credentials: "include" },
       );
       const { data, code, message } = await response.json();
       if (code !== 0) {
@@ -109,6 +110,7 @@ const SearchMusic = () => {
 
       const response2 = await fetch(
         `https://api.bilibili.com/x/player/playurl?fnval=16&bvid=${item.bvid}&cid=${cid}`,
+        { credentials: "include" },
       );
       const { data: data2, code: code2, message: message2 } = await response2.json();
       if (code2 !== 0) {

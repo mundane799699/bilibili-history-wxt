@@ -1,7 +1,7 @@
 import { HistoryItem as HistoryItemType } from "../utils/types";
 import { getContentUrl } from "../utils/common";
 import { Trash2 } from "lucide-react";
-import { deleteHistoryItem, checkIsFavorited } from "../utils/db";
+import { deleteHistoryItem, checkIsFavorited, addDeletedHistoryIds } from "../utils/db";
 import React, { useState, useEffect } from "react";
 import { getStorageValue } from "../utils/storage";
 import { toast } from "react-hot-toast";
@@ -78,6 +78,8 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
       }
       // 删除本地数据库中的历史记录
       await deleteHistoryItem(item.id);
+      // 记录墓碑，防止 WebDAV 双向同步时远端旧数据复活
+      await addDeletedHistoryIds([item.id]);
       onDelete?.();
     } catch (error) {
       console.error("删除历史记录失败:", error);
