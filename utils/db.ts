@@ -7,6 +7,8 @@ import {
 } from "./types";
 import dayjs from "dayjs";
 import { recordStorageWarning } from "./storageHealth";
+import { getStorageValue, setStorageValue } from "./storage";
+import { DELETED_HISTORY_IDS } from "./constants";
 
 const DB_CONFIG: DBConfig = {
   name: "bilibiliHistory",
@@ -391,19 +393,21 @@ export const getHistory = async (
       if (cursor) {
         const value = cursor.value as HistoryItem;
 
-        // 如果还没收集够数据，继续收集
+        // 还没收集够一页：匹配的记录入列，继续扫描
         if (items.length < pageSize) {
           if (matchCondition(value, keyword, dateRange, businessType, searchType)) {
             items.push(value);
           }
           cursor.continue();
-        } else {
-          // 已经收集够数据，检查是否还有更多
+        } else if (matchCondition(value, keyword, dateRange, businessType, searchType)) {
+          // 已收集够一页，但后面还有匹配项才算"还有更多"，避免被过滤项误报
           hasMore = true;
           resolve({
             items,
             hasMore,
           });
+        } else {
+          cursor.continue();
         }
       } else {
         // 没有更多数据了
@@ -479,6 +483,20 @@ export const getItem = async (store: IDBObjectStore, key: string): Promise<any> 
     const request = store.get(key);
     request.onsuccess = () => resolve(request.result);
   });
+};
+
+/** 获取本地已删除历史记录的墓碑 id 集合 */
+export const getDeletedHistoryIds = async (): Promise<Set<number>> => {
+  const ids = await getStorageValue<number[]>(DELETED_HISTORY_IDS, []);
+  return new Set(ids.filter((id) => Number.isSafeInteger(id)));
+};
+
+/** 删除成功后记录墓碑，供 WebDAV 合并时剔除远端旧数据 */
+export const addDeletedHistoryIds = async (ids: number[]): Promise<void> => {
+  if (ids.length === 0) return;
+  const current = await getDeletedHistoryIds();
+  ids.forEach((id) => current.add(id));
+  await setStorageValue(DELETED_HISTORY_IDS, [...current]);
 };
 
 export const clearHistory = async (): Promise<void> => {
@@ -1117,10 +1135,17 @@ export const replaceSubscribedCollectionResources = async (
   const collectionIndex = store.index("collection_id");
 
   return new Promise((resolve, reject) => {
+    // 先 diff 再写：新数据先 put，只在最后删除本地有而远端没有的键。
+    // 避免"先清空后写入"在失败时留下被清空的本地数据。
     const existingKeysRequest = collectionIndex.getAllKeys(collectionId);
     existingKeysRequest.onsuccess = () => {
-      existingKeysRequest.result.forEach((key) => store.delete(key));
+      const incomingKeys = new Set(resources.map((resource) => resource.id));
       resources.forEach((resource) => store.put(resource));
+      existingKeysRequest.result.forEach((key) => {
+        if (!incomingKeys.has(String(key))) {
+          store.delete(key);
+        }
+      });
     };
     existingKeysRequest.onerror = () => reject(existingKeysRequest.error);
     tx.oncomplete = () => resolve();
@@ -1295,10 +1320,13 @@ export const importSubscribedCollections = async (
 };
 
 /**
- * 智能合并历史记录：按 view_at 时间戳比对，仅远端更新时覆盖
+ * 智能合并历史记录：按 view_at 时间戳比对，仅远端更新时覆盖。
+ * 位于本地删除墓碑（DELETED_HISTORY_IDS）中的记录会被跳过，防止删除在
+ * WebDAV 双向同步后复活。
  */
 export const smartMergeHistory = async (
   remoteItems: HistoryItem[],
+  deletedIds?: ReadonlySet<number>,
 ): Promise<{ merged: number; skipped: number }> => {
   const db = await openDB();
   const tx = db.transaction("history", "readwrite");
@@ -1316,6 +1344,10 @@ export const smartMergeHistory = async (
     const total = remoteItems.length;
 
     remoteItems.forEach((remoteItem) => {
+      if (deletedIds?.has(remoteItem.id)) {
+        processed++;
+        return;
+      }
       const getReq = store.get(remoteItem.id);
       getReq.onsuccess = () => {
         const localItem = getReq.result as HistoryItem | undefined;

@@ -21,6 +21,8 @@ import {
   uploadFile,
   downloadFile,
   withWebDavOperationLock,
+  loadWebDavConfig,
+  sealWebDavConfig,
 } from "@/utils/webdav";
 import {
   getAllHistory,
@@ -38,6 +40,7 @@ import {
   smartMergeFavResources,
   importSubscribedCollections,
   smartMergeSubscribedCollectionResources,
+  getDeletedHistoryIds,
 } from "@/utils/db";
 import { HistoryItem, LikedMusic, FavoriteFolder, SubscribedCollection } from "@/utils/types";
 import { LocalHistoryBackupPanel } from "@/components/LocalHistoryBackupPanel";
@@ -175,7 +178,7 @@ const WebDavSync = () => {
   // 加载已保存的配置
   useEffect(() => {
     const loadConfig = async () => {
-      const saved = await getStorageValue<WebDavConfig | null>(WEBDAV_CONFIG, null);
+      const saved = await loadWebDavConfig();
       if (saved) setConfig(saved);
       const syncTime = await getStorageValue<number | null>(WEBDAV_LAST_SYNC, null);
       if (syncTime) setLastSync(syncTime);
@@ -230,7 +233,7 @@ const WebDavSync = () => {
     }
     setIsSaving(true);
     try {
-      await setStorageValue(WEBDAV_CONFIG, config);
+      await setStorageValue(WEBDAV_CONFIG, await sealWebDavConfig(config));
       toast.success("配置已保存");
     } catch {
       toast.error("保存配置失败");
@@ -311,12 +314,16 @@ const WebDavSync = () => {
           // 第一步：拉取远端数据并合并
           let totalMerged = 0;
           let totalSkipped = 0;
+          const deletedHistoryIds = await getDeletedHistoryIds();
 
           for (const [i, item] of items.entries()) {
             setSyncProgress({ current: i, total, message: `步骤 1/2：拉取${item.label}...` });
             const remote = await downloadFile(config, item.file);
             if (remote) {
-              const result = await item.merge(JSON.parse(remote));
+              const result =
+                item.key === "history"
+                  ? await smartMergeHistory(JSON.parse(remote), deletedHistoryIds)
+                  : await item.merge(JSON.parse(remote));
               totalMerged += result.merged;
               totalSkipped += result.skipped;
             }
@@ -377,6 +384,7 @@ const WebDavSync = () => {
           });
           let totalMerged = 0;
           let totalSkipped = 0;
+          const deletedHistoryIds = await getDeletedHistoryIds();
 
           for (const [i, item] of items.entries()) {
             setSyncProgress({
@@ -386,7 +394,10 @@ const WebDavSync = () => {
             });
             const remote = await downloadFile(config, item.file);
             if (remote) {
-              const result = await item.merge(JSON.parse(remote));
+              const result =
+                item.key === "history"
+                  ? await smartMergeHistory(JSON.parse(remote), deletedHistoryIds)
+                  : await item.merge(JSON.parse(remote));
               totalMerged += result.merged;
               totalSkipped += result.skipped;
             }
@@ -484,9 +495,10 @@ const WebDavSync = () => {
             let totalSkipped = 0;
 
             // 智能识别格式：支持完整备份格式和单独数组格式
+            const deletedHistoryIds = await getDeletedHistoryIds();
             if (data.history && Array.isArray(data.history)) {
               // 完整备份格式
-              const histResult = await smartMergeHistory(data.history);
+              const histResult = await smartMergeHistory(data.history, deletedHistoryIds);
               totalMerged += histResult.merged;
               totalSkipped += histResult.skipped;
 
@@ -521,7 +533,7 @@ const WebDavSync = () => {
             } else if (Array.isArray(data)) {
               // 兼容旧版单独数组格式（历史记录或音乐）
               if (data.length > 0 && "view_at" in data[0]) {
-                const result = await smartMergeHistory(data as HistoryItem[]);
+                const result = await smartMergeHistory(data as HistoryItem[], deletedHistoryIds);
                 totalMerged = result.merged;
                 totalSkipped = result.skipped;
               } else if (data.length > 0 && "bvid" in data[0] && "added_at" in data[0]) {
@@ -721,7 +733,7 @@ const WebDavSync = () => {
                     d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                   />
                 </svg>
-                你的凭证仅保存在本地浏览器存储中，不会上传到任何第三方服务器
+                你的凭证仅保存在本地浏览器存储中（密码已加密），不会上传到任何第三方服务器
               </p>
 
               <div className="flex gap-3 pt-1">

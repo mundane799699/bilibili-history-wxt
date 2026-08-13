@@ -155,7 +155,9 @@ const LikedMusic = () => {
       setCurrentPlaying(bvid);
 
       // 获取视频信息
-      const response = await fetch(`https://api.bilibili.com/x/web-interface/view?bvid=${bvid}`);
+      const response = await fetch(`https://api.bilibili.com/x/web-interface/view?bvid=${bvid}`, {
+        credentials: "include",
+      });
       const { data, code, message } = await response.json();
       if (code !== 0) {
         throw new Error(message || "获取视频信息失败");
@@ -165,6 +167,7 @@ const LikedMusic = () => {
       // 获取播放地址
       const response2 = await fetch(
         `https://api.bilibili.com/x/player/playurl?fnval=16&bvid=${bvid}&cid=${cid}`,
+        { credentials: "include" },
       );
       const { data: data2, code: code2, message: message2 } = await response2.json();
       if (code2 !== 0) {

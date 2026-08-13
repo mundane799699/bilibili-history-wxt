@@ -73,6 +73,9 @@ export const OPENAI_MODEL = "openaiModel";
 export const DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1";
 export const AI_SEARCH_HISTORY = "aiSearchHistory";
 
+// WebDAV 双向同步时本地已删除历史记录的墓碑集合，用于阻止远端旧数据复活
+export const DELETED_HISTORY_IDS = "deletedHistoryIds";
+
 // "light" | "dark"
 export const THEME_MODE = "themeMode";
 
