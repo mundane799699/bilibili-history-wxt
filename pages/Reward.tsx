@@ -1,5 +1,11 @@
 // Fake data for now; update this list on each release
 const REWARD_LIST: { name: string; amount: number; date: string; message?: string }[] = [
+  { name: "透过叶片的阳光/", amount: 6.66, date: "2026-08-12", message: "帮大忙了，感谢！" },
+  { name: "难得一见", amount: 10, date: "2026-08-11", message: "感谢作者" },
+  { name: "飞翔的荷兰人", amount: 10, date: "2026-08-09" },
+  { name: "佚名", amount: 10, date: "2026-08-04" },
+  { name: "Ohana", amount: 5, date: "2026-08-03", message: "谢谢你们的软件" },
+  { name: "佚名", amount: 10, date: "2026-08-03", message: "谢谢你的插件" },
   { name: "佚名", amount: 1, date: "2026-07-30", message: "谢谢你的插件" },
   {
     name: "晒~居",
