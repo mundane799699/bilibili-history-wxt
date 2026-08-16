@@ -1221,6 +1221,65 @@ export const deleteFavResources = async (folderId: number, ids: number[]): Promi
   });
 };
 
+export const clearFavResourcesByFolder = async (folderId: number): Promise<number> => {
+  const db = await openDB();
+  const tx = db.transaction("favResources", "readwrite");
+  const store = tx.objectStore("favResources");
+  const index = store.index("folder_id");
+
+  return new Promise((resolve, reject) => {
+    let deletedCount = 0;
+    const request = index.openCursor(IDBKeyRange.only(folderId));
+
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) return;
+
+      const deleteRequest = cursor.delete();
+      deleteRequest.onsuccess = () => {
+        deletedCount++;
+      };
+      deleteRequest.onerror = () => tx.abort();
+      cursor.continue();
+    };
+    request.onerror = () => reject(request.error);
+    tx.oncomplete = () => resolve(deletedCount);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error("清空收藏夹本地数据失败"));
+  });
+};
+
+export const deleteFavFolderWithResources = async (folderId: number): Promise<number> => {
+  const db = await openDB();
+  const tx = db.transaction(["favFolders", "favResources"], "readwrite");
+  const folderStore = tx.objectStore("favFolders");
+  const resourceStore = tx.objectStore("favResources");
+  const folderIndex = resourceStore.index("folder_id");
+
+  return new Promise((resolve, reject) => {
+    let deletedResourceCount = 0;
+    const deleteFolderRequest = folderStore.delete(folderId);
+    const resourceCursorRequest = folderIndex.openCursor(IDBKeyRange.only(folderId));
+
+    deleteFolderRequest.onerror = () => tx.abort();
+    resourceCursorRequest.onsuccess = () => {
+      const cursor = resourceCursorRequest.result;
+      if (!cursor) return;
+
+      const deleteResourceRequest = cursor.delete();
+      deleteResourceRequest.onsuccess = () => {
+        deletedResourceCount++;
+      };
+      deleteResourceRequest.onerror = () => tx.abort();
+      cursor.continue();
+    };
+    resourceCursorRequest.onerror = () => tx.abort();
+    tx.oncomplete = () => resolve(deletedResourceCount);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error("删除本地收藏夹失败"));
+  });
+};
+
 // ========== 数据同步辅助函数 ==========
 
 /**

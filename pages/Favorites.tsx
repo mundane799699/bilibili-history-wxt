@@ -1,5 +1,11 @@
 import { useEffect, useState, useRef } from "react";
-import { getFavFolders, getFavResources } from "../utils/db";
+import toast from "react-hot-toast";
+import {
+  clearFavResourcesByFolder,
+  deleteFavFolderWithResources,
+  getFavFolders,
+  getFavResources,
+} from "../utils/db";
 import {
   FavoriteFolder,
   FavoriteResource,
@@ -12,10 +18,22 @@ import {
   FAVORITE_FOLDER_SYNC_PROGRESS,
   ALL_FAVORITE_FOLDERS_SYNC_PROGRESS,
 } from "../utils/constants";
-import { Folder, Video, Search, X, ChevronDownIcon, CloudDownload, RefreshCw } from "lucide-react";
+import {
+  Folder,
+  Video,
+  Search,
+  X,
+  ChevronDownIcon,
+  CloudDownload,
+  RefreshCw,
+  Trash2,
+  MoreHorizontal,
+} from "lucide-react";
 import { Pagination } from "../components/Pagination";
 import { FavoriteFolderSyncModal } from "../components/FavoriteFolderSyncModal";
 import { AllFavoriteFoldersSyncModal } from "../components/AllFavoriteFoldersSyncModal";
+import { ClearFavoriteFolderModal } from "../components/ClearFavoriteFolderModal";
+import { DeleteFavoriteFolderModal } from "../components/DeleteFavoriteFolderModal";
 
 export const Favorites = () => {
   const [folders, setFolders] = useState<FavoriteFolder[]>([]);
@@ -28,6 +46,11 @@ export const Favorites = () => {
   const [isSearchKindDropdownOpen, setIsSearchKindDropdownOpen] = useState(false);
   const [syncTargetFolder, setSyncTargetFolder] = useState<FavoriteFolder | null>(null);
   const [isAllFoldersSyncOpen, setIsAllFoldersSyncOpen] = useState(false);
+  const [clearTargetFolder, setClearTargetFolder] = useState<FavoriteFolder | null>(null);
+  const [isClearingFolder, setIsClearingFolder] = useState(false);
+  const [openFolderMenuId, setOpenFolderMenuId] = useState<number | null>(null);
+  const [deleteTargetFolder, setDeleteTargetFolder] = useState<FavoriteFolder | null>(null);
+  const [isDeletingFolder, setIsDeletingFolder] = useState(false);
   const [syncProgress, setSyncProgress] = useState<FavoriteFolderSyncProgress | null>(null);
   const [allSyncProgress, setAllSyncProgress] = useState<AllFavoriteFoldersSyncProgress | null>(
     null,
@@ -46,6 +69,24 @@ export const Favorites = () => {
       await loadFolders();
 
       try {
+        const syncState = await browser.storage.local.get([
+          FAVORITE_FOLDER_SYNC_PROGRESS,
+          ALL_FAVORITE_FOLDERS_SYNC_PROGRESS,
+        ]);
+        const singleProgress = syncState[
+          FAVORITE_FOLDER_SYNC_PROGRESS
+        ] as FavoriteFolderSyncProgress | null;
+        const allProgress = syncState[
+          ALL_FAVORITE_FOLDERS_SYNC_PROGRESS
+        ] as AllFavoriteFoldersSyncProgress | null;
+        const shouldSkipOnlineRefresh = [singleProgress, allProgress].some(
+          (progress) =>
+            progress?.status === "syncing" ||
+            progress?.status === "paused" ||
+            progress?.status === "interrupted",
+        );
+        if (shouldSkipOnlineRefresh) return;
+
         const request: RefreshFavoriteFoldersRequest = {
           action: "refreshFavoriteFolders",
         };
@@ -86,18 +127,30 @@ export const Favorites = () => {
   }, [selectedFolderId]);
 
   useEffect(() => {
+    if (openFolderMenuId === null) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenFolderMenuId(null);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [openFolderMenuId]);
+
+  useEffect(() => {
     const loadProgress = async () => {
-      const data = await browser.storage.local.get([
-        FAVORITE_FOLDER_SYNC_PROGRESS,
-        ALL_FAVORITE_FOLDERS_SYNC_PROGRESS,
-      ]);
-      if (data[FAVORITE_FOLDER_SYNC_PROGRESS]) {
-        setSyncProgress(data[FAVORITE_FOLDER_SYNC_PROGRESS] as FavoriteFolderSyncProgress);
-      }
-      if (data[ALL_FAVORITE_FOLDERS_SYNC_PROGRESS]) {
-        setAllSyncProgress(
-          data[ALL_FAVORITE_FOLDERS_SYNC_PROGRESS] as AllFavoriteFoldersSyncProgress,
-        );
+      try {
+        const [data, nextAllProgress] = await Promise.all([
+          browser.storage.local.get(FAVORITE_FOLDER_SYNC_PROGRESS),
+          browser.runtime.sendMessage({
+            action: "getAllFavoriteFoldersSyncProgress",
+          }) as Promise<AllFavoriteFoldersSyncProgress | null>,
+        ]);
+        if (data[FAVORITE_FOLDER_SYNC_PROGRESS]) {
+          setSyncProgress(data[FAVORITE_FOLDER_SYNC_PROGRESS] as FavoriteFolderSyncProgress);
+        }
+        setAllSyncProgress(nextAllProgress);
+      } catch (error) {
+        console.error("读取收藏夹同步进度失败:", error);
       }
     };
     void loadProgress();
@@ -120,6 +173,9 @@ export const Favorites = () => {
         setAllSyncProgress(newProg);
         if (newProg && (newProg.status === "success" || newProg.status === "error")) {
           void loadFolders();
+          if (selectedFolderId !== null) {
+            void loadResources(selectedFolderId, { resetSearch: false, showLoading: false });
+          }
         }
       }
     };
@@ -188,6 +244,122 @@ export const Favorites = () => {
     }
   };
 
+  const handleClearFavoriteFolder = async () => {
+    if (!clearTargetFolder || isClearingFolder) return;
+
+    setIsClearingFolder(true);
+    try {
+      const progressData = await browser.storage.local.get([
+        FAVORITE_FOLDER_SYNC_PROGRESS,
+        ALL_FAVORITE_FOLDERS_SYNC_PROGRESS,
+      ]);
+      const singleProgress = progressData[
+        FAVORITE_FOLDER_SYNC_PROGRESS
+      ] as FavoriteFolderSyncProgress | null;
+      const allProgress = progressData[
+        ALL_FAVORITE_FOLDERS_SYNC_PROGRESS
+      ] as AllFavoriteFoldersSyncProgress | null;
+
+      if (singleProgress?.status === "syncing" || allProgress?.status === "syncing") {
+        throw new Error("收藏夹正在同步，请等待同步结束后再清空");
+      }
+
+      const progressKeysToRemove: string[] = [];
+      if (
+        singleProgress?.folderId === clearTargetFolder.id &&
+        singleProgress.status !== "success"
+      ) {
+        progressKeysToRemove.push(FAVORITE_FOLDER_SYNC_PROGRESS);
+      }
+      if (
+        allProgress?.status !== "success" &&
+        allProgress?.folderIds?.includes(clearTargetFolder.id)
+      ) {
+        progressKeysToRemove.push(ALL_FAVORITE_FOLDERS_SYNC_PROGRESS);
+      }
+      if (progressKeysToRemove.length > 0) {
+        await browser.storage.local.remove(progressKeysToRemove);
+      }
+
+      const deletedCount = await clearFavResourcesByFolder(clearTargetFolder.id);
+      if (selectedFolderId === clearTargetFolder.id) {
+        setResources([]);
+        setKeyword("");
+        setCurrentPage(1);
+        setIsSearchKindDropdownOpen(false);
+      }
+
+      toast.success(
+        `已清空「${clearTargetFolder.title}」的 ${deletedCount} 条本地收藏，不影响 B 站线上数据`,
+      );
+      setClearTargetFolder(null);
+    } catch (error) {
+      console.error("清空收藏夹本地数据失败:", error);
+      toast.error(error instanceof Error ? error.message : "清空本地收藏失败，请重试");
+    } finally {
+      setIsClearingFolder(false);
+    }
+  };
+
+  const handleDeleteFavoriteFolder = async () => {
+    if (!deleteTargetFolder || isDeletingFolder) return;
+
+    setIsDeletingFolder(true);
+    try {
+      const progressData = await browser.storage.local.get([
+        FAVORITE_FOLDER_SYNC_PROGRESS,
+        ALL_FAVORITE_FOLDERS_SYNC_PROGRESS,
+      ]);
+      const singleProgress = progressData[
+        FAVORITE_FOLDER_SYNC_PROGRESS
+      ] as FavoriteFolderSyncProgress | null;
+      const allProgress = progressData[
+        ALL_FAVORITE_FOLDERS_SYNC_PROGRESS
+      ] as AllFavoriteFoldersSyncProgress | null;
+
+      if (singleProgress?.status === "syncing" || allProgress?.status === "syncing") {
+        throw new Error("收藏夹正在同步，请等待同步结束后再删除");
+      }
+
+      const progressKeysToRemove: string[] = [];
+      if (singleProgress?.folderId === deleteTargetFolder.id) {
+        progressKeysToRemove.push(FAVORITE_FOLDER_SYNC_PROGRESS);
+      }
+      if (allProgress?.folderIds?.includes(deleteTargetFolder.id)) {
+        progressKeysToRemove.push(ALL_FAVORITE_FOLDERS_SYNC_PROGRESS);
+      }
+      if (progressKeysToRemove.length > 0) {
+        await browser.storage.local.remove(progressKeysToRemove);
+      }
+
+      const deletedFolder = deleteTargetFolder;
+      const deletedFolderIndex = folders.findIndex((folder) => folder.id === deletedFolder.id);
+      const deletedResourceCount = await deleteFavFolderWithResources(deletedFolder.id);
+      const remainingFolders = folders.filter((folder) => folder.id !== deletedFolder.id);
+      setFolders(remainingFolders);
+
+      if (selectedFolderId === deletedFolder.id) {
+        const nextFolder =
+          remainingFolders[Math.min(deletedFolderIndex, remainingFolders.length - 1)] ?? null;
+        setSelectedFolderId(nextFolder?.id ?? null);
+        setResources([]);
+        setKeyword("");
+        setCurrentPage(1);
+        setIsSearchKindDropdownOpen(false);
+      }
+
+      toast.success(
+        `已删除本地收藏夹「${deletedFolder.title}」及 ${deletedResourceCount} 条收藏，不影响 B 站线上数据`,
+      );
+      setDeleteTargetFolder(null);
+    } catch (error) {
+      console.error("删除本地收藏夹失败:", error);
+      toast.error(error instanceof Error ? error.message : "删除本地收藏夹失败，请重试");
+    } finally {
+      setIsDeletingFolder(false);
+    }
+  };
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     // Scroll to top of content
@@ -222,6 +394,9 @@ export const Favorites = () => {
 
   const startIndex = (currentPage - 1) * pageSize;
   const currentResources = filteredResources.slice(startIndex, startIndex + pageSize);
+  const selectedFolder = folders.find((folder) => folder.id === selectedFolderId) ?? null;
+  const isFavoriteSyncing =
+    syncProgress?.status === "syncing" || allSyncProgress?.status === "syncing";
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-[#0a0a0a]">
@@ -276,7 +451,30 @@ export const Favorites = () => {
           </div>
         )}
 
-        {!allSyncProgress?.status?.includes("syncing") &&
+        {allSyncProgress &&
+          (allSyncProgress.status === "paused" || allSyncProgress.status === "interrupted") && (
+            <button
+              type="button"
+              onClick={() => setIsAllFoldersSyncOpen(true)}
+              className="m-2 block w-[calc(100%-1rem)] rounded-lg border border-amber-200 bg-amber-50 p-3 text-left text-amber-800 transition-colors hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="truncate text-xs font-semibold">
+                  {allSyncProgress.status === "paused" ? "全部同步已暂停" : "全部同步已中断"}
+                </p>
+                <span className="shrink-0 text-[10px] font-medium opacity-80">
+                  {allSyncProgress.completedCount}/{allSyncProgress.totalFolders}
+                </span>
+              </div>
+              <p className="mt-1.5 truncate text-[11px] opacity-80">
+                {allSyncProgress.currentFolderTitle
+                  ? `「${allSyncProgress.currentFolderTitle}」将从第 ${allSyncProgress.nextPage} 页继续`
+                  : "点击查看同步进度"}
+              </p>
+            </button>
+          )}
+
+        {allSyncProgress?.status !== "syncing" &&
           syncProgress &&
           syncProgress.status === "syncing" && (
             <div
@@ -313,36 +511,82 @@ export const Favorites = () => {
           {folders.map((folder) => (
             <div
               key={folder.id}
-              className={`p-3 rounded-lg cursor-pointer mb-1 transition-colors ${
+              className={`relative mb-1 cursor-pointer rounded-lg p-3 pr-10 transition-colors ${
                 selectedFolderId === folder.id
                   ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400"
                   : "hover:bg-gray-100 dark:hover:bg-neutral-800"
               }`}
               onClick={() => setSelectedFolderId(folder.id)}
             >
-              <div className="flex items-start gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium" title={folder.title}>
-                    {folder.title}
-                  </div>
-                  <div className="mt-1 text-xs text-gray-400 dark:text-neutral-500">
-                    {folder.media_count}个内容
-                  </div>
+              <div className="min-w-0">
+                <div className="truncate font-medium" title={folder.title}>
+                  {folder.title}
                 </div>
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setSyncTargetFolder(folder);
-                  }}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-md border border-pink-200 bg-white/80 px-2 py-1 text-xs font-medium text-pink-600 shadow-sm transition-colors hover:border-pink-300 hover:bg-pink-100 dark:border-pink-500/30 dark:bg-neutral-900/80 dark:text-pink-400 dark:hover:border-pink-500/50 dark:hover:bg-pink-500/20"
-                  title={`同步收藏夹：${folder.title}`}
-                  aria-label={`同步收藏夹：${folder.title}`}
-                >
-                  <CloudDownload className="h-3.5 w-3.5" />
-                  <span>同步</span>
-                </button>
+                <div className="mt-1 text-xs text-gray-400 dark:text-neutral-500">
+                  {folder.media_count}个内容
+                </div>
               </div>
+
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setOpenFolderMenuId((current) => (current === folder.id ? null : folder.id));
+                }}
+                className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-white hover:text-gray-700 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                title={`更多操作：${folder.title}`}
+                aria-label={`更多操作：${folder.title}`}
+                aria-haspopup="menu"
+                aria-expanded={openFolderMenuId === folder.id}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+
+              {openFolderMenuId === folder.id && (
+                <>
+                  <button
+                    type="button"
+                    className="fixed inset-0 z-10 cursor-default"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setOpenFolderMenuId(null);
+                    }}
+                    aria-label="关闭收藏夹操作菜单"
+                  />
+                  <div
+                    role="menu"
+                    className="absolute right-2 top-10 z-20 min-w-28 overflow-hidden rounded-lg border border-gray-100 bg-white py-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={isFavoriteSyncing}
+                      onClick={() => {
+                        setOpenFolderMenuId(null);
+                        setSyncTargetFolder(folder);
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                    >
+                      <CloudDownload className="h-4 w-4 text-pink-500" />
+                      同步
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={isFavoriteSyncing}
+                      onClick={() => {
+                        setOpenFolderMenuId(null);
+                        setDeleteTargetFolder(folder);
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-red-400 dark:hover:bg-red-500/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      删除
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -353,12 +597,30 @@ export const Favorites = () => {
         <div className="p-6">
           {selectedFolderId && (
             <div className="mb-6 flex flex-col md:flex-row justify-between md:items-center gap-4 bg-white dark:bg-neutral-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-neutral-800">
-              <h1 className="text-xl font-bold flex items-center gap-2">
-                {folders.find((f) => f.id === selectedFolderId)?.title}
-                <span className="text-sm font-normal text-gray-500 dark:text-neutral-400 bg-gray-50 dark:bg-neutral-800 px-2 py-1 rounded-full border border-gray-100 dark:border-neutral-700 whitespace-nowrap">
-                  {filteredResources.length} 个内容
-                </span>
-              </h1>
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="flex items-center gap-2 text-xl font-bold">
+                  {selectedFolder?.title}
+                  <span className="whitespace-nowrap rounded-full border border-gray-100 bg-gray-50 px-2 py-1 text-sm font-normal text-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400">
+                    {filteredResources.length} 个内容
+                  </span>
+                </h1>
+                <button
+                  type="button"
+                  onClick={() => setClearTargetFolder(selectedFolder)}
+                  disabled={
+                    !selectedFolder ||
+                    resources.length === 0 ||
+                    loading ||
+                    isClearingFolder ||
+                    isFavoriteSyncing
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-500/30 dark:bg-neutral-900 dark:text-red-400 dark:hover:border-red-500/50 dark:hover:bg-red-500/10"
+                  title={isFavoriteSyncing ? "收藏夹同步期间不能清空" : "清空当前收藏夹的本地数据"}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  清空
+                </button>
+              </div>
 
               <div className="relative w-full md:max-w-xl group flex items-center bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-full transition-all duration-300 shadow-sm hover:shadow-md focus-within:bg-white dark:focus-within:bg-neutral-800 focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-500/20 focus-within:border-blue-400 dark:focus-within:border-blue-500">
                 {/* 搜索类型下拉 */}
@@ -538,6 +800,23 @@ export const Favorites = () => {
         open={isAllFoldersSyncOpen}
         onClose={() => setIsAllFoldersSyncOpen(false)}
         onSyncComplete={handleAllFoldersSyncComplete}
+      />
+      <ClearFavoriteFolderModal
+        folder={clearTargetFolder}
+        localResourceCount={clearTargetFolder?.id === selectedFolderId ? resources.length : 0}
+        isClearing={isClearingFolder}
+        onClose={() => {
+          if (!isClearingFolder) setClearTargetFolder(null);
+        }}
+        onConfirm={handleClearFavoriteFolder}
+      />
+      <DeleteFavoriteFolderModal
+        folder={deleteTargetFolder}
+        isDeleting={isDeletingFolder}
+        onClose={() => {
+          if (!isDeletingFolder) setDeleteTargetFolder(null);
+        }}
+        onConfirm={handleDeleteFavoriteFolder}
       />
     </div>
   );

@@ -15,9 +15,10 @@ import {
   AllFavoriteFoldersSyncProgress,
   FavoriteFolder,
   SyncAllFavoriteFoldersRequest,
+  SyncAllFavoriteFoldersResponse,
 } from "../utils/types";
 
-type SyncPhase = "idle" | "syncing" | "success" | "error" | "complete";
+type SyncPhase = "idle" | "syncing" | "paused" | "interrupted" | "success" | "error" | "complete";
 
 interface FailedFolder {
   id: number;
@@ -32,6 +33,13 @@ interface AllFavoriteFoldersSyncModalProps {
   onSyncComplete: () => Promise<void>;
 }
 
+const formatCountdown = (milliseconds: number): string => {
+  const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+};
+
 export const AllFavoriteFoldersSyncModal = ({
   folders,
   open,
@@ -41,7 +49,11 @@ export const AllFavoriteFoldersSyncModal = ({
   const [isFullSync, setIsFullSync] = useState(false);
   const [syncPhase, setSyncPhase] = useState<SyncPhase>("idle");
   const [completedCount, setCompletedCount] = useState(0);
+  const [currentFolderIndex, setCurrentFolderIndex] = useState(0);
   const [currentFolderTitle, setCurrentFolderTitle] = useState("");
+  const [nextPage, setNextPage] = useState(1);
+  const [retryAfter, setRetryAfter] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   const [failedFolders, setFailedFolders] = useState<FailedFolder[]>([]);
   const [refreshWarning, setRefreshWarning] = useState<string>();
   const [errorMessage, setErrorMessage] = useState<string>();
@@ -49,15 +61,21 @@ export const AllFavoriteFoldersSyncModal = ({
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
 
   const isSyncing = syncPhase === "syncing";
-  const successCount = completedCount - failedFolders.length;
+  const successCount = completedCount;
   const progress = folders.length === 0 ? 0 : Math.round((completedCount / folders.length) * 100);
+  const cooldownRemaining = Math.max(0, retryAfter - now);
+  const isCoolingDown = syncPhase === "paused" && cooldownRemaining > 0;
+  const currentFolderPosition = Math.min(currentFolderIndex + 1, folders.length);
 
   useEffect(() => {
     if (!open) {
       if (syncPhase !== "syncing") {
         setSyncPhase("idle");
         setCompletedCount(0);
+        setCurrentFolderIndex(0);
         setCurrentFolderTitle("");
+        setNextPage(1);
+        setRetryAfter(0);
         setFailedFolders([]);
         setRefreshWarning(undefined);
         setErrorMessage(undefined);
@@ -71,10 +89,18 @@ export const AllFavoriteFoldersSyncModal = ({
 
       setSyncPhase(next.status);
       setCompletedCount(next.completedCount);
+      setCurrentFolderIndex(
+        Number.isSafeInteger(next.currentFolderIndex)
+          ? next.currentFolderIndex
+          : next.completedCount,
+      );
       setCurrentFolderTitle(next.currentFolderTitle);
+      setNextPage(next.nextPage);
+      setRetryAfter(next.retryAfter ?? 0);
       setFailedFolders(next.failedFolders);
       setIsFullSync(next.mode === "full");
       setErrorMessage(next.message);
+      if (next.status === "paused") setNow(Date.now());
     };
 
     const loadProgress = async () => {
@@ -107,6 +133,13 @@ export const AllFavoriteFoldersSyncModal = ({
       browser.storage.onChanged.removeListener(handleStorageChange);
     };
   }, [open]);
+
+  useEffect(() => {
+    if (syncPhase !== "paused" || cooldownRemaining <= 0) return;
+
+    const timerId = window.setTimeout(() => setNow(Date.now()), Math.min(1000, cooldownRemaining));
+    return () => window.clearTimeout(timerId);
+  }, [cooldownRemaining, syncPhase]);
 
   useEffect(() => {
     if (!open) return;
@@ -169,9 +202,16 @@ export const AllFavoriteFoldersSyncModal = ({
   const handleSync = async () => {
     if (folders.length === 0) return;
 
+    const isResuming =
+      syncPhase === "paused" || syncPhase === "interrupted" || syncPhase === "error";
     setSyncPhase("syncing");
-    setCompletedCount(0);
-    setFailedFolders([]);
+    if (!isResuming) {
+      setCompletedCount(0);
+      setCurrentFolderIndex(0);
+      setCurrentFolderTitle(folders[0]?.title ?? "");
+      setNextPage(1);
+      setFailedFolders([]);
+    }
     setRefreshWarning(undefined);
     setErrorMessage(undefined);
 
@@ -181,12 +221,20 @@ export const AllFavoriteFoldersSyncModal = ({
         folders: folders.map((f) => ({ id: f.id, title: f.title })),
         isFullSync,
       };
-      const response = (await browser.runtime.sendMessage(request)) as {
-        success: boolean;
-        error?: string;
-      };
+      const response = (await browser.runtime.sendMessage(request)) as
+        SyncAllFavoriteFoldersResponse | undefined;
 
       if (!response?.success) {
+        if (response?.status) {
+          setSyncPhase(response.status);
+          setCurrentFolderIndex(response.currentFolderIndex ?? currentFolderIndex);
+          setNextPage(response.nextPage ?? nextPage);
+          setRetryAfter(response.retryAfter ?? 0);
+          setErrorMessage(response.error);
+          if (response.status === "paused") setNow(Date.now());
+          return;
+        }
+
         const progress = await browser.storage.local.get(ALL_FAVORITE_FOLDERS_SYNC_PROGRESS);
         const activeProgress = progress[
           ALL_FAVORITE_FOLDERS_SYNC_PROGRESS
@@ -194,7 +242,9 @@ export const AllFavoriteFoldersSyncModal = ({
         if (activeProgress?.status === "syncing") {
           setSyncPhase("syncing");
           setCompletedCount(activeProgress.completedCount);
+          setCurrentFolderIndex(activeProgress.currentFolderIndex);
           setCurrentFolderTitle(activeProgress.currentFolderTitle);
+          setNextPage(activeProgress.nextPage);
           setFailedFolders(activeProgress.failedFolders);
           return;
         }
@@ -383,7 +433,8 @@ export const AllFavoriteFoldersSyncModal = ({
                   正在同步「{currentFolderTitle}」
                 </p>
                 <p className="mt-1 text-xs opacity-80">
-                  {Math.min(completedCount + 1, folders.length)} / {folders.length}
+                  {currentFolderPosition} / {folders.length}
+                  {nextPage > 1 ? ` · 已完成第 ${nextPage - 1} 页` : ""}
                 </p>
               </div>
             </div>
@@ -396,43 +447,51 @@ export const AllFavoriteFoldersSyncModal = ({
           </div>
         )}
 
-        {(syncPhase === "complete" || syncPhase === "error") && (
+        {(syncPhase === "paused" || syncPhase === "interrupted" || syncPhase === "error") && (
           <div
             aria-live="polite"
             className={`mt-6 rounded-lg border p-4 ${
               syncPhase === "error"
                 ? "border-red-200 bg-red-50 dark:border-red-500/20 dark:bg-red-500/10"
-                : failedFolders.length === 0
-                  ? "border-emerald-200 bg-emerald-50 dark:border-emerald-500/20 dark:bg-emerald-500/10"
-                  : "border-amber-200 bg-amber-50 dark:border-amber-500/20 dark:bg-amber-500/10"
+                : "border-amber-200 bg-amber-50 dark:border-amber-500/20 dark:bg-amber-500/10"
             }`}
           >
             <div className="flex gap-3">
-              {syncPhase === "error" ? (
-                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600 dark:text-red-400" />
-              ) : failedFolders.length === 0 ? (
-                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-              ) : (
-                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
-              )}
+              <AlertCircle
+                className={`mt-0.5 h-5 w-5 shrink-0 ${
+                  syncPhase === "error"
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-amber-600 dark:text-amber-400"
+                }`}
+              />
               <div className="min-w-0">
                 <p
                   className={`text-sm font-semibold ${
                     syncPhase === "error"
                       ? "text-red-800 dark:text-red-300"
-                      : failedFolders.length === 0
-                        ? "text-emerald-800 dark:text-emerald-300"
-                        : "text-amber-800 dark:text-amber-300"
+                      : "text-amber-800 dark:text-amber-300"
                   }`}
                 >
-                  {syncPhase === "error"
-                    ? `同步失败：${errorMessage || "未知错误"}`
-                    : failedFolders.length === 0
-                      ? `已成功同步全部 ${successCount} 个收藏夹`
-                      : `同步完成：成功 ${successCount} 个，失败 ${failedFolders.length} 个`}
+                  {syncPhase === "paused"
+                    ? "触发 B 站访问风控，已暂停全部收藏夹同步"
+                    : syncPhase === "interrupted"
+                      ? "全部收藏夹同步已中断"
+                      : `同步失败：${errorMessage || "未知错误"}`}
                 </p>
-                {failedFolders.length > 0 && (
-                  <ul className="mt-2 max-h-32 space-y-1 overflow-y-auto text-xs text-amber-700 dark:text-amber-400">
+                <p className="mt-2 text-xs leading-relaxed text-gray-600 dark:text-neutral-300">
+                  已完成 {completedCount} / {folders.length} 个收藏夹
+                  {currentFolderTitle ? `，当前「${currentFolderTitle}」` : ""}。进度已保存，将从第
+                  {nextPage} 页{syncPhase === "error" ? "重试" : "继续"}。
+                </p>
+                {syncPhase === "paused" && (
+                  <p className="mt-2 text-xs font-medium text-amber-700 dark:text-amber-300">
+                    {isCoolingDown
+                      ? `建议等待 ${formatCountdown(cooldownRemaining)} 后再继续`
+                      : "冷却已结束，可以继续同步"}
+                  </p>
+                )}
+                {syncPhase === "error" && failedFolders.length > 0 && (
+                  <ul className="mt-2 max-h-32 space-y-1 overflow-y-auto text-xs text-red-700 dark:text-red-400">
                     {failedFolders.map((folder) => (
                       <li key={folder.id} className="break-words">
                         「{folder.title}」：{folder.error}
@@ -440,6 +499,22 @@ export const AllFavoriteFoldersSyncModal = ({
                     ))}
                   </ul>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {syncPhase === "complete" && (
+          <div
+            aria-live="polite"
+            className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10"
+          >
+            <div className="flex gap-3">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                  已成功同步全部 {successCount} 个收藏夹
+                </p>
               </div>
             </div>
             {refreshWarning && (
@@ -467,7 +542,7 @@ export const AllFavoriteFoldersSyncModal = ({
                   onClick={handleClose}
                   className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
-                  {syncPhase === "error" ? "关闭" : "取消"}
+                  {syncPhase === "idle" ? "取消" : "关闭"}
                 </button>
               )}
               {isSyncing && (
@@ -483,11 +558,23 @@ export const AllFavoriteFoldersSyncModal = ({
               <button
                 type="button"
                 onClick={handleSync}
-                disabled={isSyncing || folders.length === 0}
+                disabled={isSyncing || isCoolingDown || folders.length === 0}
                 className="inline-flex min-w-28 items-center justify-center gap-2 rounded-lg bg-pink-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-pink-700 disabled:cursor-not-allowed disabled:bg-pink-400 dark:bg-pink-500 dark:hover:bg-pink-600 dark:disabled:bg-pink-500/50"
               >
                 {isSyncing && <RefreshCw className="h-4 w-4 animate-spin" />}
-                {isSyncing ? "正在同步..." : isFullSync ? "开始全部全量同步" : "开始全部增量同步"}
+                {isSyncing
+                  ? "正在同步..."
+                  : syncPhase === "paused"
+                    ? isCoolingDown
+                      ? `继续同步（${formatCountdown(cooldownRemaining)}）`
+                      : `从第 ${currentFolderPosition} 个收藏夹第 ${nextPage} 页继续`
+                    : syncPhase === "interrupted"
+                      ? `从第 ${currentFolderPosition} 个收藏夹第 ${nextPage} 页继续`
+                      : syncPhase === "error"
+                        ? `从第 ${currentFolderPosition} 个收藏夹第 ${nextPage} 页重试`
+                        : isFullSync
+                          ? "开始全部全量同步"
+                          : "开始全部增量同步"}
               </button>
             </>
           )}

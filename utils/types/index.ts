@@ -124,9 +124,30 @@ export interface SyncAllFavoriteFoldersRequest {
   isFullSync: boolean;
 }
 
+export type SyncAllFavoriteFoldersResponse =
+  | {
+      success: true;
+      message: string;
+      mode: "incremental" | "full";
+    }
+  | {
+      success: false;
+      error: string;
+      status?: "paused" | "interrupted" | "error";
+      currentFolderIndex?: number;
+      currentFolderId?: number | null;
+      nextPage?: number;
+      retryAfter?: number;
+    };
+
+export type AllFavoriteFoldersSyncProgressStatus =
+  "syncing" | "paused" | "interrupted" | "success" | "error";
+
 export interface AllFavoriteFoldersSyncProgress {
-  status: "syncing" | "success" | "error";
+  status: AllFavoriteFoldersSyncProgressStatus;
   mode: "full" | "incremental";
+  currentFolderIndex: number;
+  currentFolderId: number | null;
   currentFolderTitle: string;
   completedCount: number;
   totalFolders: number;
@@ -140,6 +161,9 @@ export interface AllFavoriteFoldersSyncProgress {
   startedAt: number;
   updatedAt: number;
   message?: string;
+  errorKind?: FavoriteFolderSyncErrorKind;
+  retryAfter?: number;
+  rateLimitCount?: number;
 }
 
 export type FavoriteFolderSyncProgressStatus =
