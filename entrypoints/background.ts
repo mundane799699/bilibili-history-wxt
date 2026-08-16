@@ -62,10 +62,43 @@ import {
   LocalHistoryBackupRequest,
   LocalHistoryBackupResult,
   FavoriteFolderSyncProgress,
+  FavoriteFolderSyncErrorKind,
   SyncAllFavoriteFoldersRequest,
   AllFavoriteFoldersSyncProgress,
 } from "../utils/types";
 import { isLocalHistoryBackupDue, runLocalHistoryBackup } from "../utils/localHistoryBackup";
+
+const FAVORITE_FOLDER_RATE_LIMIT_COOLDOWNS_MS = [10, 30, 60].map((minutes) => minutes * 60 * 1000);
+const FAVORITE_FOLDER_PAGE_DELAY_MIN_MS = 1500;
+const FAVORITE_FOLDER_PAGE_DELAY_MAX_MS = 3000;
+
+class FavoriteFolderRequestError extends Error {
+  constructor(
+    message: string,
+    readonly kind: FavoriteFolderSyncErrorKind,
+    readonly status?: number,
+  ) {
+    super(message);
+    this.name = "FavoriteFolderRequestError";
+  }
+}
+
+const normalizeFavoriteFolderRequestError = (error: unknown): FavoriteFolderRequestError => {
+  if (error instanceof FavoriteFolderRequestError) return error;
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return new FavoriteFolderRequestError("请求超时", "network");
+  }
+  if (error instanceof TypeError) {
+    return new FavoriteFolderRequestError(error.message || "网络请求失败", "network");
+  }
+  return new FavoriteFolderRequestError(
+    error instanceof Error ? error.message : "未知错误",
+    "unknown",
+  );
+};
+
+const getRandomDelay = (minMs: number, maxMs: number): number =>
+  Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
 
 export default defineBackground(() => {
   let localHistoryBackupPromise: Promise<LocalHistoryBackupResult> | null = null;
@@ -82,7 +115,8 @@ export default defineBackground(() => {
     progress?.status !== "success" &&
     progress?.folderId === folderId &&
     progress.mode === mode &&
-    progress.nextPage > 1;
+    Number.isSafeInteger(progress.nextPage) &&
+    progress.nextPage >= 1;
 
   const isSameAllFoldersCheckpoint = (
     progress: AllFavoriteFoldersSyncProgress | null,
@@ -345,6 +379,22 @@ export default defineBackground(() => {
       FAVORITE_FOLDER_SYNC_PROGRESS,
       null,
     );
+    const isSameTask = previousProgress?.folderId === folderId && previousProgress.mode === mode;
+    if (
+      isSameTask &&
+      previousProgress?.status === "paused" &&
+      previousProgress.retryAfter &&
+      Date.now() < previousProgress.retryAfter
+    ) {
+      sendResponse({
+        success: false,
+        status: "paused",
+        error: previousProgress.message || "收藏夹同步正在冷却，请稍后继续",
+        nextPage: previousProgress.nextPage,
+        retryAfter: previousProgress.retryAfter,
+      });
+      return;
+    }
     const checkpoint = isSameFolderCheckpoint(previousProgress, folderId, mode)
       ? previousProgress
       : null;
@@ -366,22 +416,25 @@ export default defineBackground(() => {
         FAVORITE_FOLDER_SYNC_PROGRESS,
         null,
       );
+      const completedProgress = progress ?? {
+        currentPage: 0,
+        nextPage: 1,
+        processedItems: 0,
+        totalItems: folder.media_count,
+        onlineResourceIds: [],
+        startedAt,
+      };
       await updateFavoriteFolderSyncProgress({
-        ...(progress || {
-          folderId,
-          folderTitle: folder.title,
-          mode,
-          currentPage: 0,
-          nextPage: 1,
-          processedItems: 0,
-          totalItems: folder.media_count,
-          onlineResourceIds: [],
-          startedAt,
-        }),
         folderId,
         folderTitle: folder.title,
         mode,
         status: "success",
+        currentPage: completedProgress.currentPage,
+        nextPage: completedProgress.nextPage,
+        processedItems: completedProgress.processedItems,
+        totalItems: completedProgress.totalItems,
+        onlineResourceIds: completedProgress.onlineResourceIds,
+        startedAt: completedProgress.startedAt,
         updatedAt: Date.now(),
         message: messageText,
       });
@@ -393,20 +446,65 @@ export default defineBackground(() => {
       };
     } catch (error) {
       console.error("同步单个收藏夹失败:", error);
-      const errorMessage = error instanceof Error ? error.message : "未知错误";
+      const requestError = normalizeFavoriteFolderRequestError(error);
       const progress = await getStorageValue<FavoriteFolderSyncProgress | null>(
         FAVORITE_FOLDER_SYNC_PROGRESS,
         null,
       );
-      if (progress) {
+      const failureProgress: FavoriteFolderSyncProgress = progress ?? {
+        folderId,
+        folderTitle: message.folderTitle || "未知收藏夹",
+        mode,
+        status: "error",
+        currentPage: Math.max(0, (checkpoint?.nextPage ?? 1) - 1),
+        nextPage: checkpoint?.nextPage ?? 1,
+        processedItems: checkpoint?.processedItems ?? 0,
+        totalItems: checkpoint?.totalItems ?? 0,
+        onlineResourceIds: checkpoint?.onlineResourceIds ?? [],
+        startedAt,
+        updatedAt: Date.now(),
+        ...(checkpoint?.rateLimitCount ? { rateLimitCount: checkpoint.rateLimitCount } : {}),
+      };
+      if (requestError.kind === "rate_limited") {
+        const rateLimitCount = (failureProgress.rateLimitCount ?? 0) + 1;
+        const cooldownIndex = Math.min(
+          rateLimitCount - 1,
+          FAVORITE_FOLDER_RATE_LIMIT_COOLDOWNS_MS.length - 1,
+        );
+        const retryAfter = Date.now() + FAVORITE_FOLDER_RATE_LIMIT_COOLDOWNS_MS[cooldownIndex];
+        const errorMessage = "触发 B 站访问风控，同步已暂停";
         await updateFavoriteFolderSyncProgress({
-          ...progress,
-          status: "error",
+          ...failureProgress,
+          status: "paused",
+          errorKind: "rate_limited",
+          rateLimitCount,
+          retryAfter,
           updatedAt: Date.now(),
           message: errorMessage,
         });
+        response = {
+          success: false,
+          status: "paused",
+          error: errorMessage,
+          nextPage: failureProgress.nextPage,
+          retryAfter,
+        };
+      } else {
+        const errorMessage = requestError.message;
+        await updateFavoriteFolderSyncProgress({
+          ...failureProgress,
+          status: "error",
+          errorKind: requestError.kind,
+          updatedAt: Date.now(),
+          message: errorMessage,
+        });
+        response = {
+          success: false,
+          status: "error",
+          error: errorMessage,
+          nextPage: failureProgress.nextPage,
+        };
       }
-      response = { success: false, error: errorMessage };
     } finally {
       favoriteFolderSyncPromise = null;
       finishFavoriteSync(task);
@@ -657,9 +755,9 @@ export default defineBackground(() => {
     if (progress?.status === "syncing" && !favoriteFolderSyncPromise) {
       const interruptedProgress: FavoriteFolderSyncProgress = {
         ...progress,
-        status: "error",
+        status: "interrupted",
         updatedAt: Date.now(),
-        message: "同步任务已中断，可点击重试继续",
+        message: `同步任务已中断，可从第 ${progress.nextPage} 页继续`,
       };
       await updateFavoriteFolderSyncProgress(interruptedProgress);
       sendResponse(interruptedProgress);
@@ -974,10 +1072,35 @@ export default defineBackground(() => {
     const navRes = await fetch("https://api.bilibili.com/x/web-interface/nav", {
       headers: { Cookie: `SESSDATA=${sessdata}` },
     });
-    if (!navRes.ok) throw new Error("获取用户信息失败");
+    if (navRes.status === 412 || navRes.status === 429) {
+      throw new FavoriteFolderRequestError(
+        `获取用户信息失败：HTTP ${navRes.status}`,
+        "rate_limited",
+        navRes.status,
+      );
+    }
+    if (navRes.status === 401 || navRes.status === 403) {
+      throw new FavoriteFolderRequestError("登录状态无效，请重新登录 B 站", "auth", navRes.status);
+    }
+    if (!navRes.ok) {
+      throw new FavoriteFolderRequestError(
+        `获取用户信息失败：HTTP ${navRes.status}`,
+        navRes.status >= 500 ? "server" : "unknown",
+        navRes.status,
+      );
+    }
 
     const navData = await navRes.json();
-    if (navData.code !== 0) throw new Error(navData.message || "获取用户信息失败");
+    if (navData.code === -412) {
+      throw new FavoriteFolderRequestError(
+        navData.message || "获取用户信息触发访问风控",
+        "rate_limited",
+        412,
+      );
+    }
+    if (navData.code !== 0) {
+      throw new FavoriteFolderRequestError(navData.message || "获取用户信息失败", "unknown");
+    }
 
     const mid = Number(navData.data?.mid);
     if (!Number.isSafeInteger(mid) || mid <= 0) throw new Error("获取用户信息失败");
@@ -986,10 +1109,39 @@ export default defineBackground(() => {
       `https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid=${mid}`,
       { headers: { Cookie: `SESSDATA=${sessdata}` } },
     );
-    if (!folderRes.ok) throw new Error("获取收藏夹失败");
+    if (folderRes.status === 412 || folderRes.status === 429) {
+      throw new FavoriteFolderRequestError(
+        `获取收藏夹失败：HTTP ${folderRes.status}`,
+        "rate_limited",
+        folderRes.status,
+      );
+    }
+    if (folderRes.status === 401 || folderRes.status === 403) {
+      throw new FavoriteFolderRequestError(
+        "登录状态无效，请重新登录 B 站",
+        "auth",
+        folderRes.status,
+      );
+    }
+    if (!folderRes.ok) {
+      throw new FavoriteFolderRequestError(
+        `获取收藏夹失败：HTTP ${folderRes.status}`,
+        folderRes.status >= 500 ? "server" : "unknown",
+        folderRes.status,
+      );
+    }
 
     const folderData = await folderRes.json();
-    if (folderData.code !== 0) throw new Error(folderData.message || "获取收藏夹失败");
+    if (folderData.code === -412) {
+      throw new FavoriteFolderRequestError(
+        folderData.message || "获取收藏夹触发访问风控",
+        "rate_limited",
+        412,
+      );
+    }
+    if (folderData.code !== 0) {
+      throw new FavoriteFolderRequestError(folderData.message || "获取收藏夹失败", "unknown");
+    }
 
     if (!folderData.data || !("list" in folderData.data)) {
       throw new Error("收藏夹数据格式异常");
@@ -1016,9 +1168,9 @@ export default defineBackground(() => {
     page: number,
     sessdata: string,
   ): Promise<FavoriteFolderPage> {
-    let lastError: unknown;
+    let lastError = new FavoriteFolderRequestError("未知错误", "unknown");
 
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
 
@@ -1031,16 +1183,41 @@ export default defineBackground(() => {
           },
         );
 
+        if (response.status === 412 || response.status === 429) {
+          throw new FavoriteFolderRequestError(
+            `HTTP ${response.status}`,
+            "rate_limited",
+            response.status,
+          );
+        }
+        if (response.status === 401 || response.status === 403) {
+          throw new FavoriteFolderRequestError(
+            `登录状态无效（HTTP ${response.status}）`,
+            "auth",
+            response.status,
+          );
+        }
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+          throw new FavoriteFolderRequestError(
+            `HTTP ${response.status}`,
+            response.status >= 500 ? "server" : "unknown",
+            response.status,
+          );
         }
 
         const data = await response.json();
+        if (data.code === -412) {
+          throw new FavoriteFolderRequestError(
+            data.message || "B 站接口触发访问风控",
+            "rate_limited",
+            412,
+          );
+        }
         if (data.code !== 0) {
-          throw new Error(data.message || "B 站接口返回失败");
+          throw new FavoriteFolderRequestError(data.message || "B 站接口返回失败", "unknown");
         }
         if (!data.data || (data.data.medias != null && !Array.isArray(data.data.medias))) {
-          throw new Error("收藏夹资源数据格式异常");
+          throw new FavoriteFolderRequestError("收藏夹资源数据格式异常", "data");
         }
 
         return {
@@ -1048,18 +1225,31 @@ export default defineBackground(() => {
           hasMore: Boolean(data.data.has_more),
         };
       } catch (error) {
-        lastError = error;
-        if (attempt < 2) {
-          console.warn(`请求收藏夹 ${folder.title} 第 ${page} 页失败，正在重试 (${attempt}/2)`);
-          await new Promise((resolve) => setTimeout(resolve, 2000));
+        lastError = normalizeFavoriteFolderRequestError(error);
+        const canRetry = lastError.kind === "network" || lastError.kind === "server";
+        if (!canRetry || attempt >= 3) {
+          throw new FavoriteFolderRequestError(
+            `获取收藏夹「${folder.title}」第 ${page} 页失败：${lastError.message}`,
+            lastError.kind,
+            lastError.status,
+          );
         }
+
+        const retryDelay = (attempt === 1 ? 2000 : 5000) + getRandomDelay(0, 500);
+        console.warn(
+          `请求收藏夹 ${folder.title} 第 ${page} 页失败，${retryDelay}ms 后重试 (${attempt}/3)`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
       } finally {
         clearTimeout(timeoutId);
       }
     }
 
-    const reason = lastError instanceof Error ? `：${lastError.message}` : "";
-    throw new Error(`获取收藏夹「${folder.title}」第 ${page} 页失败${reason}`);
+    throw new FavoriteFolderRequestError(
+      `获取收藏夹「${folder.title}」第 ${page} 页失败：${lastError.message}`,
+      lastError.kind,
+      lastError.status,
+    );
   }
 
   async function syncFavoriteFolderResources(
@@ -1077,6 +1267,7 @@ export default defineBackground(() => {
       FavoriteFolderSyncProgress | AllFavoriteFoldersSyncProgress,
       "nextPage" | "processedItems" | "onlineResourceIds"
     > | null,
+    useConservativePageDelay = false,
   ): Promise<void> {
     console.log(`正在同步收藏夹: ${folder.title} (${isFullSync ? "全量" : "增量"})`);
 
@@ -1148,7 +1339,10 @@ export default defineBackground(() => {
       if (reachedLocalBoundary) break;
 
       page += 1;
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const pageDelay = useConservativePageDelay
+        ? getRandomDelay(FAVORITE_FOLDER_PAGE_DELAY_MIN_MS, FAVORITE_FOLDER_PAGE_DELAY_MAX_MS)
+        : 500;
+      await new Promise((resolve) => setTimeout(resolve, pageDelay));
     }
 
     if (isFullSync) {
@@ -1190,6 +1384,7 @@ export default defineBackground(() => {
       onlineResourceIds: checkpoint?.onlineResourceIds ?? [],
       startedAt,
       updatedAt: Date.now(),
+      ...(checkpoint?.rateLimitCount ? { rateLimitCount: checkpoint.rateLimitCount } : {}),
     });
     await syncFavoriteFolderResources(
       folder,
@@ -1204,9 +1399,11 @@ export default defineBackground(() => {
           ...update,
           startedAt,
           updatedAt: Date.now(),
+          ...(checkpoint?.rateLimitCount ? { rateLimitCount: checkpoint.rateLimitCount } : {}),
         });
       },
       checkpoint,
+      true,
     );
     return folder;
   }

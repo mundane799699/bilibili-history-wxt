@@ -110,7 +110,13 @@ export type SyncFavoriteFolderResponse =
       folderId: number;
       mode: "incremental" | "full";
     }
-  | { success: false; error: string };
+  | {
+      success: false;
+      error: string;
+      status?: "paused" | "interrupted" | "error";
+      nextPage?: number;
+      retryAfter?: number;
+    };
 
 export interface SyncAllFavoriteFoldersRequest {
   action: "syncAllFavoriteFolders";
@@ -136,7 +142,11 @@ export interface AllFavoriteFoldersSyncProgress {
   message?: string;
 }
 
-export type FavoriteFolderSyncProgressStatus = "syncing" | "success" | "error";
+export type FavoriteFolderSyncProgressStatus =
+  "syncing" | "paused" | "interrupted" | "success" | "error";
+
+export type FavoriteFolderSyncErrorKind =
+  "rate_limited" | "auth" | "network" | "server" | "data" | "unknown";
 
 export interface FavoriteFolderSyncProgress {
   folderId: number;
@@ -151,6 +161,9 @@ export interface FavoriteFolderSyncProgress {
   startedAt: number;
   updatedAt: number;
   message?: string;
+  errorKind?: FavoriteFolderSyncErrorKind;
+  retryAfter?: number;
+  rateLimitCount?: number;
 }
 
 export interface RefreshFavoriteFoldersRequest {

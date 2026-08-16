@@ -19,7 +19,7 @@ import {
   SyncFavoriteFolderResponse,
 } from "../utils/types";
 
-type SyncPhase = "idle" | "syncing" | "success" | "error";
+type SyncPhase = "idle" | "syncing" | "paused" | "interrupted" | "success" | "error";
 
 interface SyncResult {
   message: string;
@@ -32,6 +32,13 @@ interface FavoriteFolderSyncModalProps {
   onSyncSuccess: (folderId: number) => Promise<void>;
 }
 
+const formatCountdown = (milliseconds: number): string => {
+  const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+};
+
 export const FavoriteFolderSyncModal = ({
   folder,
   onClose,
@@ -41,6 +48,7 @@ export const FavoriteFolderSyncModal = ({
   const [syncPhase, setSyncPhase] = useState<SyncPhase>("idle");
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
   const [progress, setProgress] = useState<FavoriteFolderSyncProgress | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
 
@@ -49,6 +57,10 @@ export const FavoriteFolderSyncModal = ({
     progress && progress.totalItems > 0
       ? Math.min(100, Math.round((progress.processedItems / progress.totalItems) * 100))
       : 0;
+  const retryAfter = progress?.retryAfter ?? 0;
+  const cooldownRemaining = Math.max(0, retryAfter - now);
+  const isCoolingDown = syncPhase === "paused" && cooldownRemaining > 0;
+  const resumePage = progress?.nextPage ?? 1;
 
   useEffect(() => {
     if (!folder) return;
@@ -72,6 +84,19 @@ export const FavoriteFolderSyncModal = ({
       if (next.status === "success") {
         setSyncResult({ message: next.message || "收藏夹同步成功" });
         setSyncPhase("success");
+        return;
+      }
+
+      if (next.status === "paused") {
+        setNow(Date.now());
+        setSyncResult({ message: next.message || "触发 B 站访问风控，进度已保存" });
+        setSyncPhase("paused");
+        return;
+      }
+
+      if (next.status === "interrupted") {
+        setSyncResult({ message: next.message || "同步任务已中断，进度已保存" });
+        setSyncPhase("interrupted");
         return;
       }
 
@@ -108,6 +133,13 @@ export const FavoriteFolderSyncModal = ({
       browser.storage.onChanged.removeListener(handleStorageChange);
     };
   }, [folder]);
+
+  useEffect(() => {
+    if (syncPhase !== "paused" || cooldownRemaining <= 0) return;
+
+    const timerId = window.setTimeout(() => setNow(Date.now()), Math.min(1000, cooldownRemaining));
+    return () => window.clearTimeout(timerId);
+  }, [cooldownRemaining, syncPhase]);
 
   useEffect(() => {
     if (!folder) return;
@@ -176,7 +208,6 @@ export const FavoriteFolderSyncModal = ({
 
     setSyncPhase("syncing");
     setSyncResult(null);
-    setProgress(null);
 
     try {
       const request: SyncFavoriteFolderRequest = {
@@ -190,8 +221,36 @@ export const FavoriteFolderSyncModal = ({
 
       if (!response) throw new Error("未收到同步响应");
       if (!response.success) {
+        const responseStatus = response.status;
+        if (responseStatus) {
+          setProgress((current) =>
+            current
+              ? {
+                  ...current,
+                  status: responseStatus,
+                  nextPage: response.nextPage ?? current.nextPage,
+                  retryAfter: response.retryAfter ?? current.retryAfter,
+                  message: response.error,
+                }
+              : {
+                  folderId: folder.id,
+                  folderTitle: folder.title,
+                  mode: isFullSync ? "full" : "incremental",
+                  status: responseStatus,
+                  currentPage: Math.max(0, (response.nextPage ?? 1) - 1),
+                  nextPage: response.nextPage ?? 1,
+                  processedItems: 0,
+                  totalItems: folder.media_count,
+                  onlineResourceIds: [],
+                  startedAt: Date.now(),
+                  updatedAt: Date.now(),
+                  message: response.error,
+                  retryAfter: response.retryAfter,
+                },
+          );
+        }
         setSyncResult({ message: response.error || "未知错误" });
-        setSyncPhase("error");
+        setSyncPhase(responseStatus || "error");
         return;
       }
 
@@ -414,16 +473,44 @@ export const FavoriteFolderSyncModal = ({
           </div>
         )}
 
-        {syncPhase === "error" && syncResult && (
+        {syncPhase === "paused" && syncResult && (
+          <div
+            aria-live="polite"
+            className="mt-6 flex gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/20 dark:bg-amber-500/10"
+          >
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                触发 B 站访问风控，已暂停同步
+              </p>
+              <p className="mt-1 break-words text-sm text-amber-700 dark:text-amber-400">
+                {syncResult.message}
+              </p>
+              <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+                进度已保存，将从第 {resumePage} 页继续
+                {isCoolingDown && `；请等待 ${formatCountdown(cooldownRemaining)}`}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {(syncPhase === "error" || syncPhase === "interrupted") && syncResult && (
           <div
             aria-live="polite"
             className="mt-6 flex gap-3 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-500/20 dark:bg-red-500/10"
           >
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600 dark:text-red-400" />
             <div>
-              <p className="text-sm font-semibold text-red-800 dark:text-red-300">同步失败</p>
+              <p className="text-sm font-semibold text-red-800 dark:text-red-300">
+                {syncPhase === "interrupted" ? "同步已中断" : "同步失败"}
+              </p>
               <p className="mt-1 break-words text-sm text-red-700 dark:text-red-400">
                 {syncResult.message}
+              </p>
+              <p className="mt-2 text-xs text-red-700 dark:text-red-300">
+                {syncPhase === "interrupted"
+                  ? `可从第 ${resumePage} 页继续`
+                  : `重试时将从第 ${resumePage} 页开始`}
               </p>
             </div>
           </div>
@@ -446,7 +533,9 @@ export const FavoriteFolderSyncModal = ({
                   onClick={handleClose}
                   className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
-                  {syncPhase === "error" ? "关闭" : "取消"}
+                  {syncPhase === "error" || syncPhase === "paused" || syncPhase === "interrupted"
+                    ? "关闭"
+                    : "取消"}
                 </button>
               )}
               {isSyncing && (
@@ -462,17 +551,25 @@ export const FavoriteFolderSyncModal = ({
               <button
                 type="button"
                 onClick={handleSync}
-                disabled={isSyncing}
+                disabled={isSyncing || isCoolingDown}
                 className="inline-flex min-w-28 items-center justify-center gap-2 rounded-lg bg-pink-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-pink-700 disabled:cursor-not-allowed disabled:bg-pink-400 dark:bg-pink-500 dark:hover:bg-pink-600 dark:disabled:bg-pink-500/50"
               >
                 {isSyncing && <RefreshCw className="h-4 w-4 animate-spin" />}
                 {isSyncing
                   ? "正在同步..."
-                  : syncPhase === "error"
-                    ? "重试"
-                    : isFullSync
-                      ? "开始全量同步"
-                      : "开始增量同步"}
+                  : syncPhase === "paused"
+                    ? isCoolingDown
+                      ? `继续同步（${formatCountdown(cooldownRemaining)}）`
+                      : `从第 ${resumePage} 页继续`
+                    : syncPhase === "interrupted"
+                      ? `从第 ${resumePage} 页继续`
+                      : syncPhase === "error"
+                        ? resumePage > 1
+                          ? `从第 ${resumePage} 页重试`
+                          : "重试"
+                        : isFullSync
+                          ? "开始全量同步"
+                          : "开始增量同步"}
               </button>
             </>
           )}
