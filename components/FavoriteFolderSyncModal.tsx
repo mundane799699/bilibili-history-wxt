@@ -241,7 +241,7 @@ export const FavoriteFolderSyncModal = ({
         </button>
 
         <div className="flex items-start gap-3 pr-10">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-pink-50 text-pink-600 dark:bg-pink-500/10 dark:text-pink-400">
             <CloudDownload className="h-5 w-5" />
           </div>
           <div className="min-w-0">
@@ -268,10 +268,10 @@ export const FavoriteFolderSyncModal = ({
               </legend>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <label
-                  className={`group relative rounded-xl border p-4 transition-all focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 dark:focus-within:ring-offset-neutral-900 ${
+                  className={`group relative rounded-xl border p-4 transition-all focus-within:ring-2 focus-within:ring-pink-500 focus-within:ring-offset-2 dark:focus-within:ring-offset-neutral-900 ${
                     !isFullSync
-                      ? "border-blue-500 bg-blue-50/80 shadow-sm ring-1 ring-blue-500 dark:bg-blue-500/10"
-                      : "border-gray-200 hover:border-blue-300 hover:bg-gray-50 dark:border-neutral-700 dark:hover:border-blue-500/40 dark:hover:bg-neutral-800/70"
+                      ? "border-pink-500 bg-pink-50/80 shadow-sm ring-1 ring-pink-500 dark:bg-pink-500/10"
+                      : "border-gray-200 hover:border-pink-300 hover:bg-gray-50 dark:border-neutral-700 dark:hover:border-pink-500/40 dark:hover:bg-neutral-800/70"
                   } ${isSyncing ? "cursor-not-allowed" : "cursor-pointer"}`}
                 >
                   <input
@@ -286,8 +286,8 @@ export const FavoriteFolderSyncModal = ({
                     <span
                       className={`flex h-9 w-9 items-center justify-center rounded-lg ${
                         !isFullSync
-                          ? "bg-blue-600 text-white dark:bg-blue-500"
-                          : "bg-gray-100 text-gray-500 group-hover:text-blue-600 dark:bg-neutral-800 dark:text-neutral-400 dark:group-hover:text-blue-400"
+                          ? "bg-pink-600 text-white dark:bg-pink-500"
+                          : "bg-gray-100 text-gray-500 group-hover:text-pink-600 dark:bg-neutral-800 dark:text-neutral-400 dark:group-hover:text-pink-400"
                       }`}
                     >
                       <Zap className="h-4 w-4" />
@@ -296,7 +296,7 @@ export const FavoriteFolderSyncModal = ({
                       aria-hidden="true"
                       className={`mt-1 flex h-4 w-4 items-center justify-center rounded-full border ${
                         !isFullSync
-                          ? "border-blue-600 bg-blue-600 dark:border-blue-400 dark:bg-blue-400"
+                          ? "border-pink-600 bg-pink-600 dark:border-pink-400 dark:bg-pink-400"
                           : "border-gray-300 bg-white dark:border-neutral-600 dark:bg-neutral-900"
                       }`}
                     >
@@ -307,7 +307,7 @@ export const FavoriteFolderSyncModal = ({
                     <span className="text-sm font-semibold text-gray-900 dark:text-neutral-100">
                       增量同步
                     </span>
-                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">
+                    <span className="rounded-full bg-pink-100 px-2 py-0.5 text-[10px] font-semibold text-pink-700 dark:bg-pink-500/20 dark:text-pink-300">
                       推荐
                     </span>
                   </span>
@@ -367,7 +367,7 @@ export const FavoriteFolderSyncModal = ({
         {syncPhase === "syncing" && (
           <div
             role="status"
-            className="mt-5 rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300"
+            className="mt-5 rounded-lg border border-pink-200 bg-pink-50 p-4 text-pink-700 dark:border-pink-500/20 dark:bg-pink-500/10 dark:text-pink-300"
           >
             <div className="flex items-center gap-3">
               <RefreshCw className="h-5 w-5 shrink-0 animate-spin" />
@@ -375,9 +375,9 @@ export const FavoriteFolderSyncModal = ({
                 正在{isFullSync ? "全量" : "增量"}同步「{folder.title}」...
               </p>
             </div>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-blue-100 dark:bg-blue-950/60">
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-pink-100 dark:bg-pink-950/60">
               <div
-                className={`h-full rounded-full bg-blue-600 transition-[width] duration-300 dark:bg-blue-400 ${
+                className={`h-full rounded-full bg-pink-600 transition-[width] duration-300 dark:bg-pink-400 ${
                   !isFullSync ? "animate-pulse" : ""
                 }`}
                 style={{
@@ -385,7 +385,7 @@ export const FavoriteFolderSyncModal = ({
                 }}
               />
             </div>
-            <p className="mt-2 text-xs text-blue-600 dark:text-blue-300">
+            <p className="mt-2 text-xs text-pink-600 dark:text-pink-300">
               {progress?.currentPage
                 ? progress.totalItems > 0
                   ? `已检查 ${progress.processedItems} / ${progress.totalItems} 条（${progressPercent}%），第 ${progress.currentPage} 页`
@@ -434,7 +434,7 @@ export const FavoriteFolderSyncModal = ({
             <button
               type="button"
               onClick={handleClose}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+              className="rounded-lg bg-pink-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-pink-700 dark:bg-pink-500 dark:hover:bg-pink-600"
             >
               完成
             </button>
@@ -463,7 +463,7 @@ export const FavoriteFolderSyncModal = ({
                 type="button"
                 onClick={handleSync}
                 disabled={isSyncing}
-                className="inline-flex min-w-28 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400 dark:bg-blue-500 dark:hover:bg-blue-600 dark:disabled:bg-blue-500/50"
+                className="inline-flex min-w-28 items-center justify-center gap-2 rounded-lg bg-pink-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-pink-700 disabled:cursor-not-allowed disabled:bg-pink-400 dark:bg-pink-500 dark:hover:bg-pink-600 dark:disabled:bg-pink-500/50"
               >
                 {isSyncing && <RefreshCw className="h-4 w-4 animate-spin" />}
                 {isSyncing

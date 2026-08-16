@@ -170,7 +170,7 @@ export const HistoryViewSettingsModal = ({
         </button>
 
         <div className="flex items-start gap-3 pr-10">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-pink-50 text-pink-600 dark:bg-pink-500/10 dark:text-pink-400">
             <Settings2 className="h-5 w-5" />
           </div>
           <div>
@@ -198,10 +198,10 @@ export const HistoryViewSettingsModal = ({
               return (
                 <label
                   key={option.value}
-                  className={`cursor-pointer rounded-lg border p-4 transition-colors focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 dark:focus-within:ring-offset-neutral-900 ${
+                  className={`cursor-pointer rounded-lg border p-4 transition-colors focus-within:ring-2 focus-within:ring-pink-500 focus-within:ring-offset-2 dark:focus-within:ring-offset-neutral-900 ${
                     isSelected
-                      ? "border-blue-500 bg-blue-50 ring-1 ring-blue-500 dark:border-blue-500 dark:bg-blue-500/10"
-                      : "border-gray-200 hover:border-blue-300 hover:bg-gray-50 dark:border-neutral-700 dark:hover:border-blue-500/40 dark:hover:bg-neutral-800/70"
+                      ? "border-pink-500 bg-pink-50 ring-1 ring-pink-500 dark:border-pink-500 dark:bg-pink-500/10"
+                      : "border-gray-200 hover:border-pink-300 hover:bg-gray-50 dark:border-neutral-700 dark:hover:border-pink-500/40 dark:hover:bg-neutral-800/70"
                   }`}
                 >
                   <input
@@ -216,7 +216,7 @@ export const HistoryViewSettingsModal = ({
                     <Icon
                       className={`h-4 w-4 ${
                         isSelected
-                          ? "text-blue-600 dark:text-blue-400"
+                          ? "text-pink-600 dark:text-pink-400"
                           : "text-gray-400 dark:text-neutral-500"
                       }`}
                     />
@@ -248,7 +248,7 @@ export const HistoryViewSettingsModal = ({
                 disabled={isSaving}
                 className={`text-xs px-3 py-1.5 rounded-md transition-colors border ${
                   draftGridColumns === "auto"
-                    ? "border-blue-500 bg-blue-50 text-blue-600 dark:border-blue-500 dark:bg-blue-500/10 dark:text-blue-400"
+                    ? "border-pink-500 bg-pink-50 text-pink-600 dark:border-pink-500 dark:bg-pink-500/10 dark:text-pink-400"
                     : "border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 dark:border-neutral-700 dark:bg-neutral-800/70 dark:text-neutral-300 dark:hover:bg-neutral-700"
                 }`}
               >
@@ -258,8 +258,11 @@ export const HistoryViewSettingsModal = ({
                 <button
                   type="button"
                   onClick={() => handleColumnChange(-1)}
-                  disabled={isSaving || (draftGridColumns !== "auto" && draftGridColumns <= MIN_GRID_COLUMNS)}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-white hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30 dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-blue-400"
+                  disabled={
+                    isSaving ||
+                    (draftGridColumns !== "auto" && draftGridColumns <= MIN_GRID_COLUMNS)
+                  }
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-white hover:text-pink-600 disabled:cursor-not-allowed disabled:opacity-30 dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-pink-400"
                   aria-label="减少列数"
                 >
                   <Minus className="h-4 w-4" />
@@ -270,8 +273,11 @@ export const HistoryViewSettingsModal = ({
                 <button
                   type="button"
                   onClick={() => handleColumnChange(1)}
-                  disabled={isSaving || (draftGridColumns !== "auto" && draftGridColumns >= MAX_GRID_COLUMNS)}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-white hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30 dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-blue-400"
+                  disabled={
+                    isSaving ||
+                    (draftGridColumns !== "auto" && draftGridColumns >= MAX_GRID_COLUMNS)
+                  }
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-white hover:text-pink-600 disabled:cursor-not-allowed disabled:opacity-30 dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-pink-400"
                   aria-label="增加列数"
                 >
                   <Plus className="h-4 w-4" />
@@ -303,7 +309,7 @@ export const HistoryViewSettingsModal = ({
             type="button"
             onClick={handleSave}
             disabled={isSaving}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400 dark:bg-blue-500 dark:hover:bg-blue-600 dark:disabled:bg-blue-500/50"
+            className="rounded-lg bg-pink-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-pink-700 disabled:cursor-not-allowed disabled:bg-pink-400 dark:bg-pink-500 dark:hover:bg-pink-600 dark:disabled:bg-pink-500/50"
           >
             {isSaving ? "保存中..." : "保存设置"}
           </button>

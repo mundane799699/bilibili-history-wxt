@@ -8,7 +8,10 @@ import {
   FavoriteFolderSyncProgress,
   AllFavoriteFoldersSyncProgress,
 } from "../utils/types";
-import { FAVORITE_FOLDER_SYNC_PROGRESS, ALL_FAVORITE_FOLDERS_SYNC_PROGRESS } from "../utils/constants";
+import {
+  FAVORITE_FOLDER_SYNC_PROGRESS,
+  ALL_FAVORITE_FOLDERS_SYNC_PROGRESS,
+} from "../utils/constants";
 import { Folder, Video, Search, X, ChevronDownIcon, CloudDownload, RefreshCw } from "lucide-react";
 import { Pagination } from "../components/Pagination";
 import { FavoriteFolderSyncModal } from "../components/FavoriteFolderSyncModal";
@@ -26,7 +29,9 @@ export const Favorites = () => {
   const [syncTargetFolder, setSyncTargetFolder] = useState<FavoriteFolder | null>(null);
   const [isAllFoldersSyncOpen, setIsAllFoldersSyncOpen] = useState(false);
   const [syncProgress, setSyncProgress] = useState<FavoriteFolderSyncProgress | null>(null);
-  const [allSyncProgress, setAllSyncProgress] = useState<AllFavoriteFoldersSyncProgress | null>(null);
+  const [allSyncProgress, setAllSyncProgress] = useState<AllFavoriteFoldersSyncProgress | null>(
+    null,
+  );
   const pageSize = 50;
 
   const contentRef = useRef<HTMLDivElement>(null);
@@ -90,14 +95,17 @@ export const Favorites = () => {
         setSyncProgress(data[FAVORITE_FOLDER_SYNC_PROGRESS] as FavoriteFolderSyncProgress);
       }
       if (data[ALL_FAVORITE_FOLDERS_SYNC_PROGRESS]) {
-        setAllSyncProgress(data[ALL_FAVORITE_FOLDERS_SYNC_PROGRESS] as AllFavoriteFoldersSyncProgress);
+        setAllSyncProgress(
+          data[ALL_FAVORITE_FOLDERS_SYNC_PROGRESS] as AllFavoriteFoldersSyncProgress,
+        );
       }
     };
     void loadProgress();
 
     const listener = (changes: any) => {
       if (changes[FAVORITE_FOLDER_SYNC_PROGRESS]) {
-        const newProg = changes[FAVORITE_FOLDER_SYNC_PROGRESS].newValue as FavoriteFolderSyncProgress | null;
+        const newProg = changes[FAVORITE_FOLDER_SYNC_PROGRESS]
+          .newValue as FavoriteFolderSyncProgress | null;
         setSyncProgress(newProg);
         if (newProg && (newProg.status === "success" || newProg.status === "error")) {
           if (selectedFolderId !== null) {
@@ -107,7 +115,8 @@ export const Favorites = () => {
         }
       }
       if (changes[ALL_FAVORITE_FOLDERS_SYNC_PROGRESS]) {
-        const newProg = changes[ALL_FAVORITE_FOLDERS_SYNC_PROGRESS].newValue as AllFavoriteFoldersSyncProgress | null;
+        const newProg = changes[ALL_FAVORITE_FOLDERS_SYNC_PROGRESS]
+          .newValue as AllFavoriteFoldersSyncProgress | null;
         setAllSyncProgress(newProg);
         if (newProg && (newProg.status === "success" || newProg.status === "error")) {
           void loadFolders();
@@ -135,7 +144,10 @@ export const Favorites = () => {
 
   const loadResources = async (
     folderId: number,
-    { resetSearch = true, showLoading = true }: { resetSearch?: boolean; showLoading?: boolean } = {},
+    {
+      resetSearch = true,
+      showLoading = true,
+    }: { resetSearch?: boolean; showLoading?: boolean } = {},
   ) => {
     if (showLoading) setLoading(true);
     try {
@@ -224,7 +236,7 @@ export const Favorites = () => {
             type="button"
             onClick={() => setIsAllFoldersSyncOpen(true)}
             disabled={folders.length === 0}
-            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-blue-200 bg-white/80 px-2 py-1 text-xs font-medium text-blue-600 shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-500/30 dark:bg-neutral-900/80 dark:text-blue-400 dark:hover:border-blue-500/50 dark:hover:bg-blue-500/20"
+            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-pink-200 bg-white/80 px-2 py-1 text-xs font-medium text-pink-600 shadow-sm transition-colors hover:border-pink-300 hover:bg-pink-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-pink-500/30 dark:bg-neutral-900/80 dark:text-pink-400 dark:hover:border-pink-500/50 dark:hover:bg-pink-500/20"
             title="同步所有收藏夹"
             aria-label="同步所有收藏夹"
           >
@@ -236,11 +248,11 @@ export const Favorites = () => {
         {allSyncProgress && allSyncProgress.status === "syncing" && (
           <div
             role="status"
-            className="m-2 rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-indigo-700 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-300"
+            className="m-2 rounded-lg border border-pink-200 bg-pink-50 p-3 text-pink-700 dark:border-pink-500/20 dark:bg-pink-500/10 dark:text-pink-300"
           >
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
-                <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin text-indigo-600 dark:text-indigo-400" />
+                <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin text-pink-600 dark:text-pink-400" />
                 <p className="text-xs font-semibold truncate">
                   {allSyncProgress.currentFolderTitle
                     ? `正在同步「${allSyncProgress.currentFolderTitle}」`
@@ -251,9 +263,9 @@ export const Favorites = () => {
                 {allSyncProgress.completedCount}/{allSyncProgress.totalFolders}
               </span>
             </div>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-indigo-100 dark:bg-indigo-950/60">
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-pink-100 dark:bg-pink-950/60">
               <div
-                className="h-full rounded-full bg-indigo-600 transition-[width] duration-300 dark:bg-indigo-400"
+                className="h-full rounded-full bg-pink-600 transition-[width] duration-300 dark:bg-pink-400"
                 style={{
                   width: allSyncProgress.totalFolders
                     ? `${Math.max(4, Math.floor((allSyncProgress.completedCount / allSyncProgress.totalFolders) * 100))}%`
@@ -264,38 +276,38 @@ export const Favorites = () => {
           </div>
         )}
 
-        {!allSyncProgress?.status?.includes("syncing") && syncProgress && syncProgress.status === "syncing" && (
-          <div
-            role="status"
-            className="m-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300"
-          >
-            <div className="flex items-center gap-2">
-              <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin text-blue-600 dark:text-blue-400" />
-              <p className="text-xs font-semibold truncate">
-                同步「{syncProgress.folderTitle}」
+        {!allSyncProgress?.status?.includes("syncing") &&
+          syncProgress &&
+          syncProgress.status === "syncing" && (
+            <div
+              role="status"
+              className="m-2 rounded-lg border border-pink-200 bg-pink-50 p-3 text-pink-700 dark:border-pink-500/20 dark:bg-pink-500/10 dark:text-pink-300"
+            >
+              <div className="flex items-center gap-2">
+                <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin text-pink-600 dark:text-pink-400" />
+                <p className="text-xs font-semibold truncate">同步「{syncProgress.folderTitle}」</p>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-pink-100 dark:bg-pink-950/60">
+                <div
+                  className={`h-full rounded-full bg-pink-600 transition-[width] duration-300 dark:bg-pink-400 ${
+                    syncProgress.mode !== "full" ? "animate-pulse" : ""
+                  }`}
+                  style={{
+                    width: syncProgress.totalItems
+                      ? `${Math.max(4, Math.floor((syncProgress.processedItems / syncProgress.totalItems) * 100))}%`
+                      : "4%",
+                  }}
+                />
+              </div>
+              <p className="mt-1.5 text-[11px] text-pink-600 dark:text-pink-300 truncate">
+                {syncProgress.currentPage
+                  ? syncProgress.totalItems > 0
+                    ? `${syncProgress.processedItems}/${syncProgress.totalItems} (${Math.floor((syncProgress.processedItems / syncProgress.totalItems) * 100)}%) 第${syncProgress.currentPage}页`
+                    : `已检查 ${syncProgress.processedItems} 条，第${syncProgress.currentPage}页`
+                  : "正在获取合集信息..."}
               </p>
             </div>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-blue-100 dark:bg-blue-950/60">
-              <div
-                className={`h-full rounded-full bg-blue-600 transition-[width] duration-300 dark:bg-blue-400 ${
-                  syncProgress.mode !== "full" ? "animate-pulse" : ""
-                }`}
-                style={{
-                  width: syncProgress.totalItems
-                    ? `${Math.max(4, Math.floor((syncProgress.processedItems / syncProgress.totalItems) * 100))}%`
-                    : "4%",
-                }}
-              />
-            </div>
-            <p className="mt-1.5 text-[11px] text-blue-600 dark:text-blue-300 truncate">
-              {syncProgress.currentPage
-                ? syncProgress.totalItems > 0
-                  ? `${syncProgress.processedItems}/${syncProgress.totalItems} (${Math.floor((syncProgress.processedItems / syncProgress.totalItems) * 100)}%) 第${syncProgress.currentPage}页`
-                  : `已检查 ${syncProgress.processedItems} 条，第${syncProgress.currentPage}页`
-                : "正在获取合集信息..."}
-            </p>
-          </div>
-        )}
+          )}
 
         <div className="p-2">
           {folders.map((folder) => (
@@ -303,7 +315,7 @@ export const Favorites = () => {
               key={folder.id}
               className={`p-3 rounded-lg cursor-pointer mb-1 transition-colors ${
                 selectedFolderId === folder.id
-                  ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                  ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400"
                   : "hover:bg-gray-100 dark:hover:bg-neutral-800"
               }`}
               onClick={() => setSelectedFolderId(folder.id)}
@@ -323,7 +335,7 @@ export const Favorites = () => {
                     event.stopPropagation();
                     setSyncTargetFolder(folder);
                   }}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-md border border-blue-200 bg-white/80 px-2 py-1 text-xs font-medium text-blue-600 shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-100 dark:border-blue-500/30 dark:bg-neutral-900/80 dark:text-blue-400 dark:hover:border-blue-500/50 dark:hover:bg-blue-500/20"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-md border border-pink-200 bg-white/80 px-2 py-1 text-xs font-medium text-pink-600 shadow-sm transition-colors hover:border-pink-300 hover:bg-pink-100 dark:border-pink-500/30 dark:bg-neutral-900/80 dark:text-pink-400 dark:hover:border-pink-500/50 dark:hover:bg-pink-500/20"
                   title={`同步收藏夹：${folder.title}`}
                   aria-label={`同步收藏夹：${folder.title}`}
                 >

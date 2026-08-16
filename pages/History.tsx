@@ -267,7 +267,7 @@ export const History: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsSyncModalOpen(true)}
-              className="inline-flex items-center gap-2 whitespace-nowrap rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-600 shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-100 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:border-blue-500/50 dark:hover:bg-blue-500/20"
+              className="inline-flex items-center gap-2 whitespace-nowrap rounded-lg border border-pink-200 bg-pink-50 px-3 py-1.5 text-sm font-medium text-pink-600 shadow-sm transition-colors hover:border-pink-300 hover:bg-pink-100 dark:border-pink-500/30 dark:bg-pink-500/10 dark:text-pink-400 dark:hover:border-pink-500/50 dark:hover:bg-pink-500/20"
               title="同步历史记录"
               aria-label="同步历史记录"
             >
@@ -279,7 +279,7 @@ export const History: React.FC = () => {
               onClick={() => {
                 void Promise.all([getTotalCount(), reload()]);
               }}
-              className={`p-2  rounded-full bg-blue-50 text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm border border-blue-200 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:border-blue-500/50 dark:hover:bg-blue-500/20 hover:rotate-180 duration-500 ${
+              className={`p-2  rounded-full bg-pink-50 text-pink-600 dark:hover:text-pink-400 transition-all shadow-sm border border-pink-200 dark:border-pink-500/30 dark:bg-pink-500/10 dark:text-pink-400 dark:hover:border-pink-500/50 dark:hover:bg-pink-500/20 hover:rotate-180 duration-500 ${
                 isLoading ? "opacity-50 cursor-not-allowed" : ""
               }`}
               disabled={isLoading}
@@ -314,7 +314,7 @@ export const History: React.FC = () => {
                         key={option.value}
                         className={`w-full text-left px-4 py-2 text-sm transition-colors ${
                           selectedType === option.value
-                            ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium"
+                            ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400 font-medium"
                             : "text-gray-600 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-800"
                         }`}
                         onClick={() => {
@@ -333,11 +333,11 @@ export const History: React.FC = () => {
 
           {/* 中间：搜索框 (带类型选择) */}
           <div className="flex-1 w-full md:max-w-lg px-4 flex items-center">
-            <div className="relative group w-full flex items-center bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-full transition-all duration-300 shadow-sm hover:shadow-md focus-within:bg-white dark:focus-within:bg-neutral-900 focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-500/20 focus-within:border-blue-400 dark:focus-within:border-blue-500">
+            <div className="relative group w-full flex items-center bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-full transition-all duration-300 shadow-sm hover:shadow-md focus-within:bg-white dark:focus-within:bg-neutral-900 focus-within:ring-2 focus-within:ring-pink-100 dark:focus-within:ring-pink-500/20 focus-within:border-pink-400 dark:focus-within:border-pink-500">
               {/* 搜索类型下拉 */}
               <div className="relative">
                 <button
-                  className="pl-4 pr-3 py-2 text-sm text-gray-600 dark:text-neutral-300 font-medium cursor-pointer border-r border-gray-200 dark:border-neutral-800 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1 transition-colors whitespace-nowrap"
+                  className="pl-4 pr-3 py-2 text-sm text-gray-600 dark:text-neutral-300 font-medium cursor-pointer border-r border-gray-200 dark:border-neutral-800 hover:text-pink-600 dark:hover:text-pink-400 flex items-center gap-1 transition-colors whitespace-nowrap"
                   onClick={() => setIsSearchKindDropdownOpen(!isSearchKindDropdownOpen)}
                 >
                   <span>
@@ -368,7 +368,7 @@ export const History: React.FC = () => {
                           key={option.value}
                           className={`w-full text-left px-4 py-2 text-sm transition-colors ${
                             searchType === option.value
-                              ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium"
+                              ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400 font-medium"
                               : "text-gray-600 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-800"
                           }`}
                           onClick={() => {
@@ -430,7 +430,7 @@ export const History: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsViewSettingsModalOpen(true)}
-              className="rounded-full border border-gray-200 bg-white p-2 text-gray-500 shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:border-blue-500/30 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
+              className="rounded-full border border-gray-200 bg-white p-2 text-gray-500 shadow-sm transition-colors hover:border-pink-200 hover:bg-pink-50 hover:text-pink-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:border-pink-500/30 dark:hover:bg-pink-500/10 dark:hover:text-pink-400"
               title="历史视图设置"
               aria-label="历史视图设置"
             >
@@ -501,7 +501,7 @@ export const History: React.FC = () => {
                 setSelectedType("all");
                 setSearchType("all");
               }}
-              className="mt-4 text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 hover:underline text-sm"
+              className="mt-4 text-pink-500 dark:text-pink-400 hover:text-pink-600 dark:hover:text-pink-300 hover:underline text-sm"
             >
               清除所有筛选
             </button>

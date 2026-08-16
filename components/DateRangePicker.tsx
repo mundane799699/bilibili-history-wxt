@@ -94,11 +94,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   return (
     <div className="relative" ref={containerRef}>
       <div
-        className="group relative flex items-center bg-gray-50 dark:bg-neutral-900 hover:bg-white dark:hover:bg-neutral-800 border border-gray-200 dark:border-neutral-800 rounded-lg transition-all focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-500/20 focus-within:border-blue-400 dark:focus-within:border-blue-500 focus-within:bg-white dark:focus-within:bg-neutral-900 shadow-sm cursor-pointer"
+        className="group relative flex items-center bg-gray-50 dark:bg-neutral-900 hover:bg-white dark:hover:bg-neutral-800 border border-gray-200 dark:border-neutral-800 rounded-lg transition-all focus-within:ring-2 focus-within:ring-pink-100 dark:focus-within:ring-pink-500/20 focus-within:border-pink-400 dark:focus-within:border-pink-500 focus-within:bg-white dark:focus-within:bg-neutral-900 shadow-sm cursor-pointer"
         onClick={() => setIsOpen(!isOpen)}
       >
         <div className="pl-3 flex items-center pointer-events-none">
-          <CalendarIcon className="h-4 w-4 text-gray-400 dark:text-neutral-500 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors" />
+          <CalendarIcon className="h-4 w-4 text-gray-400 dark:text-neutral-500 group-hover:text-pink-500 dark:group-hover:text-pink-400 transition-colors" />
         </div>
         <input
           type="text"
@@ -165,10 +165,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               const isInRange = startDate && endDate && dateStr > startDate && dateStr < endDate;
 
               let bgClass =
-                "hover:bg-blue-50 dark:hover:bg-blue-500/10 text-gray-700 dark:text-neutral-200";
-              if (isStart || isEnd) bgClass = "bg-blue-500 text-white hover:bg-blue-600";
+                "hover:bg-pink-50 dark:hover:bg-pink-500/10 text-gray-700 dark:text-neutral-200";
+              if (isStart || isEnd) bgClass = "bg-pink-500 text-white hover:bg-pink-600";
               else if (isInRange)
-                bgClass = "bg-blue-50 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400";
+                bgClass = "bg-pink-50 dark:bg-pink-500/15 text-pink-600 dark:text-pink-400";
 
               // Handle "picking" state visual cue (optional, kept simple for now)
 
@@ -199,7 +199,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 const today = dayjs().format("YYYY-MM-DD");
                 onChange(today, today);
               }}
-              className="text-xs text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300"
+              className="text-xs text-pink-500 dark:text-pink-400 hover:text-pink-600 dark:hover:text-pink-300"
             >
               今天
             </button>
