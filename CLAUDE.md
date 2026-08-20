@@ -46,7 +46,7 @@ manifest 在 [wxt.config.ts](wxt.config.ts) 声明，关键权限：`storage / t
 
 `browser.alarms` 每分钟触发，但内部用 `*_TIME_REMAIN` 计数器实现"X 分钟跑一次"，避免 alarm 抖动：
 
-1. `syncHistory` — 调 `x/web-interface/history/cursor` 游标分页；增量同步遇到首尾两条都已在 IDB 即停。`SYNC_INTERVAL` 单位分钟，状态写到 `IS_SYNCING` / `SYNC_PROGRESS_HISTORY`。
+1. `syncHistory` — 调 `x/web-interface/history/cursor` 并传递 `business / max / view_at` 完整游标；支持首尾命中即停的**增量同步**、完整抓取后精确对齐服务器保留窗口的**智能同步**和只新增/更新全部线上分页的**全量同步**。智能同步仅删除严格晚于服务器最早时间且已不在服务器快照中的本地记录，并保留更早记录；只有完整抓取成功后才在单个 IDB 事务中对齐。自动任务使用轻量增量模式。
 2. `syncFavorites` — 先取 `nav` 拿 mid，再取收藏夹列表，逐夹翻页。**全量**同步会用 `onlineResourceIds` 集合 diff 本地记录、删除已取消收藏的项；**增量**从第一页开始，保存当前页后在页首和页尾资源都已存在于同步前本地数据时停止（`AbortController` 30s 超时 + 最多 2 次重试）。
 3. `syncWebDav` — 当 `WEBDAV_AUTO_SYNC_ENABLED=true` 时按 `WEBDAV_LAST_SYNC` 间隔触发 `autoSyncWebDav`：**先 download → smartMerge\*（在 [utils/db.ts](utils/db.ts)）→ upload**，避免单向覆盖丢数据。
 

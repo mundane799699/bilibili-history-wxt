@@ -5,13 +5,14 @@ import {
   Clock3,
   CloudDownload,
   Database,
+  History,
   RefreshCw,
   X,
   Zap,
 } from "lucide-react";
 import { HISTORY_LAST_SYNC } from "../utils/constants";
 import { getStorageValue } from "../utils/storage";
-import { SyncHistoryRequest, SyncHistoryResponse } from "../utils/types";
+import { HistorySyncMode, SyncHistoryRequest, SyncHistoryResponse } from "../utils/types";
 
 type SyncPhase = "idle" | "syncing" | "success" | "error";
 
@@ -30,8 +31,56 @@ interface HistorySyncModalProps {
 
 const formatDateTime = (timestamp: number) => new Date(timestamp).toLocaleString();
 
+const SYNC_MODE_OPTIONS = [
+  {
+    mode: "incremental",
+    title: "增量同步",
+    description: "只拉取最新变化；发现当前批次首尾记录均已存在时停止。",
+    badge: null,
+    icon: Zap,
+    selectedCard:
+      "border-blue-500 bg-blue-50/80 shadow-sm ring-1 ring-blue-500 dark:border-blue-500 dark:bg-blue-500/10",
+    idleCard:
+      "border-gray-200 hover:border-blue-300 hover:bg-gray-50 dark:border-neutral-700 dark:hover:border-blue-500/40 dark:hover:bg-neutral-800/70",
+    selectedIcon: "bg-blue-600 text-white dark:bg-blue-500",
+    idleIcon:
+      "bg-gray-100 text-gray-500 group-hover:text-blue-600 dark:bg-neutral-800 dark:text-neutral-400 dark:group-hover:text-blue-400",
+    selectedRadio: "border-blue-600 bg-blue-600 dark:border-blue-400 dark:bg-blue-400",
+  },
+  {
+    mode: "smart",
+    title: "智能同步",
+    description: "完整对齐服务器保留区间；删除线上已消失的记录，保留更早本地历史。",
+    badge: "推荐",
+    icon: History,
+    selectedCard:
+      "border-emerald-500 bg-emerald-50/80 shadow-sm ring-1 ring-emerald-500 dark:border-emerald-500 dark:bg-emerald-500/10",
+    idleCard:
+      "border-gray-200 hover:border-emerald-300 hover:bg-gray-50 dark:border-neutral-700 dark:hover:border-emerald-500/40 dark:hover:bg-neutral-800/70",
+    selectedIcon: "bg-emerald-600 text-white dark:bg-emerald-500",
+    idleIcon:
+      "bg-gray-100 text-gray-500 group-hover:text-emerald-600 dark:bg-neutral-800 dark:text-neutral-400 dark:group-hover:text-emerald-400",
+    selectedRadio: "border-emerald-600 bg-emerald-600 dark:border-emerald-400 dark:bg-emerald-400",
+  },
+  {
+    mode: "full",
+    title: "全量同步",
+    description: "从最新记录开始遍历全部线上历史，适合主动补全数据，耗时较长。",
+    badge: null,
+    icon: Database,
+    selectedCard:
+      "border-amber-500 bg-amber-50/80 shadow-sm ring-1 ring-amber-500 dark:border-amber-500 dark:bg-amber-500/10",
+    idleCard:
+      "border-gray-200 hover:border-amber-300 hover:bg-gray-50 dark:border-neutral-700 dark:hover:border-amber-500/40 dark:hover:bg-neutral-800/70",
+    selectedIcon: "bg-amber-500 text-white",
+    idleIcon:
+      "bg-gray-100 text-gray-500 group-hover:text-amber-600 dark:bg-neutral-800 dark:text-neutral-400 dark:group-hover:text-amber-400",
+    selectedRadio: "border-amber-500 bg-amber-500",
+  },
+] as const;
+
 export const HistorySyncModal = ({ open, onClose, onSyncSuccess }: HistorySyncModalProps) => {
-  const [isFullSync, setIsFullSync] = useState(false);
+  const [syncMode, setSyncMode] = useState<HistorySyncMode>("smart");
   const [syncPhase, setSyncPhase] = useState<SyncPhase>("idle");
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
@@ -40,12 +89,13 @@ export const HistorySyncModal = ({ open, onClose, onSyncSuccess }: HistorySyncMo
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
 
   const isSyncing = syncPhase === "syncing";
+  const selectedMode = SYNC_MODE_OPTIONS.find((option) => option.mode === syncMode)!;
 
   useEffect(() => {
     if (!open) return;
 
     let isActive = true;
-    setIsFullSync(false);
+    setSyncMode("smart");
     setSyncPhase("idle");
     setSyncResult(null);
     setIsLastSyncLoaded(false);
@@ -128,7 +178,7 @@ export const HistorySyncModal = ({ open, onClose, onSyncSuccess }: HistorySyncMo
     try {
       const request: SyncHistoryRequest = {
         action: "syncHistory",
-        isFullSync,
+        mode: syncMode,
       };
       const response = (await browser.runtime.sendMessage(request)) as
         SyncHistoryResponse | undefined;
@@ -185,7 +235,7 @@ export const HistorySyncModal = ({ open, onClose, onSyncSuccess }: HistorySyncMo
         aria-modal="true"
         aria-labelledby="history-sync-title"
         tabIndex={-1}
-        className="relative w-full max-w-lg rounded-2xl border border-transparent bg-white p-6 shadow-xl outline-none dark:border-neutral-800 dark:bg-neutral-900"
+        className="relative max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-y-auto rounded-2xl border border-transparent bg-white p-6 shadow-xl outline-none dark:border-neutral-800 dark:bg-neutral-900"
       >
         <button
           type="button"
@@ -220,99 +270,61 @@ export const HistorySyncModal = ({ open, onClose, onSyncSuccess }: HistorySyncMo
               <legend className="text-sm font-semibold text-gray-800 dark:text-neutral-200">
                 选择同步方式
               </legend>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <label
-                  className={`group relative cursor-pointer rounded-xl border p-4 transition-all focus-within:ring-2 focus-within:ring-pink-500 focus-within:ring-offset-2 dark:focus-within:ring-offset-neutral-900 ${
-                    !isFullSync
-                      ? "border-pink-500 bg-pink-50/80 shadow-sm ring-1 ring-pink-500 dark:border-pink-500 dark:bg-pink-500/10"
-                      : "border-gray-200 hover:border-pink-300 hover:bg-gray-50 dark:border-neutral-700 dark:hover:border-pink-500/40 dark:hover:bg-neutral-800/70"
-                  } ${isSyncing ? "cursor-not-allowed" : ""}`}
-                >
-                  <input
-                    type="radio"
-                    name="historySyncMode"
-                    value="incremental"
-                    checked={!isFullSync}
-                    onChange={() => setIsFullSync(false)}
-                    className="sr-only"
-                  />
-                  <span className="flex items-start justify-between gap-3">
-                    <span
-                      className={`flex h-9 w-9 items-center justify-center rounded-lg ${
-                        !isFullSync
-                          ? "bg-pink-600 text-white dark:bg-pink-500"
-                          : "bg-gray-100 text-gray-500 group-hover:text-pink-600 dark:bg-neutral-800 dark:text-neutral-400 dark:group-hover:text-pink-400"
-                      }`}
-                    >
-                      <Zap className="h-4 w-4" />
-                    </span>
-                    <span
-                      aria-hidden="true"
-                      className={`mt-1 flex h-4 w-4 items-center justify-center rounded-full border ${
-                        !isFullSync
-                          ? "border-pink-600 bg-pink-600 dark:border-pink-400 dark:bg-pink-400"
-                          : "border-gray-300 bg-white dark:border-neutral-600 dark:bg-neutral-900"
-                      }`}
-                    >
-                      {!isFullSync && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
-                    </span>
-                  </span>
-                  <span className="mt-4 flex items-center gap-2">
-                    <span className="text-sm font-semibold text-gray-900 dark:text-neutral-100">
-                      增量同步
-                    </span>
-                    <span className="rounded-full bg-pink-100 px-2 py-0.5 text-[10px] font-semibold text-pink-700 dark:bg-pink-500/20 dark:text-pink-300">
-                      推荐
-                    </span>
-                  </span>
-                  <span className="mt-2 block text-xs leading-relaxed text-gray-500 dark:text-neutral-400">
-                    只拉取最新变化；发现当前批次首尾记录均已存在时停止。
-                  </span>
-                </label>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                {SYNC_MODE_OPTIONS.map((option) => {
+                  const isSelected = syncMode === option.mode;
+                  const ModeIcon = option.icon;
 
-                <label
-                  className={`group relative cursor-pointer rounded-xl border p-4 transition-all focus-within:ring-2 focus-within:ring-amber-500 focus-within:ring-offset-2 dark:focus-within:ring-offset-neutral-900 ${
-                    isFullSync
-                      ? "border-amber-500 bg-amber-50/80 shadow-sm ring-1 ring-amber-500 dark:border-amber-500 dark:bg-amber-500/10"
-                      : "border-gray-200 hover:border-amber-300 hover:bg-gray-50 dark:border-neutral-700 dark:hover:border-amber-500/40 dark:hover:bg-neutral-800/70"
-                  } ${isSyncing ? "cursor-not-allowed" : ""}`}
-                >
-                  <input
-                    type="radio"
-                    name="historySyncMode"
-                    value="full"
-                    checked={isFullSync}
-                    onChange={() => setIsFullSync(true)}
-                    className="sr-only"
-                  />
-                  <span className="flex items-start justify-between gap-3">
-                    <span
-                      className={`flex h-9 w-9 items-center justify-center rounded-lg ${
-                        isFullSync
-                          ? "bg-amber-500 text-white"
-                          : "bg-gray-100 text-gray-500 group-hover:text-amber-600 dark:bg-neutral-800 dark:text-neutral-400 dark:group-hover:text-amber-400"
-                      }`}
+                  return (
+                    <label
+                      key={option.mode}
+                      className={`group relative cursor-pointer rounded-xl border p-4 transition-all focus-within:ring-2 focus-within:ring-offset-2 dark:focus-within:ring-offset-neutral-900 ${
+                        isSelected ? option.selectedCard : option.idleCard
+                      } ${isSyncing ? "cursor-not-allowed" : ""}`}
                     >
-                      <Database className="h-4 w-4" />
-                    </span>
-                    <span
-                      aria-hidden="true"
-                      className={`mt-1 flex h-4 w-4 items-center justify-center rounded-full border ${
-                        isFullSync
-                          ? "border-amber-500 bg-amber-500"
-                          : "border-gray-300 bg-white dark:border-neutral-600 dark:bg-neutral-900"
-                      }`}
-                    >
-                      {isFullSync && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
-                    </span>
-                  </span>
-                  <span className="mt-4 block text-sm font-semibold text-gray-900 dark:text-neutral-100">
-                    全量同步
-                  </span>
-                  <span className="mt-2 block text-xs leading-relaxed text-gray-500 dark:text-neutral-400">
-                    从最新记录开始遍历全部历史，适合补全数据，耗时较长。
-                  </span>
-                </label>
+                      <input
+                        type="radio"
+                        name="historySyncMode"
+                        value={option.mode}
+                        checked={isSelected}
+                        onChange={() => setSyncMode(option.mode)}
+                        className="sr-only"
+                      />
+                      <span className="flex items-start justify-between gap-3">
+                        <span
+                          className={`flex h-9 w-9 items-center justify-center rounded-lg ${
+                            isSelected ? option.selectedIcon : option.idleIcon
+                          }`}
+                        >
+                          <ModeIcon className="h-4 w-4" />
+                        </span>
+                        <span
+                          aria-hidden="true"
+                          className={`mt-1 flex h-4 w-4 items-center justify-center rounded-full border ${
+                            isSelected
+                              ? option.selectedRadio
+                              : "border-gray-300 bg-white dark:border-neutral-600 dark:bg-neutral-900"
+                          }`}
+                        >
+                          {isSelected && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                        </span>
+                      </span>
+                      <span className="mt-4 flex items-center gap-2">
+                        <span className="text-sm font-semibold text-gray-900 dark:text-neutral-100">
+                          {option.title}
+                        </span>
+                        {option.badge && (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                            {option.badge}
+                          </span>
+                        )}
+                      </span>
+                      <span className="mt-2 block text-xs leading-relaxed text-gray-500 dark:text-neutral-400">
+                        {option.description}
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
             </fieldset>
 
@@ -339,7 +351,11 @@ export const HistorySyncModal = ({ open, onClose, onSyncSuccess }: HistorySyncMo
           >
             <RefreshCw className="h-5 w-5 shrink-0 animate-spin" />
             <p className="text-sm font-medium">
-              {isFullSync ? "正在全量同步，请耐心等待..." : "正在同步最新历史记录..."}
+              {syncMode === "full"
+                ? "正在全量同步，请耐心等待..."
+                : syncMode === "smart"
+                  ? "正在获取完整服务器历史并对齐本地记录..."
+                  : "正在同步最新历史记录..."}
             </p>
           </div>
         )}
@@ -420,9 +436,7 @@ export const HistorySyncModal = ({ open, onClose, onSyncSuccess }: HistorySyncMo
                   ? "正在同步..."
                   : syncPhase === "error"
                     ? "重试"
-                    : isFullSync
-                      ? "开始全量同步"
-                      : "开始增量同步"}
+                    : `开始${selectedMode.title}`}
               </button>
             </>
           )}
