@@ -65,9 +65,11 @@ export interface SyncResponse {
   };
 }
 
+export type HistorySyncMode = "incremental" | "smart" | "full";
+
 export interface SyncHistoryRequest {
   action: "syncHistory";
-  isFullSync: boolean;
+  mode: HistorySyncMode;
 }
 
 export type SyncHistoryResponse =

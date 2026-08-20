@@ -272,6 +272,73 @@ export const saveHistory = async (history: HistoryItem[]): Promise<void> => {
   });
 };
 
+export interface HistoryReconciliationResult {
+  upserted: number;
+  deleted: number;
+  oldestServerViewAt: number | null;
+}
+
+/**
+ * Make the locally stored server-retained window match a complete server snapshot.
+ * Records older than (or exactly at) the oldest server timestamp are preserved.
+ */
+export const reconcileHistoryWithServerSnapshot = async (
+  serverHistory: HistoryItem[],
+): Promise<HistoryReconciliationResult> => {
+  if (serverHistory.length === 0) {
+    return { upserted: 0, deleted: 0, oldestServerViewAt: null };
+  }
+
+  const serverItemsById = new Map<number, HistoryItem>();
+  let oldestServerViewAt = Number.POSITIVE_INFINITY;
+
+  serverHistory.forEach((item) => {
+    oldestServerViewAt = Math.min(oldestServerViewAt, item.view_at);
+    const existing = serverItemsById.get(item.id);
+    if (!existing || item.view_at >= existing.view_at) {
+      serverItemsById.set(item.id, item);
+    }
+  });
+
+  const db = await openDB();
+  const tx = db.transaction("history", "readwrite");
+  const store = tx.objectStore("history");
+  let deleted = 0;
+
+  serverItemsById.forEach((item) => store.put(item));
+
+  const cursorRequest = store.openCursor();
+  cursorRequest.onsuccess = () => {
+    const cursor = cursorRequest.result;
+    if (!cursor) return;
+
+    const localItem = cursor.value as HistoryItem;
+    if (localItem.view_at > oldestServerViewAt && !serverItemsById.has(localItem.id)) {
+      cursor.delete();
+      deleted += 1;
+    }
+    cursor.continue();
+  };
+
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => {
+      resolve({
+        upserted: serverItemsById.size,
+        deleted,
+        oldestServerViewAt,
+      });
+    };
+    tx.onerror = () => {
+      void recordStorageWarning(tx.error, "reconcile-history-transaction");
+      reject(tx.error);
+    };
+    tx.onabort = () => {
+      void recordStorageWarning(tx.error, "reconcile-history-transaction-aborted");
+      reject(tx.error);
+    };
+  });
+};
+
 const matchCondition = (
   item: HistoryItem,
   keyword: string,
@@ -497,6 +564,28 @@ export const addDeletedHistoryIds = async (ids: number[]): Promise<void> => {
   const current = await getDeletedHistoryIds();
   ids.forEach((id) => current.add(id));
   await setStorageValue(DELETED_HISTORY_IDS, [...current]);
+};
+
+export const hasHistoryItems = async (ids: number[]): Promise<boolean> => {
+  if (ids.length === 0) return false;
+
+  const db = await openDB();
+  const tx = db.transaction("history", "readonly");
+  const store = tx.objectStore("history");
+  let allExist = true;
+
+  ids.forEach((id) => {
+    const request = store.get(id);
+    request.onsuccess = () => {
+      if (request.result === undefined) allExist = false;
+    };
+  });
+
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve(allExist);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
 };
 
 export const clearHistory = async (): Promise<void> => {

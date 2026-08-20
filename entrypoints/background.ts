@@ -1,9 +1,12 @@
 import {
+  IS_SYNCING,
   HAS_FULL_SYNC,
   HAS_FULL_FAV_SYNC,
   HISTORY_LAST_SYNC,
   SYNC_INTERVAL,
   IS_SYNC_DELETE_FROM_BILIBILI,
+  IS_SYNCING_FAV,
+  WEBDAV_CONFIG,
   WEBDAV_LAST_SYNC,
   WEBDAV_AUTO_SYNC_ENABLED,
   WEBDAV_AUTO_SYNC_INTERVAL,
@@ -16,8 +19,9 @@ import {
   ALL_FAVORITE_FOLDERS_SYNC_PROGRESS,
 } from "../utils/constants";
 import {
-  openDB,
-  getItem,
+  saveHistory,
+  hasHistoryItems,
+  reconcileHistoryWithServerSnapshot,
   deleteHistoryItem,
   saveFavFolders,
   replaceFavFolders,
@@ -52,6 +56,8 @@ import {
 } from "../utils/webdav";
 import {
   FavoriteFolder,
+  HistoryItem,
+  HistorySyncMode,
   RefreshFavoriteFoldersResponse,
   SubscribedCollection,
   SubscribedCollectionResource,
@@ -102,6 +108,80 @@ const normalizeFavoriteFolderRequestError = (error: unknown): FavoriteFolderRequ
 
 const getRandomDelay = (minMs: number, maxMs: number): number =>
   Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+
+const HISTORY_PAGE_SIZE = 30;
+const MAX_HISTORY_SYNC_PAGES = 10_000;
+
+interface BilibiliHistoryCursor {
+  business?: string;
+  max?: number | string;
+  view_at?: number;
+}
+
+interface BilibiliHistoryEntry {
+  author_mid?: number | string;
+  author_name?: string;
+  cover?: string;
+  covers?: string[];
+  duration?: number;
+  history?: {
+    business?: HistoryItem["business"];
+    bvid?: string;
+    cid?: number | string;
+    oid?: number | string;
+  };
+  is_fav?: number;
+  progress?: number;
+  tag_name?: string;
+  title?: string;
+  uri?: string;
+  view_at?: number;
+}
+
+interface BilibiliHistoryResponse {
+  code?: number;
+  data?: {
+    cursor?: BilibiliHistoryCursor;
+    list?: BilibiliHistoryEntry[] | null;
+  };
+  message?: string;
+}
+
+const HISTORY_SYNC_MODE_LABELS: Record<HistorySyncMode, string> = {
+  incremental: "增量",
+  smart: "智能",
+  full: "全量",
+};
+
+const historyCursorSignature = (cursor: Required<BilibiliHistoryCursor>): string =>
+  `${cursor.business}:${cursor.max}:${cursor.view_at}`;
+
+const toLocalHistoryItem = (item: BilibiliHistoryEntry): HistoryItem => {
+  const id = Number(item.history?.oid);
+  const viewAt = Number(item.view_at);
+
+  if (!Number.isSafeInteger(id) || id <= 0 || !Number.isFinite(viewAt) || viewAt <= 0) {
+    throw new Error("历史记录数据格式异常");
+  }
+
+  return {
+    id,
+    business: item.history?.business || "archive",
+    bvid: item.history?.bvid || "",
+    cid: item.history?.cid === undefined ? undefined : String(item.history.cid),
+    title: item.title || "",
+    tag_name: item.tag_name,
+    cover: item.cover || item.covers?.[0] || "",
+    view_at: viewAt,
+    uri: item.uri,
+    author_name: item.author_name || "",
+    author_mid: Number(item.author_mid) || 0,
+    progress: item.progress,
+    duration: item.duration,
+    is_fav: item.is_fav === 1,
+    uploaded: false,
+  };
+};
 
 export default defineBackground(() => {
   let localHistoryBackupPromise: Promise<LocalHistoryBackupResult> | null = null;
@@ -247,13 +327,17 @@ export default defineBackground(() => {
       setTimeout(async () => {
         // 并行执行初始化同步
         const initHistory = async () => {
+          await setStorageValue(IS_SYNCING, true);
           try {
-            await syncHistory(true);
+            await syncHistory("full");
           } catch (e) {
             console.error("History init failed", e);
+          } finally {
+            await setStorageValue(IS_SYNCING, false);
           }
         };
         const initFav = async () => {
+          await setStorageValue(IS_SYNCING_FAV, true);
           try {
             const task = startFavoriteSync(() => syncFavorites(true));
             if (!task) return;
@@ -265,6 +349,8 @@ export default defineBackground(() => {
             }
           } catch (e) {
             console.error("Fav init failed", e);
+          } finally {
+            await setStorageValue(IS_SYNCING_FAV, false);
           }
         };
         initHistory();
@@ -275,10 +361,22 @@ export default defineBackground(() => {
 
   const intervalSync = async () => {
     try {
-      // 执行增量同步
-      await syncHistory(false);
+      // 检查是否正在同步
+      const isSyncing = await getStorageValue(IS_SYNCING);
+      if (isSyncing) {
+        console.log("同步正在进行中，跳过本次定时同步");
+        return;
+      }
+
+      // 设置同步状态为进行中
+      await setStorageValue(IS_SYNCING, true);
+
+      // 定时同步保持轻量；精确对齐服务器窗口由用户手动运行智能同步。
+      await syncHistory("incremental");
     } catch (error) {
       console.error("定时同步失败:", error);
+    } finally {
+      await setStorageValue(IS_SYNCING, false);
     }
   };
 
@@ -344,26 +442,39 @@ export default defineBackground(() => {
     sendResponse: (response: SyncHistoryResponse) => void,
   ) => {
     try {
-      // 获取前端传递的isFullSync参数，如果没有则根据历史记录判断
-      const forceFullSync = message.isFullSync;
-      let syncResult = "";
-
-      if (forceFullSync) {
-        // 如果前端强制要求全量同步
-        await syncHistory(true);
-        syncResult = "全量同步成功";
-        sendResponse({ success: true, message: syncResult });
-      } else {
-        await syncHistory(false);
-        syncResult = "增量同步成功";
-        sendResponse({ success: true, message: syncResult });
+      // 检查是否正在同步
+      const isSyncing = await getStorageValue(IS_SYNCING);
+      if (isSyncing) {
+        console.log("同步正在进行中，请稍后再试");
+        sendResponse({
+          success: false,
+          error: "同步正在进行中，请稍后再试",
+        });
+        return;
       }
+
+      // 设置同步状态为进行中
+      await setStorageValue(IS_SYNCING, true);
+
+      const legacyRequest = message as SyncHistoryRequest & { isFullSync?: boolean };
+      const requestedMode = message.mode || (legacyRequest.isFullSync ? "full" : "incremental");
+      if (!(requestedMode in HISTORY_SYNC_MODE_LABELS)) {
+        throw new Error("同步方式不完整");
+      }
+
+      const completedMode = await syncHistory(requestedMode);
+      sendResponse({
+        success: true,
+        message: `${HISTORY_SYNC_MODE_LABELS[completedMode]}同步成功`,
+      });
     } catch (error) {
       console.error("同步失败:", error);
       sendResponse({
         success: false,
         error: error instanceof Error ? error.message : "未知错误",
       });
+    } finally {
+      await setStorageValue(IS_SYNCING, false);
     }
   };
 
@@ -1099,135 +1210,126 @@ export default defineBackground(() => {
     }
   });
 
-  // 全量同步历史记录
-  async function syncHistory(isFullSync = false): Promise<boolean> {
+  // 智能模式完整抓取服务器保留窗口，再以单个事务精确对齐该窗口。
+  async function syncHistory(mode: HistorySyncMode = "smart"): Promise<HistorySyncMode> {
     try {
-      // 获取 B 站 cookie
       const cookies = await browser.cookies.getAll({
         domain: "bilibili.com",
       });
-      const SESSDATA = cookies.find((cookie) => cookie.name === "SESSDATA")?.value;
+      const sessdata = cookies.find((cookie) => cookie.name === "SESSDATA")?.value;
 
-      if (!SESSDATA) {
+      if (!sessdata) {
         throw new Error("未找到 B 站登录信息，请先登录 B 站");
       }
 
-      let hasMore = true;
-      let max = 0;
-      let view_at = 0;
-      const type = "all";
-      const ps = 30;
-      // 增量同步的兜底翻页上限，防止"首尾记录均不存在于本地"时无限翻页。
-      // 超出后按服务端 is_end 或空列表正常收尾，不影响正确性，只是多拉几页。
-      const MAX_INCREMENTAL_PAGES = 500;
-      let incrementalPages = 0;
-      console.log(`${isFullSync ? "全量" : "增量"}同步开始`);
+      const crawlsAllHistory = mode === "full" || mode === "smart";
+      let requestCursor: Required<BilibiliHistoryCursor> = {
+        business: "",
+        max: 0,
+        view_at: 0,
+      };
+      let pagesFetched = 0;
+      let itemsFetched = 0;
+      let syncComplete = false;
+      const seenPageSignatures = new Set<string>();
+      const serverSnapshot: HistoryItem[] = [];
 
-      // 循环获取所有历史记录
-      while (hasMore) {
-        // 获取历史记录
+      console.log(`${HISTORY_SYNC_MODE_LABELS[mode]}同步开始`);
+
+      for (let page = 0; page < MAX_HISTORY_SYNC_PAGES; page += 1) {
+        const params = new URLSearchParams({
+          business: requestCursor.business,
+          max: String(requestCursor.max),
+          ps: String(HISTORY_PAGE_SIZE),
+          type: "all",
+          view_at: String(requestCursor.view_at),
+        });
         const response = await fetch(
-          `https://api.bilibili.com/x/web-interface/history/cursor?max=${max}&view_at=${view_at}&type=${type}&ps=${ps}`,
-          {
-            headers: {
-              Cookie: `SESSDATA=${SESSDATA}`,
-            },
-          },
+          `https://api.bilibili.com/x/web-interface/history/cursor?${params.toString()}`,
+          { headers: { Cookie: `SESSDATA=${sessdata}` } },
         );
 
         if (!response.ok) {
-          throw new Error("获取历史记录失败");
+          throw new Error(`获取历史记录失败（HTTP ${response.status}）`);
         }
 
-        const { data, code, message } = await response.json();
+        const body = (await response.json()) as BilibiliHistoryResponse;
 
-        if (code !== 0) {
-          throw new Error(message || "获取历史记录失败");
+        if (body.code !== 0) {
+          throw new Error(body.message || "获取历史记录失败");
         }
 
-        const { cursor, list } = data;
-        // 更新分页参数
-        // 服务端返回 is_end 或空列表才代表真正翻完。仅依赖 list.length 会在
-        // 最后一页 cursor 归零后重新从头返回数据，造成死循环。
-        hasMore = list.length > 0 && !cursor.is_end;
-        max = cursor.max;
-        view_at = cursor.view_at;
-        incrementalPages++;
-
-        if (list.length > 0) {
-          // 为每批数据创建新的事务
-          const db = await openDB();
-          const tx = db.transaction("history", "readwrite");
-          const store = tx.objectStore("history");
-          // 取出list中的第一条和最后一条
-          if (!isFullSync) {
-            const firstItem = list[0];
-            const lastItem = list[list.length - 1];
-            // 如果firstItem的bvid和lastItem的bvid在indexedDB中存在，则不进行同步
-            const firstItemExists = await getItem(store, firstItem.history.oid);
-            const lastItemExists = await getItem(store, lastItem.history.oid);
-            if (firstItemExists && lastItemExists) {
-              hasMore = false;
-            } else if (incrementalPages >= MAX_INCREMENTAL_PAGES) {
-              console.warn(
-                `增量同步已超过 ${MAX_INCREMENTAL_PAGES} 页仍未遇到本地边界，停止翻页（不影响已同步数据）`,
-              );
-              hasMore = false;
-            }
-          }
-
-          // 批量存储历史记录
-          for (const item of list) {
-            // 保留旧记录已有的 uploaded 标记，避免重复上传
-            const existing = await getItem(store, item.history.oid);
-            // put是异步的
-            store.put({
-              id: item.history.oid,
-              business: item.history.business,
-              bvid: item.history.bvid,
-              cid: item.history.cid,
-              title: item.title,
-              tag_name: item.tag_name,
-              cover: item.cover || (item.covers && item.covers[0]),
-              view_at: item.view_at,
-              uri: item.uri,
-              author_name: item.author_name || "",
-              author_mid: item.author_mid || "",
-              progress: item.progress,
-              duration: item.duration,
-              is_fav: item.is_fav === 1, // 保存是否收藏字段
-              timestamp: Date.now(),
-              uploaded: existing?.uploaded === true,
-            });
-          }
-
-          // 等待事务完成
-          await new Promise((resolve, reject) => {
-            tx.oncomplete = resolve;
-            tx.onerror = () => {
-              void recordStorageWarning(tx.error, "sync-history-transaction");
-              reject(tx.error);
-            };
-            tx.onabort = () => {
-              void recordStorageWarning(tx.error, "sync-history-transaction-abort");
-              reject(tx.error);
-            };
-          });
-
-          // 添加延时，避免请求过于频繁
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+        const list = body.data?.list;
+        const cursor = body.data?.cursor;
+        if (!Array.isArray(list) || !cursor) {
+          throw new Error("历史记录响应缺少列表或游标");
         }
+
+        if (list.length === 0) {
+          syncComplete = true;
+          break;
+        }
+
+        const localItems = list.map(toLocalHistoryItem);
+        const pageSignature = localItems
+          .map((item) => `${item.business}:${item.id}:${item.view_at}`)
+          .join("|");
+        if (seenPageSignatures.has(pageSignature)) {
+          throw new Error("历史记录接口重复返回相同页面");
+        }
+        seenPageSignatures.add(pageSignature);
+
+        const reachedLegacyBoundary =
+          mode === "incremental" &&
+          (await hasHistoryItems([localItems[0].id, localItems[localItems.length - 1].id]));
+
+        if (mode === "smart") {
+          serverSnapshot.push(...localItems);
+        } else {
+          await saveHistory(localItems);
+        }
+        pagesFetched += 1;
+        itemsFetched += localItems.length;
+
+        if (reachedLegacyBoundary) {
+          syncComplete = true;
+          break;
+        }
+
+        const nextCursor: Required<BilibiliHistoryCursor> = {
+          business: String(cursor.business || ""),
+          max: cursor.max ?? 0,
+          view_at: Number(cursor.view_at) || 0,
+        };
+        if (historyCursorSignature(nextCursor) === historyCursorSignature(requestCursor)) {
+          throw new Error("历史记录同步游标停滞");
+        }
+        requestCursor = nextCursor;
+
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
-      console.log(`${isFullSync ? "全量" : "增量"}同步结束`);
 
-      if (isFullSync) {
+      if (!syncComplete) {
+        throw new Error(`历史记录同步超过 ${MAX_HISTORY_SYNC_PAGES} 页，已停止`);
+      }
+
+      if (mode === "smart" && serverSnapshot.length > 0) {
+        const result = await reconcileHistoryWithServerSnapshot(serverSnapshot);
+        console.log(
+          `智能同步对齐完成：写入 ${result.upserted} 条，删除 ${result.deleted} 条，服务器最早时间 ${result.oldestServerViewAt}`,
+        );
+      }
+
+      if (crawlsAllHistory) {
         await setStorageValue(HAS_FULL_SYNC, true);
       }
 
-      // 更新最后同步时间
       await setStorageValue(HISTORY_LAST_SYNC, Date.now());
+      console.log(
+        `${HISTORY_SYNC_MODE_LABELS[mode]}同步结束：${pagesFetched} 页，${itemsFetched} 条`,
+      );
 
-      return true;
+      return mode;
     } catch (error) {
       console.error("同步历史记录失败:", error);
       throw error;

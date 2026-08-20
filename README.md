@@ -43,7 +43,7 @@ B 站官方网页端只保留**最近 3 个月**的观看历史，超出后无�
 
 ## 功能特性
 
-- **永久保存** — 自动同步并永久保留全部 B 站观看历史，彻底告别 3 个月限制
+- **永久保存** — 自动同步并永久保留全部 B 站观看历史；智能同步精确对齐服务器当前保留区间，同时保留更早的本地记录
 - **收藏夹备份** — 支持收藏夹与"喜欢的音乐"全量 + 增量同步，本地随时可查
 - **WebDAV 双向同步** — 与坚果云 / 自建 WebDAV 互通，多设备智能合并不丢数据
 - **AI 语义搜索** — 支持配置 OpenAI 兼容接口，用自然语言找回模糊记忆中的视频
@@ -99,6 +99,15 @@ B 站官方网页端只保留**最近 3 个月**的观看历史，超出后无�
 
 ## 本地开发
 
+使用 Nix：
+
+```bash
+nix develop
+pnpm install --frozen-lockfile
+```
+
+或者自行安装 Node.js 22 和 pnpm：
+
 ```bash
 # 1. 安装 pnpm
 npm install -g pnpm
@@ -111,7 +120,15 @@ pnpm dev              # Chrome
 pnpm dev:firefox      # Firefox
 ```
 
-加载本地扩展：Chrome 打开 `chrome://extensions/` → 加载已解压扩展程序 → 选择 `.output/chrome-mv3-dev`。
+### 在浏览器中加载
+
+`web-ext.config.ts` 当前关闭了自动启动浏览器，因此需要手动加载生成的扩展：
+
+- Chrome：运行 `pnpm dev`，打开 `chrome://extensions/`，启用“开发者模式”，点击“加载已解压的扩展程序”，选择 `.output/chrome-mv3-dev`。
+- Edge：运行 `pnpm dev`，打开 `edge://extensions/`，启用“开发人员模式”，点击“加载解压缩的扩展”，选择 `.output/chrome-mv3-dev`。
+- Firefox：运行 `pnpm dev:firefox`，打开 `about:debugging#/runtime/this-firefox`，点击“临时载入附加组件”，选择 `.output/firefox-mv2-dev/manifest.json`。临时扩展会在 Firefox 重启后消失。
+
+保持开发命令运行。源码变化后如浏览器没有自动更新，在扩展管理页点击“重新加载”，再刷新 B 站或扩展页面。请在同一浏览器配置中登录 B 站后测试同步；Chrome/Edge 可在扩展详情页打开后台 Service Worker 的检查窗口，查看同步日志和 IndexedDB。
 
 | 命令           | 说明                |
 | -------------- | ------------------- |
