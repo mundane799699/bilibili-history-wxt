@@ -1,12 +1,11 @@
 import { HistoryItem as HistoryItemType } from "../utils/types";
-import { getContentUrl } from "../utils/common";
+import { formatDuration, getContentUrl, getTypeTag } from "../utils/common";
 import { Trash2 } from "lucide-react";
 import { deleteHistoryItem, checkIsFavorited, addDeletedHistoryIds } from "../utils/db";
 import React, { useState, useEffect } from "react";
 import { getStorageValue } from "../utils/storage";
 import { toast } from "react-hot-toast";
 import { IS_SYNC_DELETE } from "../utils/constants";
-import { getTypeTag } from "../utils/common";
 
 interface HistoryItemProps {
   item: HistoryItemType;
@@ -85,17 +84,6 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
       console.error("删除历史记录失败:", error);
       toast.error(error instanceof Error ? error.message : "删除历史记录失败");
     }
-  };
-
-  const formatDuration = (seconds?: number) => {
-    if (seconds === undefined || seconds === null) return "00:00";
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    if (h > 0) {
-      return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-    }
-    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
   const getProgressText = () => {

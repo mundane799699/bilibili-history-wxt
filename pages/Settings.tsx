@@ -68,9 +68,7 @@ const Settings = () => {
       setIsSyncDeleteFromBilibili(syncDeleteFromBilibili);
       setIsHideUserInfo(hideUserInfo);
       setHiddenMenus(
-        menus.includes("WebDAV") && !menus.includes("自动/手动备份")
-          ? [...menus, "自动/手动备份"]
-          : menus,
+        menus.includes("WebDAV") && !menus.includes("数据备份") ? [...menus, "数据备份"] : menus,
       );
       setSyncInterval(storedSyncInterval);
       setDateSelectionMode(storedDateMode as "range" | "single");
@@ -527,7 +525,7 @@ const Settings = () => {
                   onChange={handleHideUserInfoChange}
                 />
 
-                {["收藏夹", "合集", "听歌", "云同步", "自动/手动备份", "关于", "反馈"].map(
+                {["收藏夹", "合集", "AI探索", "听歌", "云同步", "数据备份", "关于", "反馈"].map(
                   (title) => (
                     <Checkbox
                       key={title}

@@ -42,7 +42,7 @@ const steps: GuideStep[] = [
     path: "/",
   },
   {
-    title: "自动/手动备份",
+    title: "数据备份",
     description: "从这里进入备份中心，集中管理 WebDAV、本地目录和 JSON 文件备份。",
     icon: DatabaseBackup,
     accent: "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",

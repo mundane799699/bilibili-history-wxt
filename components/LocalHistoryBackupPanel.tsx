@@ -240,7 +240,7 @@ export const LocalHistoryBackupPanel = () => {
   };
 
   return (
-    <section className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+    <section className="rounded-lg border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
       <div className="border-b border-gray-100 p-5 dark:border-neutral-800">
         <div className="flex items-start gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">

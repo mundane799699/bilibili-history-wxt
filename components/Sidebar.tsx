@@ -73,7 +73,7 @@ const menuList = [
     to: "/cloud-sync",
   },
   {
-    title: "自动/手动备份",
+    title: "数据备份",
     icon: <HardDriveDownload className="w-4 h-4" />,
     to: "/webdav-sync",
     tourId: "backup-menu",
@@ -103,9 +103,7 @@ export const Sidebar = () => {
     getStorageValue<string[]>(HIDDEN_MENUS, []).then((menus) => {
       // Keep the renamed entry hidden for users who previously hid "WebDAV".
       setHiddenMenus(
-        menus.includes("WebDAV") && !menus.includes("自动/手动备份")
-          ? [...menus, "自动/手动备份"]
-          : menus,
+        menus.includes("WebDAV") && !menus.includes("数据备份") ? [...menus, "数据备份"] : menus,
       );
     });
     getStorageValue<ThemeMode>(THEME_MODE, "light").then((m) =>

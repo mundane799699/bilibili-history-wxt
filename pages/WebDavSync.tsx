@@ -605,7 +605,7 @@ const WebDavSync = () => {
           <DatabaseBackup className="h-5 w-5" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">自动/手动备份</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">数据备份</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">
             集中管理本地目录、WebDAV 和 JSON 文件备份。
           </p>

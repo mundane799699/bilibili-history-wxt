@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { saveLikedMusic, deleteLikedMusic, isLikedMusic } from "../utils/db";
 import { LikedMusic } from "../utils/types";
 import { toast } from "react-hot-toast";
+import { formatDuration } from "../utils/common";
 
 interface SongItemProps {
   item: SearchResultItem;
@@ -109,7 +110,7 @@ const SontItem = ({ item, isPlaying, isLoading, error, onPlay, onStop }: SongIte
             className="w-full h-full object-cover rounded-lg"
           />
           <div className="absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-xs px-1 rounded">
-            {item.duration}
+            {formatDuration(item.duration)}
           </div>
         </div>
 

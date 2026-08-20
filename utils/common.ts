@@ -1,5 +1,34 @@
 import { HistoryItem } from "./types";
 
+export const formatDuration = (duration?: number | string): string => {
+  if (duration === undefined || duration === null) return "00:00";
+
+  if (typeof duration === "string" && duration.includes(":")) {
+    const parts = duration.split(":");
+    if (parts.length === 2) {
+      return `${parts[0].padStart(2, "0")}:${parts[1].padStart(2, "0")}`;
+    }
+    if (parts.length === 3) {
+      return `${parts[0]}:${parts[1].padStart(2, "0")}:${parts[2].padStart(2, "0")}`;
+    }
+  }
+
+  const seconds = Number(duration);
+  if (!Number.isFinite(seconds)) return "00:00";
+
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, "0")}:${remainingSeconds
+      .toString()
+      .padStart(2, "0")}`;
+  }
+
+  return `${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
+};
+
 export const getTypeTag = (business: string): string => {
   switch (business) {
     case "live":

@@ -81,6 +81,15 @@ export const THEME_MODE = "themeMode";
 
 export const UPDATE_HISTORY = [
   {
+    date: "2026-08-20",
+    version: "2.1.5",
+    changes: [
+      "统一将“自动/手动备份”更名为“数据备份”，并修复本地备份周期和保留份数下拉列表被裁切、无法滚动的问题",
+      "统一视频时长格式，听歌搜索结果中的时长支持补齐前导零显示",
+      "设置页面新增隐藏 AI 探索选项，支持控制侧边栏 AI 探索菜单的显示状态",
+    ],
+  },
+  {
     date: "2026-08-16",
     version: "2.1.4",
     changes: [
