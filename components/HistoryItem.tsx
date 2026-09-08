@@ -1,14 +1,15 @@
-import { HistoryItem as HistoryItemType } from "../utils/types";
+import { HistoryDisplayMode, HistoryEvent, HistoryListItem } from "../utils/types";
 import { formatDuration, getContentUrl, getTypeTag } from "../utils/common";
 import { Trash2 } from "lucide-react";
-import { deleteHistoryItem, checkIsFavorited, addDeletedHistoryIds } from "../utils/db";
+import { checkIsFavorited, deleteHistoryContent, deleteHistoryEvent } from "../utils/db";
 import React, { useState, useEffect } from "react";
 import { getStorageValue } from "../utils/storage";
 import { toast } from "react-hot-toast";
 import { IS_SYNC_DELETE } from "../utils/constants";
 
 interface HistoryItemProps {
-  item: HistoryItemType;
+  item: HistoryListItem;
+  displayMode: HistoryDisplayMode;
   onDelete?: () => void;
 }
 
@@ -46,17 +47,16 @@ const deleteBilibiliHistory = async (business: string, id: number): Promise<void
   });
 
   if (!response.ok) {
-    console.error("删除历史记录失败:", response.statusText);
-    return;
+    throw new Error(`删除 B 站历史记录失败：${response.statusText || response.status}`);
   }
 
   const data = await response.json();
   if (data.code !== 0) {
-    console.error("删除历史记录失败:", data.message);
+    throw new Error(data.message || "删除 B 站历史记录失败");
   }
 };
 
-export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
+export const HistoryItem: React.FC<HistoryItemProps> = ({ item, displayMode, onDelete }) => {
   const [isFav, setIsFav] = useState(item.is_fav === true);
 
   useEffect(() => {
@@ -69,16 +69,22 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
     e.stopPropagation();
 
     try {
+      if (displayMode === "visit") {
+        if (!("event_id" in item)) throw new Error("观看事件信息不完整");
+        await deleteHistoryEvent(item as HistoryEvent);
+        onDelete?.();
+        return;
+      }
+
+      const confirmed = window.confirm("将删除该内容的全部本地观看记录，是否继续？");
+      if (!confirmed) return;
       const isSyncDelete = await getStorageValue(IS_SYNC_DELETE, true);
       if (isSyncDelete) {
         // 先删除B站服务器上的历史记录
         await deleteBilibiliHistory(item.business, item.id);
         console.log("删除B站服务器上的历史记录成功");
       }
-      // 删除本地数据库中的历史记录
-      await deleteHistoryItem(item.id);
-      // 记录墓碑，防止 WebDAV 双向同步时远端旧数据复活
-      await addDeletedHistoryIds([item.id]);
+      await deleteHistoryContent(item.business, item.id);
       onDelete?.();
     } catch (error) {
       console.error("删除历史记录失败:", error);
@@ -167,6 +173,10 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
               <button
                 className="p-1 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-full transition-colors"
                 onClick={handleDelete}
+                title={displayMode === "visit" ? "删除本次本地观看记录" : "删除该内容的全部记录"}
+                aria-label={
+                  displayMode === "visit" ? "删除本次本地观看记录" : "删除该内容的全部记录"
+                }
               >
                 <Trash2 className="w-4 h-4 text-gray-500 dark:text-neutral-400" />
               </button>

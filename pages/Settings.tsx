@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Check, HardDrive, RefreshCw } from "lucide-react";
-import { clearHistory, deleteDB } from "../utils/db";
+import { clearHistory, deleteDB, getTotalHistoryCount } from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
 import {
   IS_SYNC_DELETE,
@@ -11,6 +11,7 @@ import {
   DATE_SELECTION_MODE,
   HISTORY_LOAD_MODE,
   FIRST_RUN_GUIDE_COMPLETED,
+  HISTORY_EVENT_MIGRATION_REPORT,
 } from "../utils/constants";
 import toast from "react-hot-toast";
 import { Checkbox } from "../components/Checkbox";
@@ -21,7 +22,7 @@ import { clearLocalBackupDirectoryHandle } from "../utils/localBackupHandle";
 const Settings = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isSyncDelete, setIsSyncDelete] = useState(false);
-  const [isSyncDeleteFromBilibili, setIsSyncDeleteFromBilibili] = useState(true);
+  const [isSyncDeleteFromBilibili, setIsSyncDeleteFromBilibili] = useState(false);
   const [isHideUserInfo, setIsHideUserInfo] = useState(false);
   const [hiddenMenus, setHiddenMenus] = useState<string[]>([]);
   const [dateSelectionMode, setDateSelectionMode] = useState<"range" | "single">("range");
@@ -36,13 +37,25 @@ const Settings = () => {
   const [storageHealth, setStorageHealth] = useState<StorageHealthReport | null>(null);
   const [isCheckingStorage, setIsCheckingStorage] = useState(false);
   const [storageHealthError, setStorageHealthError] = useState("");
+  const [historyCounts, setHistoryCounts] = useState({ content: 0, visit: 0 });
+  const [historyMigrationSkipped, setHistoryMigrationSkipped] = useState(0);
 
   const refreshStorageHealth = async (showSuccess = false) => {
     setIsCheckingStorage(true);
     setStorageHealthError("");
     try {
-      const report = await checkStorageHealth(true);
+      const [report, contentCount, visitCount] = await Promise.all([
+        checkStorageHealth(true),
+        getTotalHistoryCount("content"),
+        getTotalHistoryCount("visit"),
+      ]);
       setStorageHealth(report);
+      setHistoryCounts({ content: contentCount, visit: visitCount });
+      const migrationReport = await getStorageValue<{ skipped?: number }>(
+        HISTORY_EVENT_MIGRATION_REPORT,
+        {},
+      );
+      setHistoryMigrationSkipped(Number(migrationReport.skipped) || 0);
       if (showSuccess) toast.success("存储保护状态已刷新");
     } catch (error) {
       console.error("检查存储保护状态失败:", error);
@@ -57,12 +70,16 @@ const Settings = () => {
     // 加载设置
     const loadSettings = async () => {
       const syncDelete = await getStorageValue(IS_SYNC_DELETE, false);
-      const syncDeleteFromBilibili = await getStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, true);
+      const syncDeleteFromBilibili = await getStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, false);
       const hideUserInfo = await getStorageValue(HIDE_USER_INFO, false);
       const menus = await getStorageValue<string[]>(HIDDEN_MENUS, []);
       const storedSyncInterval = await getStorageValue(SYNC_INTERVAL, 1);
       const storedDateMode = await getStorageValue(DATE_SELECTION_MODE, "range");
       const storedHistoryLoadMode = await getStorageValue(HISTORY_LOAD_MODE, "pagination");
+      const migrationReport = await getStorageValue<{ skipped?: number }>(
+        HISTORY_EVENT_MIGRATION_REPORT,
+        {},
+      );
 
       setIsSyncDelete(syncDelete);
       setIsSyncDeleteFromBilibili(syncDeleteFromBilibili);
@@ -73,6 +90,7 @@ const Settings = () => {
       setSyncInterval(storedSyncInterval);
       setDateSelectionMode(storedDateMode as "range" | "single");
       setHistoryLoadMode(storedHistoryLoadMode as "pagination" | "scroll");
+      setHistoryMigrationSkipped(Number(migrationReport.skipped) || 0);
     };
     loadSettings();
     void refreshStorageHealth();
@@ -252,6 +270,12 @@ const Settings = () => {
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
+                    <span className="text-gray-500 dark:text-neutral-400">历史记录</span>
+                    <span className="font-medium text-gray-700 dark:text-neutral-200">
+                      {historyCounts.content} 个内容 / {historyCounts.visit} 次观看
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
                     <span className="text-gray-500 dark:text-neutral-400">估算配额</span>
                     <span className="font-medium text-gray-700 dark:text-neutral-200">
                       {formatStorageSize(storageHealth.quota)}
@@ -287,6 +311,13 @@ const Settings = () => {
                       最近一次存储写入异常：{storageHealth.lastWarning.name}（
                       {new Date(storageHealth.lastWarning.timestamp).toLocaleString()}
                       ）。建议立即检查备份。
+                    </div>
+                  )}
+
+                  {historyMigrationSkipped > 0 && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
+                      数据升级时有 {historyMigrationSkipped}
+                      条历史记录因字段不完整未转换为观看事件。原始记录仍保留，建议先导出备份。
                     </div>
                   )}
                 </div>
@@ -399,7 +430,7 @@ const Settings = () => {
                   同步删除：B站 -&gt; 插件
                 </h3>
                 <p className="text-xs text-gray-400 dark:text-neutral-500 mt-1">
-                  B站删记录时同步删除本地记录
+                  B站删记录时同步删除该内容的全部本地观看记录（默认关闭）
                 </p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer shrink-0">

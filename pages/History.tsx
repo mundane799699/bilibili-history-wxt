@@ -4,7 +4,7 @@ import { HistorySyncModal } from "../components/HistorySyncModal";
 import { HistoryViewSettingsModal } from "../components/HistoryViewSettingsModal";
 import type { HistoryViewSettings } from "../components/HistoryViewSettingsModal";
 import { getHistory, getHistoryPage, getTotalHistoryCount } from "../utils/db";
-import { HistoryItem as HistoryItemType } from "../utils/types";
+import { HistoryDisplayMode, HistoryEvent, HistoryListItem } from "../utils/types";
 import { useDebounce } from "use-debounce";
 import {
   RefreshCwIcon,
@@ -19,6 +19,7 @@ import { Pagination } from "../components/Pagination";
 import {
   DATE_SELECTION_MODE,
   GRID_COLUMNS,
+  HISTORY_DISPLAY_MODE,
   HISTORY_LOAD_MODE,
   HISTORY_PAGE_SIZE,
 } from "../utils/constants";
@@ -28,7 +29,7 @@ import { getStorageValue, setStorageValue } from "../utils/storage";
 const DEFAULT_PAGE_SIZE = 100;
 
 export const History: React.FC = () => {
-  const [history, setHistory] = useState<HistoryItemType[]>([]);
+  const [history, setHistory] = useState<HistoryListItem[]>([]);
   const [keyword, setKeyword] = useState("");
   const [debouncedKeyword] = useDebounce(keyword, 500);
 
@@ -45,6 +46,7 @@ export const History: React.FC = () => {
   const [totalHistoryCount, setTotalHistoryCount] = useState(0);
   const [dateSelectionMode, setDateSelectionMode] = useState<"range" | "single">("range");
   const [gridColumns, setGridColumns] = useState<number | "auto">(4);
+  const [displayMode, setDisplayMode] = useState<HistoryDisplayMode>("content");
   // null means the stored value is not loaded yet
   const [loadMode, setLoadMode] = useState<"pagination" | "scroll" | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -56,7 +58,7 @@ export const History: React.FC = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const isLoadingRef = useRef<boolean>(false);
-  const historyRef = useRef<HistoryItemType[]>([]);
+  const historyRef = useRef<HistoryListItem[]>([]);
   const hasMoreRef = useRef(true);
 
   useEffect(() => {
@@ -75,6 +77,9 @@ export const History: React.FC = () => {
     });
     getStorageValue(HISTORY_LOAD_MODE, "pagination").then((mode) => {
       setLoadMode(mode as "pagination" | "scroll");
+    });
+    getStorageValue<HistoryDisplayMode>(HISTORY_DISPLAY_MODE, "content").then((mode) => {
+      setDisplayMode(mode === "visit" ? "visit" : "content");
     });
   }, []);
 
@@ -96,18 +101,24 @@ export const History: React.FC = () => {
       setIsLoading(true);
       isLoadingRef.current = true;
 
-      let lastViewTime: number | "" = "";
+      let cursor = null;
       if (isAppend && historyRef.current.length > 0) {
-        lastViewTime = historyRef.current[historyRef.current.length - 1].view_at;
+        const lastItem = historyRef.current[historyRef.current.length - 1];
+        cursor = {
+          view_at: lastItem.view_at,
+          event_id: "event_id" in lastItem ? lastItem.event_id : undefined,
+          id: lastItem.id,
+        };
       }
 
       const { items, hasMore } = await getHistory(
-        lastViewTime,
+        cursor,
         100,
         debouncedKeyword,
         { start: startDate, end: endDate },
         selectedType,
         searchType,
+        displayMode,
       );
 
       if (isAppend) {
@@ -149,6 +160,7 @@ export const History: React.FC = () => {
         { start: startDate, end: endDate },
         selectedType,
         searchType,
+        displayMode,
       );
 
       setHistory(items);
@@ -181,14 +193,23 @@ export const History: React.FC = () => {
       return;
     }
     void reload();
-  }, [debouncedKeyword, startDate, endDate, selectedType, searchType, loadMode, pageSize]);
+  }, [
+    debouncedKeyword,
+    startDate,
+    endDate,
+    selectedType,
+    searchType,
+    loadMode,
+    pageSize,
+    displayMode,
+  ]);
 
   useEffect(() => {
     getTotalCount();
-  }, []);
+  }, [displayMode]);
 
   const getTotalCount = async () => {
-    const count = await getTotalHistoryCount();
+    const count = await getTotalHistoryCount(displayMode);
     setTotalHistoryCount(count);
     return count;
   };
@@ -208,6 +229,15 @@ export const History: React.FC = () => {
     ]);
     setLoadMode(settings.loadMode);
     setGridColumns(settings.gridColumns);
+  };
+
+  const handleDisplayModeChange = async (mode: HistoryDisplayMode) => {
+    if (mode === displayMode) return;
+    await setStorageValue(HISTORY_DISPLAY_MODE, mode);
+    setCurrentPage(1);
+    setHistory([]);
+    historyRef.current = [];
+    setDisplayMode(mode);
   };
 
   // Observer 只创建一次，通过 ref 访问最新状态
@@ -263,7 +293,7 @@ export const History: React.FC = () => {
       >
         <div className="flex flex-col md:flex-row items-center justify-between px-6 py-4 gap-4 max-w-[1600px] mx-auto">
           {/* 左侧：统计与筛选 */}
-          <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="flex w-full flex-wrap items-center gap-3 md:w-auto">
             <button
               type="button"
               onClick={() => setIsSyncModalOpen(true)}
@@ -289,8 +319,31 @@ export const History: React.FC = () => {
             </button>
 
             <span className="text-sm font-medium text-gray-500 dark:text-neutral-400 bg-gray-50 dark:bg-neutral-900 px-3 py-1.5 rounded-full whitespace-nowrap border border-gray-100 dark:border-neutral-800">
-              {totalHistoryCount} 条记录
+              {totalHistoryCount} {displayMode === "visit" ? "次观看" : "个内容"}
             </span>
+
+            <div className="inline-flex shrink-0 rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs dark:border-neutral-800 dark:bg-neutral-900">
+              {(
+                [
+                  { value: "content", label: "按视频" },
+                  { value: "visit", label: "按观看次数" },
+                ] as const
+              ).map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => void handleDisplayModeChange(option.value)}
+                  aria-pressed={displayMode === option.value}
+                  className={`rounded-md px-2.5 py-1.5 transition-colors ${
+                    displayMode === option.value
+                      ? "bg-white font-medium text-pink-600 shadow-sm dark:bg-neutral-800 dark:text-pink-400"
+                      : "text-gray-500 hover:text-gray-800 dark:text-neutral-400 dark:hover:text-neutral-200"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
 
             <div className="relative">
               <button
@@ -451,12 +504,10 @@ export const History: React.FC = () => {
       >
         {history.map((item) => (
           <HistoryItem
-            key={`${item.id}-${item.view_at}`}
+            key={"event_id" in item ? item.event_id : `${item.business}:${item.id}`}
             item={item}
-            onDelete={() => {
-              setHistory((prev) => prev.filter((i) => i.id !== item.id));
-              setTotalHistoryCount((prev) => prev - 1);
-            }}
+            displayMode={displayMode}
+            onDelete={() => void Promise.all([getTotalCount(), reload()])}
           />
         ))}
         {loadMode === "scroll" && (
@@ -513,6 +564,7 @@ export const History: React.FC = () => {
         open={isSyncModalOpen}
         onClose={() => setIsSyncModalOpen(false)}
         onSyncSuccess={handleSyncSuccess}
+        displayMode={displayMode}
       />
 
       <HistoryViewSettingsModal

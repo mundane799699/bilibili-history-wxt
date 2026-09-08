@@ -14,11 +14,10 @@ import {
   LOCAL_HISTORY_BACKUP_ALARM,
   FAVORITE_FOLDER_SYNC_PROGRESS,
   ALL_FAVORITE_FOLDERS_SYNC_PROGRESS,
+  HISTORY_SYNC_WATERMARK_VIEW_AT,
 } from "../utils/constants";
 import {
-  openDB,
-  getItem,
-  deleteHistoryItem,
+  deleteHistoryContent,
   saveFavFolders,
   replaceFavFolders,
   saveFavResources,
@@ -39,7 +38,9 @@ import {
   replaceSubscribedCollections,
   replaceSubscribedCollectionResources,
   getDeletedHistoryIds,
-  addDeletedHistoryIds,
+  getHistoryV2Backup,
+  mergeHistoryV2Backup,
+  upsertHistorySnapshots,
 } from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
 import { recordStorageWarning } from "../utils/storageHealth";
@@ -66,6 +67,7 @@ import {
   SyncAllFavoriteFoldersRequest,
   SyncAllFavoriteFoldersResponse,
   AllFavoriteFoldersSyncProgress,
+  HistoryItem,
 } from "../utils/types";
 import { isLocalHistoryBackupDue, runLocalHistoryBackup } from "../utils/localHistoryBackup";
 
@@ -1021,18 +1023,26 @@ export default defineBackground(() => {
   // 处理删除历史记录的消息
   const handleDeleteHistoryItem = async (message: any, sendResponse: (response: any) => void) => {
     const id = Number(message?.id);
-    if (!Number.isSafeInteger(id) || id <= 0) {
+    const business = message?.business as HistoryItem["business"] | undefined;
+    const validBusinesses: HistoryItem["business"][] = [
+      "archive",
+      "pgc",
+      "article",
+      "article-list",
+      "live",
+      "cheese",
+    ];
+    if (!Number.isSafeInteger(id) || id <= 0 || !business || !validBusinesses.includes(business)) {
       sendResponse({ success: false, error: "历史记录信息不完整" });
       return;
     }
     try {
-      const syncDeleteFromBilibili = await getStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, true);
+      const syncDeleteFromBilibili = await getStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, false);
       if (!syncDeleteFromBilibili) {
         sendResponse({ success: true, message: "同步删除未开启" });
         return;
       }
-      await deleteHistoryItem(id);
-      await addDeletedHistoryIds([id]);
+      await deleteHistoryContent(business, id, "bilibili-page");
       sendResponse({ success: true, message: "历史记录删除成功" });
     } catch (error) {
       sendResponse({
@@ -1121,6 +1131,8 @@ export default defineBackground(() => {
       // 超出后按服务端 is_end 或空列表正常收尾，不影响正确性，只是多拉几页。
       const MAX_INCREMENTAL_PAGES = 500;
       let incrementalPages = 0;
+      const previousWatermark = await getStorageValue<number>(HISTORY_SYNC_WATERMARK_VIEW_AT, 0);
+      let newestObservedViewAt = previousWatermark;
       console.log(`${isFullSync ? "全量" : "增量"}同步开始`);
 
       // 循环获取所有历史记录
@@ -1155,64 +1167,42 @@ export default defineBackground(() => {
         incrementalPages++;
 
         if (list.length > 0) {
-          // 为每批数据创建新的事务
-          const db = await openDB();
-          const tx = db.transaction("history", "readwrite");
-          const store = tx.objectStore("history");
-          // 取出list中的第一条和最后一条
-          if (!isFullSync) {
-            const firstItem = list[0];
-            const lastItem = list[list.length - 1];
-            // 如果firstItem的bvid和lastItem的bvid在indexedDB中存在，则不进行同步
-            const firstItemExists = await getItem(store, firstItem.history.oid);
-            const lastItemExists = await getItem(store, lastItem.history.oid);
-            if (firstItemExists && lastItemExists) {
-              hasMore = false;
-            } else if (incrementalPages >= MAX_INCREMENTAL_PAGES) {
-              console.warn(
-                `增量同步已超过 ${MAX_INCREMENTAL_PAGES} 页仍未遇到本地边界，停止翻页（不影响已同步数据）`,
-              );
-              hasMore = false;
-            }
+          const snapshots: HistoryItem[] = list.map((item: any) => ({
+            id: item.history.oid,
+            business: item.history.business,
+            bvid: item.history.bvid,
+            cid: item.history.cid,
+            title: item.title,
+            tag_name: item.tag_name,
+            cover: item.cover || (item.covers && item.covers[0]),
+            view_at: item.view_at,
+            uri: item.uri,
+            author_name: item.author_name || "",
+            author_mid: Number(item.author_mid) || 0,
+            progress: item.progress,
+            duration: item.duration,
+            is_fav: item.is_fav === 1, // 保存是否收藏字段
+            uploaded: false,
+          }));
+
+          await upsertHistorySnapshots(snapshots, "bilibili");
+          const pageViewTimes = snapshots
+            .map((item) => Number(item.view_at))
+            .filter((value) => Number.isSafeInteger(value) && value > 0);
+          if (pageViewTimes.length > 0) {
+            newestObservedViewAt = Math.max(newestObservedViewAt, ...pageViewTimes);
           }
 
-          // 批量存储历史记录
-          for (const item of list) {
-            // 保留旧记录已有的 uploaded 标记，避免重复上传
-            const existing = await getItem(store, item.history.oid);
-            // put是异步的
-            store.put({
-              id: item.history.oid,
-              business: item.history.business,
-              bvid: item.history.bvid,
-              cid: item.history.cid,
-              title: item.title,
-              tag_name: item.tag_name,
-              cover: item.cover || (item.covers && item.covers[0]),
-              view_at: item.view_at,
-              uri: item.uri,
-              author_name: item.author_name || "",
-              author_mid: item.author_mid || "",
-              progress: item.progress,
-              duration: item.duration,
-              is_fav: item.is_fav === 1, // 保存是否收藏字段
-              timestamp: Date.now(),
-              uploaded: existing?.uploaded === true,
-            });
+          if (!isFullSync && previousWatermark > 0 && pageViewTimes.length > 0) {
+            const oldestOnPage = Math.min(...pageViewTimes);
+            if (oldestOnPage < previousWatermark) hasMore = false;
           }
 
-          // 等待事务完成
-          await new Promise((resolve, reject) => {
-            tx.oncomplete = resolve;
-            tx.onerror = () => {
-              void recordStorageWarning(tx.error, "sync-history-transaction");
-              reject(tx.error);
-            };
-            tx.onabort = () => {
-              void recordStorageWarning(tx.error, "sync-history-transaction-abort");
-              reject(tx.error);
-            };
-          });
+          if (!isFullSync && hasMore && incrementalPages >= MAX_INCREMENTAL_PAGES) {
+            throw new Error(
+              `增量同步已达到 ${MAX_INCREMENTAL_PAGES} 页保护上限，本轮未推进同步水位`,
+            );
+          }
 
           // 添加延时，避免请求过于频繁
           await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -1222,6 +1212,10 @@ export default defineBackground(() => {
 
       if (isFullSync) {
         await setStorageValue(HAS_FULL_SYNC, true);
+      }
+
+      if (newestObservedViewAt > 0) {
+        await setStorageValue(HISTORY_SYNC_WATERMARK_VIEW_AT, newestObservedViewAt);
       }
 
       // 更新最后同步时间
@@ -1798,6 +1792,10 @@ export default defineBackground(() => {
             await item.merge(JSON.parse(remote));
           }
         }
+        if (item.key === "history") {
+          const remoteV2 = await downloadFile(config, "history-v2.json");
+          if (remoteV2) await mergeHistoryV2Backup(JSON.parse(remoteV2));
+        }
       }
 
       // ===== 第二步：将合并后的最新本地数据推送到远端 =====
@@ -1805,10 +1803,21 @@ export default defineBackground(() => {
       const summary: string[] = [];
       for (const item of items) {
         const data = await item.getAll();
+        if (item.key === "history") {
+          const v2 = await getHistoryV2Backup();
+          if (!(await uploadFile(config, "history-v2.json", JSON.stringify(v2)))) {
+            throw new Error("WebDAV 上传历史 v2 失败");
+          }
+        }
         if (!(await uploadFile(config, item.file, JSON.stringify(data)))) {
           throw new Error(`WebDAV 上传${item.label}失败`);
         }
-        summary.push(`${item.label} ${data.length}`);
+        if (item.key === "history") {
+          const v2 = await getHistoryV2Backup();
+          summary.push(`${item.label} ${data.length} 个内容 / ${v2.events.length} 次观看`);
+        } else {
+          summary.push(`${item.label} ${data.length}`);
+        }
       }
 
       // 同步完成，记录时间戳

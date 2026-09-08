@@ -171,7 +171,7 @@ export const LocalHistoryBackupPanel = () => {
       toast.success(
         result.cleanupWarning
           ? `历史记录备份成功；${result.cleanupWarning}`
-          : `历史记录备份成功，共 ${result.recordCount ?? 0} 条`,
+          : `历史记录备份成功：${result.contentCount ?? 0} 个内容，${result.eventCount ?? result.recordCount ?? 0} 次观看`,
       );
     } catch (error) {
       console.error("立即备份历史记录失败:", error);
@@ -398,8 +398,8 @@ export const LocalHistoryBackupPanel = () => {
               )}
               {lastSuccessAt > 0 && (
                 <div className="flex justify-between gap-3">
-                  <span>历史记录</span>
-                  <span>{lastRecordCount.toLocaleString()} 条</span>
+                  <span>观看次数</span>
+                  <span>{lastRecordCount.toLocaleString()} 次</span>
                 </div>
               )}
               {!lastSuccessAt && lastAttemptAt > 0 && (

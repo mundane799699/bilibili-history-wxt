@@ -19,6 +19,7 @@ export default defineContentScript({
         // 转发消息给background
         browser.runtime.sendMessage({
           action: "deleteHistoryItem",
+          business: event.data.business,
           id: event.data.id,
         });
       }

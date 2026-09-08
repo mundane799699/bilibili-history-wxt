@@ -5,6 +5,9 @@
 > 核心原则：不修改 `history` 的主键和数据语义  
 > 本文只描述修改方案，不代表相关实现已经完成。
 
+> 后续扩展：`docs/history-repeat-view-mode-design.md` 已在不修改 `history.keyPath = "id"`
+> 的前提下新增独立 `historyEvents`，用于可选的“按观看次数”语义。本文件关于数据丢失、删除保护和最近投影的结论继续有效；“不引入观看事件 ID”不再是后续版本的全局限制。
+
 ## 1. 结论
 
 `history` 继续使用 B 站 `history.oid` 作为主键，同一视频再次观看时更新原记录的 `view_at`、进度等状态。

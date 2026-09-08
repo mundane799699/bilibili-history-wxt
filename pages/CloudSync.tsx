@@ -124,6 +124,9 @@ const CloudSync = () => {
       <h1 className="text-3xl font-bold mb-6">云同步</h1>
       <p className="text-gray-600 text-base mb-2">云同步允许你将数据在浏览器插件和云端之间同步。</p>
       <p className="text-gray-600 text-base mb-8">该功能是付费功能，免费用户最多可以上传500条。</p>
+      <p className="-mt-6 mb-8 text-sm text-amber-600 dark:text-amber-400">
+        当前云端按视频保存最近一次观看；完整观看次数保存在本地、JSON 和 WebDAV v2 备份中。
+      </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <button
@@ -194,7 +197,9 @@ const CloudSync = () => {
           <li>点击"上传数据到云端"将本地数据同步到云端服务器</li>
           <li>点击"查看云端数据"查看已同步到云端的数据</li>
           <li>点击"从云端获取数据"将云端数据同步到浏览器插件</li>
-          <li className="text-red-500 dark:text-red-400">已经上传的数据会标记为已上传，再次点击上传时不会重复上传</li>
+          <li className="text-red-500 dark:text-red-400">
+            已经上传的数据会标记为已上传，再次点击上传时不会重复上传
+          </li>
         </ul>
       </div>
 

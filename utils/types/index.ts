@@ -16,6 +16,43 @@ export interface HistoryItem {
   is_fav?: boolean;
 }
 
+export type HistoryDisplayMode = "content" | "visit";
+
+export type HistoryEventSource = "bilibili" | "legacy-import" | "webdav" | "migration";
+
+export interface HistoryEvent extends Omit<HistoryItem, "uploaded"> {
+  event_id: string;
+  content_key: string;
+  observed_at: number;
+  schema_version: 1;
+}
+
+export interface HistoryTombstone {
+  tombstone_id: string;
+  scope: "event" | "content" | "legacy-id";
+  content_key?: string;
+  event_id?: string;
+  legacy_id?: number;
+  deleted_through_view_at: number;
+  deleted_at: number;
+  source: "extension-ui" | "bilibili-page" | "import";
+}
+
+export type HistoryListItem = HistoryItem | HistoryEvent;
+
+export interface HistoryCursor {
+  view_at: number;
+  event_id?: string;
+  id?: number;
+}
+
+export interface HistoryV2Backup {
+  schemaVersion: 2;
+  events: HistoryEvent[];
+  tombstones: HistoryTombstone[];
+  updatedAt: number;
+}
+
 export interface LikedMusic {
   bvid: string;
   title: string;
@@ -30,6 +67,14 @@ export interface DBConfig {
   version: number;
   stores: {
     history: {
+      keyPath: string;
+      indexes: string[];
+    };
+    historyEvents: {
+      keyPath: string;
+      indexes: string[];
+    };
+    historyTombstones: {
       keyPath: string;
       indexes: string[];
     };
@@ -90,6 +135,8 @@ export interface LocalHistoryBackupResult {
   success: boolean;
   fileName?: string;
   recordCount?: number;
+  contentCount?: number;
+  eventCount?: number;
   completedAt?: number;
   cleanupWarning?: string;
   errorCode?: LocalHistoryBackupErrorCode;

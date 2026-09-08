@@ -46,7 +46,7 @@ manifest 在 [wxt.config.ts](wxt.config.ts) 声明，关键权限：`storage / t
 
 `browser.alarms` 每分钟触发，但内部用 `*_TIME_REMAIN` 计数器实现"X 分钟跑一次"，避免 alarm 抖动：
 
-1. `syncHistory` — 调 `x/web-interface/history/cursor` 游标分页；增量同步遇到首尾两条都已在 IDB 即停。`SYNC_INTERVAL` 单位分钟，状态写到 `IS_SYNCING` / `SYNC_PROGRESS_HISTORY`。
+1. `syncHistory` — 调 `x/web-interface/history/cursor` 游标分页；增量同步按上次成功的 `view_at` 水位重叠扫描，统一写入最近投影和观看事件。`SYNC_INTERVAL` 单位分钟。
 2. `syncFavorites` — 先取 `nav` 拿 mid，再取收藏夹列表，逐夹翻页。**全量**同步会用 `onlineResourceIds` 集合 diff 本地记录、删除已取消收藏的项；**增量**从第一页开始，保存当前页后在页首和页尾资源都已存在于同步前本地数据时停止（`AbortController` 30s 超时 + 最多 2 次重试）。
 3. `syncWebDav` — 当 `WEBDAV_AUTO_SYNC_ENABLED=true` 时按 `WEBDAV_LAST_SYNC` 间隔触发 `autoSyncWebDav`：**先 download → smartMerge\*（在 [utils/db.ts](utils/db.ts)）→ upload**，避免单向覆盖丢数据。
 
@@ -54,14 +54,18 @@ manifest 在 [wxt.config.ts](wxt.config.ts) 声明，关键权限：`storage / t
 
 ### 数据层（[utils/db.ts](utils/db.ts)）
 
-单一文件管理整套 IndexedDB（DB `bilibiliHistory`，当前 `version: 5`）。共有 4 个 store：
+单一文件管理整套 IndexedDB（DB `bilibiliHistory`，当前 `version: 8`）。共有 8 个 store：
 
-- `history` (keyPath `id`，索引 `view_at`)
+- `history` (keyPath `id`，最近观看投影；索引 `view_at` / `[view_at, id]`)
+- `historyEvents` (keyPath `event_id`，每次被同步观测到的观看事件)
+- `historyTombstones` (keyPath `tombstone_id`，事件级/内容级删除墓碑)
 - `likedMusic` (keyPath `bvid`，索引 `added_at`)
 - `favFolders` (keyPath `id`，索引 `mid`)
 - `favResources` (复合 keyPath `[folder_id, id]`，索引 `id` / `folder_id` / `fav_time`)
+- `subscribedCollections` (keyPath `id`，索引 `mid`)
+- `subscribedCollectionResources` (keyPath `id`，索引 `collection_id` / `pubdate`)
 
-**改 schema 必须 bump `DB_CONFIG.version` 并在 `onupgradeneeded` 里写迁移分支**。当前实现里有兜底 `if (!db.objectStoreNames.contains(...))` 用来修复历史版本里 else-if 互斥导致的 store 缺失，新加 store 时也要补到这段兜底里。`smartMerge*` 系列是 WebDAV 双向同步的合并基元，不要绕开它直接 `put` 远端数据。
+**改 schema 必须 bump `DB_CONFIG.version` 并在 `onupgradeneeded` 里写迁移分支**。历史写入必须走 `upsertHistorySnapshots()`，同时维护最近投影和观看事件；不能绕开它直接 `put`。当前实现里有兜底 `if (!db.objectStoreNames.contains(...))` 用来修复历史版本里 else-if 互斥导致的 store 缺失，新加 store 时也要补到这段兜底里。`smartMerge*` 系列是 WebDAV 双向同步的合并基元。
 
 ### 配置 / 状态键（[utils/constants.ts](utils/constants.ts)）
 

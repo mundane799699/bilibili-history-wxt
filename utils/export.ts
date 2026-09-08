@@ -1,7 +1,9 @@
 import { HistoryItem, LikedMusic } from "./types";
-import { getAllHistory, getAllLikedMusic } from "./db";
+import { getAllHistory, getAllHistoryEvents, getAllLikedMusic } from "./db";
 import { getTypeTag, getContentUrl } from "./common";
 import { buildHistoryBackupJson } from "./localHistoryBackup";
+import { HISTORY_DISPLAY_MODE } from "./constants";
+import { getStorageValue } from "./storage";
 
 /**
  * 将历史记录转换为CSV格式
@@ -60,8 +62,8 @@ const convertToCSV = (items: HistoryItem[]): string => {
  */
 export const exportHistoryToCSV = async (): Promise<void> => {
   try {
-    // 获取所有历史记录
-    const items = await getAllHistory();
+    const displayMode = await getStorageValue(HISTORY_DISPLAY_MODE, "content");
+    const items = displayMode === "visit" ? await getAllHistoryEvents() : await getAllHistory();
 
     // 转换为CSV
     const csv = convertToCSV(items);
@@ -76,7 +78,7 @@ export const exportHistoryToCSV = async (): Promise<void> => {
 
     // 设置文件名（包含当前日期）
     const date = new Date().toISOString().split("T")[0];
-    link.download = `bilibili-history-${date}.csv`;
+    link.download = `bilibili-history-${displayMode === "visit" ? "by-visit" : "by-content"}-${date}.csv`;
 
     // 触发下载
     document.body.appendChild(link);

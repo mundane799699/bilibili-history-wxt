@@ -1,6 +1,13 @@
 import {
   DBConfig,
+  HistoryCursor,
+  HistoryDisplayMode,
+  HistoryEvent,
+  HistoryEventSource,
   HistoryItem,
+  HistoryListItem,
+  HistoryTombstone,
+  HistoryV2Backup,
   LikedMusic,
   SubscribedCollection,
   SubscribedCollectionResource,
@@ -8,15 +15,27 @@ import {
 import dayjs from "dayjs";
 import { recordStorageWarning } from "./storageHealth";
 import { getStorageValue, setStorageValue } from "./storage";
-import { DELETED_HISTORY_IDS } from "./constants";
+import {
+  DELETED_HISTORY_IDS,
+  HISTORY_EVENT_MIGRATION_REPORT,
+  HISTORY_LEGACY_TOMBSTONES_MIGRATED,
+} from "./constants";
 
 const DB_CONFIG: DBConfig = {
   name: "bilibiliHistory",
-  version: 7,
+  version: 8,
   stores: {
     history: {
       keyPath: "id",
-      indexes: ["view_at"],
+      indexes: ["view_at", "view_at_id"],
+    },
+    historyEvents: {
+      keyPath: "event_id",
+      indexes: ["view_at", "view_at_event_id", "content_key", "content_key_view_at"],
+    },
+    historyTombstones: {
+      keyPath: "tombstone_id",
+      indexes: ["scope", "content_key", "deleted_at"],
     },
     likedMusic: {
       keyPath: "bvid",
@@ -41,15 +60,81 @@ const DB_CONFIG: DBConfig = {
   },
 };
 
+const HISTORY_BUSINESSES = new Set<HistoryItem["business"]>([
+  "archive",
+  "pgc",
+  "article",
+  "article-list",
+  "live",
+  "cheese",
+]);
+
+export const getHistoryContentKey = (item: Pick<HistoryItem, "business" | "id">): string =>
+  `${item.business}:${item.id}`;
+
+export const getHistoryEventId = (item: Pick<HistoryItem, "business" | "id" | "view_at">): string =>
+  `${getHistoryContentKey(item)}:${item.view_at}`;
+
+const createHistoryEvent = (
+  item: HistoryItem,
+  _source: HistoryEventSource,
+  observedAt = Date.now(),
+): HistoryEvent | null => {
+  const id = Number(item.id);
+  const viewAt = Number(item.view_at);
+  if (
+    !HISTORY_BUSINESSES.has(item.business) ||
+    !Number.isSafeInteger(id) ||
+    id <= 0 ||
+    !Number.isSafeInteger(viewAt) ||
+    viewAt <= 0
+  ) {
+    return null;
+  }
+
+  const { uploaded: _uploaded, ...snapshot } = item;
+  const normalized = { ...snapshot, id, view_at: viewAt } as Omit<HistoryItem, "uploaded">;
+  return {
+    ...normalized,
+    event_id: getHistoryEventId(normalized),
+    content_key: getHistoryContentKey(normalized),
+    observed_at: observedAt,
+    schema_version: 1,
+  };
+};
+
+const requestResult = <T>(request: IDBRequest<T>): Promise<T> =>
+  new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+
+const transactionDone = (tx: IDBTransaction): Promise<void> =>
+  new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error("IndexedDB transaction aborted"));
+  });
+
 export const openDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_CONFIG.name, DB_CONFIG.version);
+    let migrationReport: { migrated: number; skipped: number; completed_at: number } | null = null;
 
     request.onerror = () => {
       void recordStorageWarning(request.error, "open-history-database");
       reject(request.error);
     };
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      if (!migrationReport) {
+        resolve(request.result);
+        return;
+      }
+      void setStorageValue(HISTORY_EVENT_MIGRATION_REPORT, migrationReport).then(
+        () => resolve(request.result),
+        () => resolve(request.result),
+      );
+    };
 
     request.onupgradeneeded = (event) => {
       console.log("onupgradeneeded");
@@ -64,6 +149,26 @@ export const openDB = (): Promise<IDBDatabase> => {
       if (oldVersion === 0) {
         const historyStore = db.createObjectStore("history", { keyPath: "id" });
         historyStore.createIndex("view_at", "view_at", { unique: false });
+        historyStore.createIndex("view_at_id", ["view_at", "id"], { unique: false });
+
+        const historyEventsStore = db.createObjectStore("historyEvents", {
+          keyPath: "event_id",
+        });
+        historyEventsStore.createIndex("view_at", "view_at", { unique: false });
+        historyEventsStore.createIndex("view_at_event_id", ["view_at", "event_id"], {
+          unique: false,
+        });
+        historyEventsStore.createIndex("content_key", "content_key", { unique: false });
+        historyEventsStore.createIndex("content_key_view_at", ["content_key", "view_at"], {
+          unique: false,
+        });
+
+        const historyTombstonesStore = db.createObjectStore("historyTombstones", {
+          keyPath: "tombstone_id",
+        });
+        historyTombstonesStore.createIndex("scope", "scope", { unique: false });
+        historyTombstonesStore.createIndex("content_key", "content_key", { unique: false });
+        historyTombstonesStore.createIndex("deleted_at", "deleted_at", { unique: false });
 
         const likedMusicStore = db.createObjectStore("likedMusic", {
           keyPath: "bvid",
@@ -113,6 +218,9 @@ export const openDB = (): Promise<IDBDatabase> => {
         if (!store.indexNames.contains("view_at")) {
           store.createIndex("view_at", "view_at", { unique: false });
           console.log("创建新的view_at索引");
+        }
+        if (!store.indexNames.contains("view_at_id")) {
+          store.createIndex("view_at_id", ["view_at", "id"], { unique: false });
         }
 
         const getAllRequest = store.getAll();
@@ -170,12 +278,92 @@ export const openDB = (): Promise<IDBDatabase> => {
         getAllRequest.onerror = () => transaction.abort();
       }
 
+      if (oldVersion >= 1 && oldVersion < 8) {
+        let historyEventsStore: IDBObjectStore;
+        if (!db.objectStoreNames.contains("historyEvents")) {
+          historyEventsStore = db.createObjectStore("historyEvents", { keyPath: "event_id" });
+          historyEventsStore.createIndex("view_at", "view_at", { unique: false });
+          historyEventsStore.createIndex("view_at_event_id", ["view_at", "event_id"], {
+            unique: false,
+          });
+          historyEventsStore.createIndex("content_key", "content_key", { unique: false });
+          historyEventsStore.createIndex("content_key_view_at", ["content_key", "view_at"], {
+            unique: false,
+          });
+        } else {
+          historyEventsStore = transaction.objectStore("historyEvents");
+        }
+
+        if (!db.objectStoreNames.contains("historyTombstones")) {
+          const tombstonesStore = db.createObjectStore("historyTombstones", {
+            keyPath: "tombstone_id",
+          });
+          tombstonesStore.createIndex("scope", "scope", { unique: false });
+          tombstonesStore.createIndex("content_key", "content_key", { unique: false });
+          tombstonesStore.createIndex("deleted_at", "deleted_at", { unique: false });
+        }
+
+        if (db.objectStoreNames.contains("history")) {
+          const historyStore = transaction.objectStore("history");
+          if (!historyStore.indexNames.contains("view_at_id")) {
+            historyStore.createIndex("view_at_id", ["view_at", "id"], { unique: false });
+          }
+          let migrated = 0;
+          let skipped = 0;
+          const cursorRequest = historyStore.openCursor();
+          cursorRequest.onsuccess = () => {
+            const cursor = cursorRequest.result;
+            if (!cursor) {
+              migrationReport = {
+                migrated,
+                skipped,
+                completed_at: Date.now(),
+              };
+              return;
+            }
+            const item = cursor.value as HistoryItem;
+            const event = createHistoryEvent(item, "migration");
+            if (event) {
+              historyEventsStore.put(event);
+              migrated++;
+            } else {
+              skipped++;
+            }
+            cursor.continue();
+          };
+        }
+      }
+
       // 兜底修复：检查并补创建所有缺失的 store
       // 修复旧版本 else-if 互斥导致部分 store 未创建的问题
       if (!db.objectStoreNames.contains("history")) {
         console.log("补创建history表");
         const historyStore = db.createObjectStore("history", { keyPath: "id" });
         historyStore.createIndex("view_at", "view_at", { unique: false });
+        historyStore.createIndex("view_at_id", ["view_at", "id"], { unique: false });
+      }
+
+      if (!db.objectStoreNames.contains("historyEvents")) {
+        const historyEventsStore = db.createObjectStore("historyEvents", {
+          keyPath: "event_id",
+        });
+        historyEventsStore.createIndex("view_at", "view_at", { unique: false });
+        historyEventsStore.createIndex("view_at_event_id", ["view_at", "event_id"], {
+          unique: false,
+        });
+        historyEventsStore.createIndex("content_key", "content_key", { unique: false });
+        historyEventsStore.createIndex("content_key_view_at", ["content_key", "view_at"], {
+          unique: false,
+        });
+      }
+
+      if (!db.objectStoreNames.contains("historyTombstones")) {
+        const tombstonesStore = db.createObjectStore("historyTombstones", {
+          keyPath: "tombstone_id",
+        });
+        tombstonesStore.createIndex("scope", "scope", { unique: false });
+        tombstonesStore.createIndex("content_key", "content_key", { unique: false });
+        tombstonesStore.createIndex("deleted_at", "deleted_at", { unique: false });
       }
 
       if (!db.objectStoreNames.contains("likedMusic")) {
@@ -225,55 +413,196 @@ export const openDB = (): Promise<IDBDatabase> => {
   });
 };
 
-export const saveHistory = async (history: HistoryItem[]): Promise<void> => {
-  const db = await openDB();
-  const tx = db.transaction("history", "readwrite");
-  const store = tx.objectStore("history");
+let legacyHistoryTombstoneMigration: Promise<void> | null = null;
 
-  return new Promise((resolve, reject) => {
-    let operationsCompleted = 0;
-    let operationsFailed = false;
+export const ensureLegacyHistoryTombstonesMigrated = async (): Promise<void> => {
+  if (legacyHistoryTombstoneMigration) return legacyHistoryTombstoneMigration;
 
-    if (history.length === 0) {
-      resolve();
+  legacyHistoryTombstoneMigration = (async () => {
+    const migrated = await getStorageValue(HISTORY_LEGACY_TOMBSTONES_MIGRATED, false);
+    if (migrated) return;
+
+    const deletedIds = await getStorageValue<number[]>(DELETED_HISTORY_IDS, []);
+    if (deletedIds.length === 0) {
+      await setStorageValue(HISTORY_LEGACY_TOMBSTONES_MIGRATED, true);
       return;
     }
 
-    history.forEach((item) => {
-      if (operationsFailed) return;
+    const db = await openDB();
+    const readTx = db.transaction("history", "readonly");
+    const historyStore = readTx.objectStore("history");
+    const validIds = deletedIds.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0);
+    const items = await Promise.all(
+      validIds.map((id) => requestResult(historyStore.get(id)) as Promise<HistoryItem | undefined>),
+    );
+    const tx = db.transaction("historyTombstones", "readwrite");
+    const tombstoneStore = tx.objectStore("historyTombstones");
+    const migratedAt = Date.now();
+    const migratedThrough = Math.floor(migratedAt / 1000);
 
-      const request = store.put(item);
-      request.onsuccess = () => {
-        operationsCompleted++;
-      };
-      request.onerror = () => {
-        if (!operationsFailed) {
-          operationsFailed = true;
-          console.error("向 IndexedDB 中 put 项目失败:", request.error, "项目:", item);
-          void recordStorageWarning(request.error, "save-history-item");
-        }
-      };
+    validIds.forEach((id, index) => {
+      const item = items[index];
+      if (item && HISTORY_BUSINESSES.has(item.business)) {
+        const contentKey = getHistoryContentKey(item);
+        tombstoneStore.put({
+          tombstone_id: `content:${contentKey}`,
+          scope: "content",
+          content_key: contentKey,
+          deleted_through_view_at: Number(item.view_at) || migratedThrough,
+          deleted_at: migratedAt,
+          source: "import",
+        } satisfies HistoryTombstone);
+      } else {
+        tombstoneStore.put({
+          tombstone_id: `legacy:${id}`,
+          scope: "legacy-id",
+          legacy_id: id,
+          deleted_through_view_at: migratedThrough,
+          deleted_at: migratedAt,
+          source: "import",
+        } satisfies HistoryTombstone);
+      }
     });
 
-    tx.oncomplete = () => {
-      if (!operationsFailed) {
-        console.log("所有历史记录已成功保存/更新。");
-        resolve();
-      } else {
-        reject(new Error("部分或全部历史记录项保存失败，但事务意外完成。"));
-      }
-    };
-
-    tx.onerror = () => {
-      console.error("保存/更新历史记录事务失败:", tx.error);
-      void recordStorageWarning(tx.error, "save-history-transaction");
-      reject(tx.error);
-    };
+    await transactionDone(tx);
+    await setStorageValue(HISTORY_LEGACY_TOMBSTONES_MIGRATED, true);
+  })().catch((error) => {
+    legacyHistoryTombstoneMigration = null;
+    throw error;
   });
+
+  return legacyHistoryTombstoneMigration;
+};
+
+const isBlockedByTombstone = (
+  tombstones: HistoryTombstone[],
+  event: HistoryEvent,
+  legacyDeletedIds?: ReadonlySet<number>,
+): boolean => {
+  if (legacyDeletedIds?.has(event.id)) return true;
+  return eventMatchesTombstones(event, tombstones);
+};
+
+export const upsertHistorySnapshots = async (
+  history: HistoryItem[],
+  source: HistoryEventSource = "bilibili",
+  legacyDeletedIds?: ReadonlySet<number>,
+): Promise<{
+  newEvents: number;
+  updatedEvents: number;
+  updatedLatest: number;
+  skippedByTombstone: number;
+}> => {
+  if (history.length === 0) {
+    return { newEvents: 0, updatedEvents: 0, updatedLatest: 0, skippedByTombstone: 0 };
+  }
+
+  await ensureLegacyHistoryTombstonesMigrated();
+  const db = await openDB();
+  const normalizedEvents = history
+    .map((item) => createHistoryEvent(item, source))
+    .filter((event): event is HistoryEvent => Boolean(event));
+  const tombstones = await getAllHistoryTombstones();
+  const acceptedEvents = normalizedEvents.filter(
+    (event) => !isBlockedByTombstone(tombstones, event, legacyDeletedIds),
+  );
+  const skippedByTombstone = normalizedEvents.length - acceptedEvents.length;
+  const invalidCount = history.length - normalizedEvents.length;
+  if (invalidCount > 0) console.warn(`跳过 ${invalidCount} 条非法历史记录`);
+  if (acceptedEvents.length === 0) {
+    return {
+      newEvents: 0,
+      updatedEvents: 0,
+      updatedLatest: 0,
+      skippedByTombstone,
+    };
+  }
+
+  const readTx = db.transaction(["history", "historyEvents"], "readonly");
+  const readLatestStore = readTx.objectStore("history");
+  const readEventStore = readTx.objectStore("historyEvents");
+  const existingEventsPromise = Promise.all(
+    acceptedEvents.map(
+      (event) =>
+        requestResult(readEventStore.get(event.event_id)) as Promise<HistoryEvent | undefined>,
+    ),
+  );
+  const existingLatestPromise = Promise.all(
+    acceptedEvents.map(
+      (event) => requestResult(readLatestStore.get(event.id)) as Promise<HistoryItem | undefined>,
+    ),
+  );
+  const [existingEvents, existingLatestItems] = await Promise.all([
+    existingEventsPromise,
+    existingLatestPromise,
+  ]);
+
+  const tx = db.transaction(["history", "historyEvents"], "readwrite");
+  const latestStore = tx.objectStore("history");
+  const eventStore = tx.objectStore("historyEvents");
+  const done = transactionDone(tx);
+  let newEvents = 0;
+  let updatedEvents = 0;
+  let updatedLatest = 0;
+
+  try {
+    acceptedEvents.forEach((event, index) => {
+      const existingEvent = existingEvents[index];
+      eventStore.put({
+        ...event,
+        observed_at: existingEvent?.observed_at ?? event.observed_at,
+      });
+      if (existingEvent) updatedEvents++;
+      else newEvents++;
+    });
+
+    const newestBatchEventById = new Map<number, { event: HistoryEvent; index: number }>();
+    acceptedEvents.forEach((event, index) => {
+      const current = newestBatchEventById.get(event.id);
+      if (!current || event.view_at >= current.event.view_at) {
+        newestBatchEventById.set(event.id, { event, index });
+      }
+    });
+    newestBatchEventById.forEach(({ event, index }) => {
+      const existingLatest = existingLatestItems[index];
+      if (!existingLatest || event.view_at >= Number(existingLatest.view_at)) {
+        const {
+          event_id: _eventId,
+          content_key: _contentKey,
+          observed_at: _observedAt,
+          schema_version: _schemaVersion,
+          ...latest
+        } = event;
+        latestStore.put({
+          ...latest,
+          uploaded:
+            existingLatest && event.view_at === Number(existingLatest.view_at)
+              ? existingLatest.uploaded === true
+              : false,
+        });
+        updatedLatest++;
+      }
+    });
+
+    await done;
+    return { newEvents, updatedEvents, updatedLatest, skippedByTombstone };
+  } catch (error) {
+    try {
+      tx.abort();
+    } catch {
+      // The transaction may already have aborted.
+    }
+    void recordStorageWarning(error, "save-history-transaction");
+    throw error;
+  }
+};
+
+export const saveHistory = async (history: HistoryItem[]): Promise<void> => {
+  await upsertHistorySnapshots(history, "legacy-import");
 };
 
 const matchCondition = (
-  item: HistoryItem,
+  item: HistoryListItem,
   keyword: string,
   dateRange: { start: string; end: string } | null,
   businessType: string,
@@ -286,7 +615,7 @@ const matchCondition = (
   );
 };
 
-const matchBusinessType = (item: HistoryItem, businessType: string) => {
+const matchBusinessType = (item: HistoryListItem, businessType: string) => {
   if (!businessType || businessType === "all") return true;
   // 专栏有两种类型：article 和 article-list，这里统一处理
   if (businessType === "article") {
@@ -295,7 +624,7 @@ const matchBusinessType = (item: HistoryItem, businessType: string) => {
   return item.business === businessType;
 };
 
-const matchDate = (item: HistoryItem, dateRange: { start: string; end: string } | null) => {
+const matchDate = (item: HistoryListItem, dateRange: { start: string; end: string } | null) => {
   if (!dateRange || !dateRange.start) {
     return true;
   }
@@ -313,7 +642,7 @@ const matchDate = (item: HistoryItem, dateRange: { start: string; end: string } 
 };
 
 const matchKeyword = (
-  item: HistoryItem,
+  item: HistoryListItem,
   keyword: string,
   searchType: "all" | "title" | "up" | "bvid" | "avid" = "all",
 ) => {
@@ -344,10 +673,13 @@ const matchKeyword = (
   }
 };
 
-export const getTotalHistoryCount = async (): Promise<number> => {
+export const getTotalHistoryCount = async (
+  mode: HistoryDisplayMode = "content",
+): Promise<number> => {
   const db = await openDB();
-  const tx = db.transaction("history", "readonly");
-  const store = tx.objectStore("history");
+  const storeName = mode === "visit" ? "historyEvents" : "history";
+  const tx = db.transaction(storeName, "readonly");
+  const store = tx.objectStore(storeName);
 
   return new Promise<number>((resolve, reject) => {
     const request = store.count();
@@ -364,26 +696,29 @@ export const getTotalHistoryCount = async (): Promise<number> => {
 };
 
 export const getHistory = async (
-  lastViewTime: any = "",
+  cursor: HistoryCursor | null = null,
   pageSize: number = 20,
   keyword: string = "",
   dateRange: { start: string; end: string } | null = null,
   businessType: string = "",
   searchType: "all" | "title" | "up" | "bvid" | "avid" = "all",
-): Promise<{ items: HistoryItem[]; hasMore: boolean }> => {
+  mode: HistoryDisplayMode = "content",
+): Promise<{ items: HistoryListItem[]; hasMore: boolean }> => {
   const db = await openDB();
-  const tx = db.transaction("history", "readonly");
-  const store = tx.objectStore("history");
-  const index = store.index("view_at");
+  const storeName = mode === "visit" ? "historyEvents" : "history";
+  const tx = db.transaction(storeName, "readonly");
+  const store = tx.objectStore(storeName);
+  const index = store.index(mode === "visit" ? "view_at_event_id" : "view_at_id");
 
-  let range = null;
-  if (lastViewTime) {
-    range = IDBKeyRange.upperBound(lastViewTime, true);
-  }
+  const range = cursor
+    ? mode === "visit"
+      ? IDBKeyRange.upperBound([cursor.view_at, cursor.event_id || ""], true)
+      : IDBKeyRange.upperBound([cursor.view_at, cursor.id || 0], true)
+    : null;
 
   // 使用游标按view_at降序获取指定页的数据
   const request = index.openCursor(range, "prev");
-  const items: HistoryItem[] = [];
+  const items: HistoryListItem[] = [];
   let hasMore = false;
 
   return new Promise((resolve, reject) => {
@@ -391,7 +726,7 @@ export const getHistory = async (
       const cursor = (event.target as IDBRequest).result as IDBCursorWithValue;
 
       if (cursor) {
-        const value = cursor.value as HistoryItem;
+        const value = cursor.value as HistoryListItem;
 
         // 还没收集够一页：匹配的记录入列，继续扫描
         if (items.length < pageSize) {
@@ -431,15 +766,17 @@ export const getHistoryPage = async (
   dateRange: { start: string; end: string } | null = null,
   businessType: string = "",
   searchType: "all" | "title" | "up" | "bvid" | "avid" = "all",
-): Promise<{ items: HistoryItem[]; total: number }> => {
+  mode: HistoryDisplayMode = "content",
+): Promise<{ items: HistoryListItem[]; total: number }> => {
   const db = await openDB();
-  const tx = db.transaction("history", "readonly");
-  const store = tx.objectStore("history");
-  const index = store.index("view_at");
+  const storeName = mode === "visit" ? "historyEvents" : "history";
+  const tx = db.transaction(storeName, "readonly");
+  const store = tx.objectStore(storeName);
+  const index = store.index(mode === "visit" ? "view_at_event_id" : "view_at_id");
 
   const request = index.openCursor(null, "prev");
   const offset = (page - 1) * pageSize;
-  const items: HistoryItem[] = [];
+  const items: HistoryListItem[] = [];
   let total = 0;
 
   return new Promise((resolve, reject) => {
@@ -447,7 +784,7 @@ export const getHistoryPage = async (
       const cursor = (event.target as IDBRequest).result as IDBCursorWithValue;
 
       if (cursor) {
-        const value = cursor.value as HistoryItem;
+        const value = cursor.value as HistoryListItem;
         if (matchCondition(value, keyword, dateRange, businessType, searchType)) {
           if (total >= offset && items.length < pageSize) {
             items.push(value);
@@ -501,42 +838,127 @@ export const addDeletedHistoryIds = async (ids: number[]): Promise<void> => {
 
 export const clearHistory = async (): Promise<void> => {
   const db = await openDB();
-  const tx = db.transaction("history", "readwrite");
-  const store = tx.objectStore("history");
+  const tx = db.transaction(["history", "historyEvents", "historyTombstones"], "readwrite");
+  const stores = ["history", "historyEvents", "historyTombstones"].map((name) =>
+    tx.objectStore(name),
+  );
 
   return new Promise<void>((resolve, reject) => {
-    const request = store.clear();
-
-    request.onsuccess = () => {
+    stores.forEach((store) => store.clear());
+    tx.oncomplete = () => {
       console.log("历史记录已清空");
       resolve();
     };
-
-    request.onerror = () => {
-      console.error("清空历史记录失败:", request.error);
-      reject(request.error);
+    tx.onerror = () => {
+      console.error("清空历史记录失败:", tx.error);
+      reject(tx.error);
     };
   });
 };
 
 export const deleteHistoryItem = async (id: number): Promise<void> => {
   const db = await openDB();
-  const tx = db.transaction("history", "readwrite");
-  const store = tx.objectStore("history");
+  const tx = db.transaction("history", "readonly");
+  const item = (await requestResult(tx.objectStore("history").get(id))) as HistoryItem | undefined;
+  if (!item) return;
+  await deleteHistoryContent(item.business, id);
+};
 
-  return new Promise<void>((resolve, reject) => {
-    const request = store.delete(id);
+const historyEventToItem = (event: HistoryEvent, uploaded = false): HistoryItem => {
+  const {
+    event_id: _eventId,
+    content_key: _contentKey,
+    observed_at: _observedAt,
+    schema_version: _schemaVersion,
+    ...item
+  } = event;
+  return { ...item, uploaded };
+};
 
-    request.onsuccess = () => {
-      console.log("历史记录删除成功, id =", id);
-      resolve();
-    };
+export const deleteHistoryEvent = async (
+  event: HistoryEvent,
+  source: HistoryTombstone["source"] = "extension-ui",
+): Promise<void> => {
+  const db = await openDB();
+  const readTx = db.transaction(["history", "historyEvents"], "readonly");
+  const latestPromise = requestResult(readTx.objectStore("history").get(event.id)) as Promise<
+    HistoryItem | undefined
+  >;
+  const contentEventsPromise = requestResult(
+    readTx.objectStore("historyEvents").index("content_key").getAll(event.content_key),
+  ) as Promise<HistoryEvent[]>;
+  const [latest, contentEvents] = await Promise.all([latestPromise, contentEventsPromise]);
+  const replacement = contentEvents
+    .filter((item) => item.event_id !== event.event_id)
+    .sort((left, right) => right.view_at - left.view_at)[0];
 
-    request.onerror = () => {
-      console.error("删除历史记录失败, id =", id, request.error);
-      reject(request.error);
-    };
-  });
+  const tx = db.transaction(["history", "historyEvents", "historyTombstones"], "readwrite");
+  const latestStore = tx.objectStore("history");
+  const eventStore = tx.objectStore("historyEvents");
+  const tombstoneStore = tx.objectStore("historyTombstones");
+  const done = transactionDone(tx);
+
+  tombstoneStore.put({
+    tombstone_id: `event:${event.event_id}`,
+    scope: "event",
+    content_key: event.content_key,
+    event_id: event.event_id,
+    deleted_through_view_at: event.view_at,
+    deleted_at: Date.now(),
+    source,
+  } satisfies HistoryTombstone);
+  eventStore.delete(event.event_id);
+
+  if (latest && latest.business === event.business && Number(latest.view_at) === event.view_at) {
+    if (replacement) {
+      latestStore.put(historyEventToItem(replacement));
+    } else {
+      latestStore.delete(event.id);
+    }
+  }
+
+  await done;
+};
+
+export const deleteHistoryContent = async (
+  business: HistoryItem["business"],
+  id: number,
+  source: HistoryTombstone["source"] = "extension-ui",
+): Promise<void> => {
+  const contentKey = getHistoryContentKey({ business, id });
+  const db = await openDB();
+  const readTx = db.transaction(["history", "historyEvents"], "readonly");
+  const range = IDBKeyRange.only(contentKey);
+  const eventsPromise = requestResult(
+    readTx.objectStore("historyEvents").index("content_key").getAll(range),
+  ) as Promise<HistoryEvent[]>;
+  const latestPromise = requestResult(readTx.objectStore("history").get(id)) as Promise<
+    HistoryItem | undefined
+  >;
+  const [events, latest] = await Promise.all([eventsPromise, latestPromise]);
+  const cutoff = Math.max(
+    0,
+    latest?.business === business ? Number(latest.view_at) || 0 : 0,
+    ...events.map((item) => Number(item.view_at) || 0),
+  );
+
+  const tx = db.transaction(["history", "historyEvents", "historyTombstones"], "readwrite");
+  const latestStore = tx.objectStore("history");
+  const eventStore = tx.objectStore("historyEvents");
+  const tombstoneStore = tx.objectStore("historyTombstones");
+  const done = transactionDone(tx);
+
+  tombstoneStore.put({
+    tombstone_id: `content:${contentKey}`,
+    scope: "content",
+    content_key: contentKey,
+    deleted_through_view_at: cutoff,
+    deleted_at: Date.now(),
+    source,
+  } satisfies HistoryTombstone);
+  events.forEach((item) => eventStore.delete(item.event_id));
+  if (latest?.business === business) latestStore.delete(id);
+  await done;
 };
 
 export const getAllHistory = async (limit?: number): Promise<HistoryItem[]> => {
@@ -566,6 +988,174 @@ export const getAllHistory = async (limit?: number): Promise<HistoryItem[]> => {
 
     request.onerror = () => reject(request.error);
   });
+};
+
+export const getAllHistoryEvents = async (limit?: number): Promise<HistoryEvent[]> => {
+  const db = await openDB();
+  const tx = db.transaction("historyEvents", "readonly");
+  const index = tx.objectStore("historyEvents").index("view_at_event_id");
+
+  return new Promise((resolve, reject) => {
+    const request = index.openCursor(null, "prev");
+    const items: HistoryEvent[] = [];
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) {
+        resolve(items);
+        return;
+      }
+      items.push(cursor.value as HistoryEvent);
+      if (limit && items.length >= limit) resolve(items);
+      else cursor.continue();
+    };
+    request.onerror = () => reject(request.error);
+  });
+};
+
+export const getAllHistoryTombstones = async (): Promise<HistoryTombstone[]> => {
+  const db = await openDB();
+  const tx = db.transaction("historyTombstones", "readonly");
+  return requestResult(tx.objectStore("historyTombstones").getAll()) as Promise<HistoryTombstone[]>;
+};
+
+export const getHistoryV2Backup = async (): Promise<HistoryV2Backup> => {
+  await ensureLegacyHistoryTombstonesMigrated();
+  const [events, tombstones] = await Promise.all([
+    getAllHistoryEvents(),
+    getAllHistoryTombstones(),
+  ]);
+  return { schemaVersion: 2, events, tombstones, updatedAt: Date.now() };
+};
+
+const eventMatchesTombstones = (event: HistoryEvent, tombstones: HistoryTombstone[]): boolean =>
+  tombstones.some((tombstone) => {
+    if (tombstone.scope === "event") return tombstone.event_id === event.event_id;
+    if (event.view_at > Number(tombstone.deleted_through_view_at)) return false;
+    if (tombstone.scope === "content") return tombstone.content_key === event.content_key;
+    return tombstone.scope === "legacy-id" && tombstone.legacy_id === event.id;
+  });
+
+const applyAllHistoryTombstones = async (): Promise<number> => {
+  const [events, tombstones, latestItems] = await Promise.all([
+    getAllHistoryEvents(),
+    getAllHistoryTombstones(),
+    getAllHistory(),
+  ]);
+  const removedEvents = events.filter((event) => eventMatchesTombstones(event, tombstones));
+  if (removedEvents.length === 0) return 0;
+  const removedEventIds = new Set(removedEvents.map((event) => event.event_id));
+  const remaining = events.filter((event) => !removedEventIds.has(event.event_id));
+  const affectedIds = new Set(removedEvents.map((event) => event.id));
+
+  const previousLatest = new Map(latestItems.map((item) => [item.id, item]));
+  const latestById = new Map<number, HistoryEvent>();
+  for (const event of remaining) {
+    if (!affectedIds.has(event.id)) continue;
+    const current = latestById.get(event.id);
+    if (!current || event.view_at > current.view_at) latestById.set(event.id, event);
+  }
+
+  const db = await openDB();
+  const tx = db.transaction(["history", "historyEvents"], "readwrite");
+  const latestStore = tx.objectStore("history");
+  const eventStore = tx.objectStore("historyEvents");
+  const done = transactionDone(tx);
+  removedEvents.forEach((event) => eventStore.delete(event.event_id));
+  affectedIds.forEach((id) => {
+    const event = latestById.get(id);
+    const previous = previousLatest.get(id);
+    if (event) {
+      latestStore.put(
+        historyEventToItem(
+          event,
+          Boolean(
+            previous &&
+            previous.business === event.business &&
+            previous.view_at === event.view_at &&
+            previous.uploaded,
+          ),
+        ),
+      );
+    } else if (previous) {
+      const previousEvent = createHistoryEvent(previous, "migration");
+      if (previousEvent && eventMatchesTombstones(previousEvent, tombstones)) {
+        latestStore.delete(id);
+      }
+    }
+  });
+  await done;
+  return removedEvents.length;
+};
+
+export const mergeHistoryV2Backup = async (
+  backup: HistoryV2Backup,
+): Promise<{ merged: number; skipped: number }> => {
+  if (backup?.schemaVersion !== 2 || !Array.isArray(backup.events)) {
+    throw new Error("无法识别的历史记录 v2 备份格式");
+  }
+
+  const db = await openDB();
+  if (Array.isArray(backup.tombstones) && backup.tombstones.length > 0) {
+    const existingTombstones = await getAllHistoryTombstones();
+    const existingById = new Map(
+      existingTombstones.map((tombstone) => [tombstone.tombstone_id, tombstone]),
+    );
+    const tx = db.transaction("historyTombstones", "readwrite");
+    const store = tx.objectStore("historyTombstones");
+    const done = transactionDone(tx);
+    for (const rawTombstone of backup.tombstones) {
+      const cutoff = Number(rawTombstone?.deleted_through_view_at);
+      const deletedAt = Number(rawTombstone?.deleted_at);
+      if (
+        !rawTombstone?.tombstone_id ||
+        !["event", "content", "legacy-id"].includes(rawTombstone.scope) ||
+        !Number.isSafeInteger(cutoff) ||
+        cutoff < 0 ||
+        !Number.isFinite(deletedAt) ||
+        deletedAt <= 0
+      ) {
+        continue;
+      }
+      if (rawTombstone.scope === "event" && !rawTombstone.event_id) continue;
+      if (rawTombstone.scope === "content" && !rawTombstone.content_key) continue;
+      if (
+        rawTombstone.scope === "legacy-id" &&
+        (!Number.isSafeInteger(rawTombstone.legacy_id) || Number(rawTombstone.legacy_id) <= 0)
+      ) {
+        continue;
+      }
+      const tombstone: HistoryTombstone = {
+        ...rawTombstone,
+        deleted_through_view_at: cutoff,
+        deleted_at: deletedAt,
+        source: "import",
+      };
+      const existing = existingById.get(tombstone.tombstone_id);
+      if (!existing) {
+        store.put(tombstone);
+      } else {
+        store.put({
+          ...existing,
+          ...tombstone,
+          deleted_at: Math.max(existing.deleted_at, tombstone.deleted_at),
+          deleted_through_view_at: Math.max(
+            existing.deleted_through_view_at,
+            tombstone.deleted_through_view_at,
+          ),
+        } satisfies HistoryTombstone);
+      }
+    }
+    await done;
+  }
+
+  const removed = await applyAllHistoryTombstones();
+
+  const snapshots = backup.events.map((event) => historyEventToItem(event));
+  const result = await upsertHistorySnapshots(snapshots, "webdav");
+  return {
+    merged: result.newEvents + result.updatedEvents,
+    skipped: result.skippedByTombstone + removed,
+  };
 };
 
 export const getUnUploadedHistory = async (): Promise<HistoryItem[]> => {
@@ -1387,54 +1977,11 @@ export const smartMergeHistory = async (
   remoteItems: HistoryItem[],
   deletedIds?: ReadonlySet<number>,
 ): Promise<{ merged: number; skipped: number }> => {
-  const db = await openDB();
-  const tx = db.transaction("history", "readwrite");
-  const store = tx.objectStore("history");
-  let merged = 0;
-  let skipped = 0;
-
-  return new Promise((resolve, reject) => {
-    if (remoteItems.length === 0) {
-      resolve({ merged: 0, skipped: 0 });
-      return;
-    }
-
-    let processed = 0;
-    const total = remoteItems.length;
-
-    remoteItems.forEach((remoteItem) => {
-      if (deletedIds?.has(remoteItem.id)) {
-        processed++;
-        return;
-      }
-      const getReq = store.get(remoteItem.id);
-      getReq.onsuccess = () => {
-        const localItem = getReq.result as HistoryItem | undefined;
-
-        if (!localItem || remoteItem.view_at >= localItem.view_at) {
-          // 本地不存在或远端更新，执行覆盖
-          store.put(remoteItem);
-          merged++;
-        } else {
-          skipped++;
-        }
-
-        processed++;
-        if (processed === total) {
-          // 所有请求已提交，等待事务完成
-        }
-      };
-      getReq.onerror = () => {
-        // 获取失败时仍尝试写入
-        store.put(remoteItem);
-        merged++;
-        processed++;
-      };
-    });
-
-    tx.oncomplete = () => resolve({ merged, skipped });
-    tx.onerror = () => reject(tx.error);
-  });
+  const result = await upsertHistorySnapshots(remoteItems, "legacy-import", deletedIds);
+  return {
+    merged: result.newEvents + result.updatedEvents,
+    skipped: result.skippedByTombstone,
+  };
 };
 
 /**

@@ -24,6 +24,12 @@ export const GRID_COLUMNS = "gridColumns";
 export const HISTORY_LOAD_MODE = "history_load_mode";
 // page size for the history page pagination mode, default 100
 export const HISTORY_PAGE_SIZE = "history_page_size";
+// history list semantics: "content" keeps one latest row per item; "visit" shows observed views
+export const HISTORY_DISPLAY_MODE = "history_display_mode";
+// newest API view_at from the last complete history sync
+export const HISTORY_SYNC_WATERMARK_VIEW_AT = "history_sync_watermark_view_at";
+export const HISTORY_EVENT_MIGRATION_REPORT = "history_event_migration_report";
+export const HISTORY_LEGACY_TOMBSTONES_MIGRATED = "history_legacy_tombstones_migrated";
 export const LAST_SEEN_UPDATE_VERSION = "lastSeenUpdateVersion";
 export const STORAGE_LAST_WARNING = "storageLastWarning";
 export const BACKUP_REMINDER_LAST_DISMISSED_AT = "backupReminderLastDismissedAt";

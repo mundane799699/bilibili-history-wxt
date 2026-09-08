@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { HISTORY_LAST_SYNC } from "../utils/constants";
 import { getStorageValue } from "../utils/storage";
-import { SyncHistoryRequest, SyncHistoryResponse } from "../utils/types";
+import { HistoryDisplayMode, SyncHistoryRequest, SyncHistoryResponse } from "../utils/types";
 
 type SyncPhase = "idle" | "syncing" | "success" | "error";
 
@@ -26,11 +26,17 @@ interface HistorySyncModalProps {
   open: boolean;
   onClose: () => void;
   onSyncSuccess: () => Promise<number>;
+  displayMode: HistoryDisplayMode;
 }
 
 const formatDateTime = (timestamp: number) => new Date(timestamp).toLocaleString();
 
-export const HistorySyncModal = ({ open, onClose, onSyncSuccess }: HistorySyncModalProps) => {
+export const HistorySyncModal = ({
+  open,
+  onClose,
+  onSyncSuccess,
+  displayMode,
+}: HistorySyncModalProps) => {
   const [isFullSync, setIsFullSync] = useState(false);
   const [syncPhase, setSyncPhase] = useState<SyncPhase>("idle");
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
@@ -362,7 +368,8 @@ export const HistorySyncModal = ({ open, onClose, onSyncSuccess }: HistorySyncMo
                 )}
                 {syncResult.totalHistoryCount !== undefined && (
                   <p className="mt-1 text-xs text-emerald-700 dark:text-emerald-400">
-                    当前本地共 {syncResult.totalHistoryCount.toLocaleString()} 条记录
+                    当前本地共 {syncResult.totalHistoryCount.toLocaleString()}{" "}
+                    {displayMode === "visit" ? "次观看" : "个内容"}
                   </p>
                 )}
               </div>

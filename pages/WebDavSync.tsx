@@ -41,8 +41,16 @@ import {
   importSubscribedCollections,
   smartMergeSubscribedCollectionResources,
   getDeletedHistoryIds,
+  getHistoryV2Backup,
+  mergeHistoryV2Backup,
 } from "@/utils/db";
-import { HistoryItem, LikedMusic, FavoriteFolder, SubscribedCollection } from "@/utils/types";
+import {
+  HistoryItem,
+  HistoryV2Backup,
+  LikedMusic,
+  FavoriteFolder,
+  SubscribedCollection,
+} from "@/utils/types";
 import { LocalHistoryBackupPanel } from "@/components/LocalHistoryBackupPanel";
 
 /** Per-dataset definition: remote file name, label, local reader, and remote-merge strategy */
@@ -105,6 +113,44 @@ const DATA_ITEMS: DataItemDef[] = [
     merge: smartMergeSubscribedCollectionResources,
   },
 ];
+
+const HISTORY_V2_FILE = "history-v2.json";
+
+const mergeRemoteHistoryFiles = async (
+  config: WebDavConfig,
+): Promise<{ merged: number; skipped: number }> => {
+  let merged = 0;
+  let skipped = 0;
+  const deletedHistoryIds = await getDeletedHistoryIds();
+  const legacyRemote = await downloadFile(config, "history.json");
+  if (legacyRemote) {
+    const result = await smartMergeHistory(JSON.parse(legacyRemote), deletedHistoryIds);
+    merged += result.merged;
+    skipped += result.skipped;
+  }
+
+  const v2Remote = await downloadFile(config, HISTORY_V2_FILE);
+  if (v2Remote) {
+    const result = await mergeHistoryV2Backup(JSON.parse(v2Remote));
+    merged += result.merged;
+    skipped += result.skipped;
+  }
+  return { merged, skipped };
+};
+
+const uploadHistoryFiles = async (
+  config: WebDavConfig,
+): Promise<{ contentCount: number; eventCount: number }> => {
+  const history = await getAllHistory();
+  const v2 = await getHistoryV2Backup();
+  if (!(await uploadFile(config, HISTORY_V2_FILE, JSON.stringify(v2)))) {
+    throw new Error("上传历史记录 v2 失败");
+  }
+  if (!(await uploadFile(config, "history.json", JSON.stringify(history)))) {
+    throw new Error("上传历史记录兼容文件失败");
+  }
+  return { contentCount: history.length, eventCount: v2.events.length };
+};
 
 let webDavOperation: Promise<void> | null = null;
 
@@ -268,10 +314,15 @@ const WebDavSync = () => {
               total: items.length,
               message: `正在备份${item.label}...`,
             });
-            const data = await item.getAll();
-            const ok = await uploadFile(config, item.file, JSON.stringify(data));
-            if (!ok) throw new Error(`上传${item.label}失败`);
-            summary.push(`${item.label} ${data.length} 条`);
+            if (item.key === "history") {
+              const counts = await uploadHistoryFiles(config);
+              summary.push(`历史记录 ${counts.contentCount} 个内容 / ${counts.eventCount} 次观看`);
+            } else {
+              const data = await item.getAll();
+              const ok = await uploadFile(config, item.file, JSON.stringify(data));
+              if (!ok) throw new Error(`上传${item.label}失败`);
+              summary.push(`${item.label} ${data.length} 条`);
+            }
           }
 
           // 记录同步时间（数值时间戳）
@@ -314,18 +365,19 @@ const WebDavSync = () => {
           // 第一步：拉取远端数据并合并
           let totalMerged = 0;
           let totalSkipped = 0;
-          const deletedHistoryIds = await getDeletedHistoryIds();
-
           for (const [i, item] of items.entries()) {
             setSyncProgress({ current: i, total, message: `步骤 1/2：拉取${item.label}...` });
-            const remote = await downloadFile(config, item.file);
-            if (remote) {
-              const result =
-                item.key === "history"
-                  ? await smartMergeHistory(JSON.parse(remote), deletedHistoryIds)
-                  : await item.merge(JSON.parse(remote));
+            if (item.key === "history") {
+              const result = await mergeRemoteHistoryFiles(config);
               totalMerged += result.merged;
               totalSkipped += result.skipped;
+            } else {
+              const remote = await downloadFile(config, item.file);
+              if (remote) {
+                const result = await item.merge(JSON.parse(remote));
+                totalMerged += result.merged;
+                totalSkipped += result.skipped;
+              }
             }
           }
 
@@ -337,10 +389,15 @@ const WebDavSync = () => {
               total,
               message: `步骤 2/2：推送${item.label}...`,
             });
-            const data = await item.getAll();
-            const ok = await uploadFile(config, item.file, JSON.stringify(data));
-            if (!ok) throw new Error(`上传${item.label}失败`);
-            totalPushed += data.length;
+            if (item.key === "history") {
+              const counts = await uploadHistoryFiles(config);
+              totalPushed += counts.eventCount;
+            } else {
+              const data = await item.getAll();
+              const ok = await uploadFile(config, item.file, JSON.stringify(data));
+              if (!ok) throw new Error(`上传${item.label}失败`);
+              totalPushed += data.length;
+            }
           }
 
           const now = Date.now();
@@ -384,22 +441,23 @@ const WebDavSync = () => {
           });
           let totalMerged = 0;
           let totalSkipped = 0;
-          const deletedHistoryIds = await getDeletedHistoryIds();
-
           for (const [i, item] of items.entries()) {
             setSyncProgress({
               current: i,
               total: items.length,
               message: `正在恢复${item.label}...`,
             });
-            const remote = await downloadFile(config, item.file);
-            if (remote) {
-              const result =
-                item.key === "history"
-                  ? await smartMergeHistory(JSON.parse(remote), deletedHistoryIds)
-                  : await item.merge(JSON.parse(remote));
+            if (item.key === "history") {
+              const result = await mergeRemoteHistoryFiles(config);
               totalMerged += result.merged;
               totalSkipped += result.skipped;
+            } else {
+              const remote = await downloadFile(config, item.file);
+              if (remote) {
+                const result = await item.merge(JSON.parse(remote));
+                totalMerged += result.merged;
+                totalSkipped += result.skipped;
+              }
             }
           }
 
@@ -434,7 +492,7 @@ const WebDavSync = () => {
     try {
       const data: Record<string, unknown> = {
         exportTime: new Date().toISOString(),
-        version: "1.0",
+        version: "2.0",
       };
 
       const counts: string[] = [];
@@ -442,6 +500,14 @@ const WebDavSync = () => {
         const items = await item.getAll();
         data[item.key] = items;
         counts.push(`${item.label} ${items.length} 条`);
+        if (item.key === "history") {
+          const v2 = await getHistoryV2Backup();
+          data.formatVersion = 2;
+          data.historyEvents = v2.events;
+          data.historyTombstones = v2.tombstones;
+          counts[counts.length - 1] =
+            `历史记录 ${items.length} 个内容 / ${v2.events.length} 次观看`;
+        }
       }
 
       const json = JSON.stringify(data, null, 2);
@@ -496,6 +562,26 @@ const WebDavSync = () => {
 
             // 智能识别格式：支持完整备份格式和单独数组格式
             const deletedHistoryIds = await getDeletedHistoryIds();
+            const isStandaloneHistoryV2 =
+              data.schemaVersion === 2 &&
+              Array.isArray(data.events) &&
+              Array.isArray(data.tombstones);
+            const hasHistoryEvents = Array.isArray(data.historyEvents);
+            if (isStandaloneHistoryV2) {
+              const result = await mergeHistoryV2Backup(data as HistoryV2Backup);
+              totalMerged += result.merged;
+              totalSkipped += result.skipped;
+            }
+            if (hasHistoryEvents) {
+              const result = await mergeHistoryV2Backup({
+                schemaVersion: 2,
+                events: data.historyEvents,
+                tombstones: Array.isArray(data.historyTombstones) ? data.historyTombstones : [],
+                updatedAt: Date.now(),
+              });
+              totalMerged += result.merged;
+              totalSkipped += result.skipped;
+            }
             if (data.history && Array.isArray(data.history)) {
               // 完整备份格式
               const histResult = await smartMergeHistory(data.history, deletedHistoryIds);
@@ -545,7 +631,7 @@ const WebDavSync = () => {
                 setIsImporting(false);
                 return;
               }
-            } else {
+            } else if (!isStandaloneHistoryV2 && !hasHistoryEvents) {
               toast.error("无法识别的文件格式");
               setIsImporting(false);
               return;

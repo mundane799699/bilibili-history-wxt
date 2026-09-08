@@ -12,7 +12,7 @@ import {
   LOCAL_HISTORY_BACKUP_NEEDS_PERMISSION,
   LOCAL_HISTORY_BACKUP_RETENTION_COUNT,
 } from "./constants";
-import { getAllHistory } from "./db";
+import { getAllHistory, getAllHistoryEvents, getAllHistoryTombstones } from "./db";
 import { getLocalBackupDirectoryHandle } from "./localBackupHandle";
 import { getStorageValue, setStorageValues } from "./storage";
 import { LocalHistoryBackupErrorCode, LocalHistoryBackupResult } from "./types";
@@ -95,11 +95,29 @@ export const isLocalDirectoryBackupSupported = (): boolean => {
 export const buildHistoryBackupJson = async (): Promise<{
   json: string;
   recordCount: number;
+  contentCount: number;
+  eventCount: number;
 }> => {
-  const history = await getAllHistory();
+  const [history, historyEvents, historyTombstones] = await Promise.all([
+    getAllHistory(),
+    getAllHistoryEvents(),
+    getAllHistoryTombstones(),
+  ]);
   return {
-    json: JSON.stringify(history, null, 2),
-    recordCount: history.length,
+    json: JSON.stringify(
+      {
+        formatVersion: 2,
+        exportedAt: new Date().toISOString(),
+        history,
+        historyEvents,
+        historyTombstones,
+      },
+      null,
+      2,
+    ),
+    recordCount: historyEvents.length,
+    contentCount: history.length,
+    eventCount: historyEvents.length,
   };
 };
 
@@ -186,7 +204,8 @@ export const runLocalHistoryBackup = async (
     LOCAL_HISTORY_BACKUP_LAST_RECORD_COUNT,
     0,
   );
-  const emptyHistoryAnomaly = previousRecordCount > 0 && backupData.recordCount === 0;
+  const emptyHistoryAnomaly =
+    previousRecordCount > 0 && backupData.contentCount === 0 && backupData.eventCount === 0;
   if (!allowEmpty && emptyHistoryAnomaly) {
     return updateFailureState(
       "EMPTY_HISTORY_ANOMALY",
@@ -243,6 +262,8 @@ export const runLocalHistoryBackup = async (
     success: true,
     fileName,
     recordCount: backupData.recordCount,
+    contentCount: backupData.contentCount,
+    eventCount: backupData.eventCount,
     completedAt,
     cleanupWarning: cleanupWarning || undefined,
   };
