@@ -1620,10 +1620,11 @@ export default defineBackground(() => {
     const currentMid = await getCurrentBilibiliMid(sessdata);
     const pageSize = 50;
     let page = 1;
-    let total = 0;
+    let total: number | null = null;
     const collections: SubscribedCollection[] = [];
 
-    while (collections.length < total) {
+    // total 只能从第一页响应中取得，因此必须保证第一页至少请求一次。
+    while (total === null || collections.length < total) {
       const response = await fetch(
         `https://api.bilibili.com/x/v3/fav/folder/collected/list?pn=${page}&ps=${pageSize}&up_mid=${currentMid}&platform=web&web_location=333.1387`,
         { headers: { Cookie: `SESSDATA=${sessdata}` } },
@@ -1633,8 +1634,23 @@ export default defineBackground(() => {
       const data = await response.json();
       if (data.code !== 0) throw new Error(data.message || "获取订阅合集失败");
 
-      const list = data.data?.list || [];
-      total = Number(data.data?.count || 0);
+      if (!data.data || !("list" in data.data)) {
+        throw new Error("订阅合集数据格式异常");
+      }
+
+      const onlineCollections = data.data.list;
+      if (onlineCollections !== null && !Array.isArray(onlineCollections)) {
+        throw new Error("订阅合集数据格式异常");
+      }
+
+      const nextTotal = Number(data.data.count);
+      if (!Number.isSafeInteger(nextTotal) || nextTotal < 0) {
+        throw new Error("订阅合集数量格式异常");
+      }
+
+      const list = onlineCollections || [];
+      total = nextTotal;
+      const startIndex = collections.length;
       collections.push(
         ...list.map((item: any, index: number) => ({
           id: item.id,
@@ -1646,7 +1662,7 @@ export default defineBackground(() => {
           mtime: item.mtime || 0,
           media_count: item.media_count || 0,
           upper: item.upper || { mid: item.mid, name: "未知 UP 主", face: "" },
-          index: collections.length + index,
+          index: startIndex + index,
         })),
       );
 

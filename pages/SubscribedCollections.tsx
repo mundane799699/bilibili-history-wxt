@@ -26,6 +26,7 @@ export const SubscribedCollections = () => {
   const [searchType, setSearchType] = useState<SearchType>("all");
   const [isSearchKindDropdownOpen, setIsSearchKindDropdownOpen] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const hasRefreshedCollectionDirectoryRef = useRef(false);
   const pageSize = 50;
 
   const selectedCollection = collections.find(
@@ -81,8 +82,16 @@ export const SubscribedCollections = () => {
   };
 
   useEffect(() => {
-    loadCollections().catch(() => toast.error("加载订阅合集缓存失败"));
-    refreshCollections();
+    if (hasRefreshedCollectionDirectoryRef.current) return;
+    hasRefreshedCollectionDirectoryRef.current = true;
+
+    const initializeCollections = async () => {
+      // 与收藏夹保持一致：先展示本地缓存，再从网络刷新目录。
+      await loadCollections().catch(() => toast.error("加载订阅合集缓存失败"));
+      await refreshCollections();
+    };
+
+    void initializeCollections();
   }, []);
 
   useEffect(() => {

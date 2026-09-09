@@ -87,6 +87,14 @@ export const THEME_MODE = "themeMode";
 
 export const UPDATE_HISTORY = [
   {
+    date: "2026-09-09",
+    version: "2.2.1",
+    changes: [
+      "移除按视频删除历史记录时的二次确认弹窗，恢复快捷删除体验",
+      "修复订阅合集首次同步未发起请求、导致合集列表为空的问题，并优化本地缓存加载逻辑",
+    ],
+  },
+  {
     date: "2026-09-08",
     version: "2.2.0",
     changes: [

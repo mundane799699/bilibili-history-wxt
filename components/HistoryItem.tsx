@@ -76,8 +76,6 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, displayMode, onD
         return;
       }
 
-      const confirmed = window.confirm("将删除该内容的全部本地观看记录，是否继续？");
-      if (!confirmed) return;
       const isSyncDelete = await getStorageValue(IS_SYNC_DELETE, true);
       if (isSyncDelete) {
         // 先删除B站服务器上的历史记录
