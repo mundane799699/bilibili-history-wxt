@@ -1,5 +1,13 @@
 // Fake data for now; update this list on each release
 const REWARD_LIST: { name: string; amount: number; date: string; message?: string }[] = [
+  { name: "佚名", amount: 10, date: "2026-09-12", message: "感谢你，帮大忙了" },
+  { name: "2233_", amount: 3, date: "2026-09-09", message: "感谢作者" },
+  { name: "椭圆兔", amount: 20, date: "2026-09-08", message: "处理速度快" },
+  { name: "佚名", amount: 6.66, date: "2026-09-08", message: "听我谢谢你，因为有你温暖了四季~" },
+  { name: "椭圆兔", amount: 10, date: "2026-08-30", message: "谢谢您的技术" },
+  { name: "戴志刚", amount: 10, date: "2026-08-27", message: "很实用，一直想要的功能。" },
+  { name: "佚名", amount: 5, date: "2026-08-27" },
+  { name: "灯个", amount: 6.66, date: "2026-08-17" },
   { name: "透过叶片的阳光/", amount: 6.66, date: "2026-08-12", message: "帮大忙了，感谢！" },
   { name: "难得一见", amount: 10, date: "2026-08-11", message: "感谢作者" },
   { name: "飞翔的荷兰人", amount: 10, date: "2026-08-09" },
