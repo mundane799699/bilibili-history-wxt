@@ -28,6 +28,9 @@ import { getStorageValue, setStorageValue } from "../utils/storage";
 
 const DEFAULT_PAGE_SIZE = 100;
 
+const getHistoryItemKey = (item: HistoryListItem) =>
+  "event_id" in item ? item.event_id : `${item.business}:${item.id}`;
+
 export const History: React.FC = () => {
   const [history, setHistory] = useState<HistoryListItem[]>([]);
   const [keyword, setKeyword] = useState("");
@@ -238,6 +241,16 @@ export const History: React.FC = () => {
     setHistory([]);
     historyRef.current = [];
     setDisplayMode(mode);
+  };
+
+  const handleHistoryDelete = (deletedItem: HistoryListItem) => {
+    const deletedKey = getHistoryItemKey(deletedItem);
+
+    // The database is already updated by HistoryItem. Remove only the deleted card here instead
+    // of reloading the list, which would reset the current page and scroll position.
+    setHistory((items) => items.filter((item) => getHistoryItemKey(item) !== deletedKey));
+    setTotalHistoryCount((count) => Math.max(0, count - 1));
+    setTotalFiltered((count) => Math.max(0, count - 1));
   };
 
   // Observer 只创建一次，通过 ref 访问最新状态
@@ -504,10 +517,10 @@ export const History: React.FC = () => {
       >
         {history.map((item) => (
           <HistoryItem
-            key={"event_id" in item ? item.event_id : `${item.business}:${item.id}`}
+            key={getHistoryItemKey(item)}
             item={item}
             displayMode={displayMode}
-            onDelete={() => void Promise.all([getTotalCount(), reload()])}
+            onDelete={() => handleHistoryDelete(item)}
           />
         ))}
         {loadMode === "scroll" && (
