@@ -26,6 +26,8 @@ export const HISTORY_LOAD_MODE = "history_load_mode";
 export const HISTORY_PAGE_SIZE = "history_page_size";
 // history list semantics: "content" keeps one latest row per item; "visit" shows observed views
 export const HISTORY_DISPLAY_MODE = "history_display_mode";
+// whether the history page search and filter row is expanded, default true
+export const HISTORY_TOOLBAR_EXPANDED = "history_toolbar_expanded";
 // newest API view_at from the last complete history sync
 export const HISTORY_SYNC_WATERMARK_VIEW_AT = "history_sync_watermark_view_at";
 export const HISTORY_EVENT_MIGRATION_REPORT = "history_event_migration_report";

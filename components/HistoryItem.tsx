@@ -1,6 +1,6 @@
 import { HistoryDisplayMode, HistoryEvent, HistoryListItem } from "../utils/types";
 import { formatDuration, getContentUrl, getTypeTag } from "../utils/common";
-import { Trash2 } from "lucide-react";
+import { LoaderCircle, Trash2 } from "lucide-react";
 import { checkIsFavorited, deleteHistoryContent, deleteHistoryEvent } from "../utils/db";
 import React, { useState, useEffect } from "react";
 import { getStorageValue } from "../utils/storage";
@@ -10,8 +10,17 @@ import { IS_SYNC_DELETE } from "../utils/constants";
 interface HistoryItemProps {
   item: HistoryListItem;
   displayMode: HistoryDisplayMode;
-  onDelete?: () => void;
+  onDelete?: () => void | Promise<void>;
 }
+
+const historyDateFormatter = new Intl.DateTimeFormat("zh-CN", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
 
 const deleteBilibiliHistory = async (business: string, id: number): Promise<void> => {
   // 从background script获取cookie
@@ -58,6 +67,7 @@ const deleteBilibiliHistory = async (business: string, id: number): Promise<void
 
 export const HistoryItem: React.FC<HistoryItemProps> = ({ item, displayMode, onDelete }) => {
   const [isFav, setIsFav] = useState(item.is_fav === true);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (item.is_fav === true) return;
@@ -67,12 +77,14 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, displayMode, onD
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (isDeleting) return;
 
     try {
+      setIsDeleting(true);
       if (displayMode === "visit") {
         if (!("event_id" in item)) throw new Error("观看事件信息不完整");
         await deleteHistoryEvent(item as HistoryEvent);
-        onDelete?.();
+        await onDelete?.();
         return;
       }
 
@@ -83,10 +95,12 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, displayMode, onD
         console.log("删除B站服务器上的历史记录成功");
       }
       await deleteHistoryContent(item.business, item.id);
-      onDelete?.();
+      await onDelete?.();
     } catch (error) {
       console.error("删除历史记录失败:", error);
       toast.error(error instanceof Error ? error.message : "删除历史记录失败");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -100,101 +114,138 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, displayMode, onD
       item.duration === 0
     )
       return "";
-    const percentage = Math.round((item.progress / item.duration) * 100);
+    const percentage = Math.min(100, Math.round((item.progress / item.duration) * 100));
     return `${formatDuration(item.progress)} / ${formatDuration(item.duration)} · ${percentage}%`;
   };
 
+  const contentUrl = getContentUrl(item);
+  const deleteLabel = displayMode === "visit" ? "删除本次本地观看记录" : "删除该内容的全部记录";
+  const viewDate = new Date(item.view_at * 1000);
+  const hasValidViewDate = !Number.isNaN(viewDate.getTime());
+  const formattedViewAt = hasValidViewDate ? historyDateFormatter.format(viewDate) : "时间未知";
+
   return (
-    <div className="border border-gray-200 dark:border-neutral-800 dark:bg-neutral-900 rounded-lg overflow-hidden">
+    <article
+      className={`history-card group overflow-hidden rounded-xl border bg-white transition-[border-color,transform,opacity] duration-200 hover:-translate-y-0.5 hover:border-pink-200 focus-within:border-pink-300 dark:bg-neutral-900 dark:hover:border-pink-500/40 dark:focus-within:border-pink-500/50 ${
+        isDeleting
+          ? "pointer-events-none border-gray-200 opacity-60 dark:border-neutral-800"
+          : "border-gray-200 dark:border-neutral-800"
+      }`}
+      aria-busy={isDeleting}
+    >
       <a
-        href={getContentUrl(item)}
+        href={contentUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="no-underline text-inherit"
+        className="relative block aspect-video overflow-hidden bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-pink-500 dark:bg-neutral-800"
+        aria-label={`打开：${item.title || "未命名内容"}`}
       >
-        <div>
-          <div className="relative w-full aspect-video">
-            <img
-              src={`${item.cover}@760w_428h_1c.avif`}
-              alt={item.title}
-              className="w-full h-full object-cover"
+        <img
+          src={`${item.cover}@760w_428h_1c.avif`}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.02] motion-reduce:transition-none"
+          onError={(event) => {
+            const image = event.currentTarget;
+            if (image.dataset.fallbackApplied) {
+              image.style.display = "none";
+              return;
+            }
+            image.dataset.fallbackApplied = "true";
+            image.src = item.cover;
+          }}
+        />
+
+        {item.progress !== -1 && (item.progress ?? 0) > 0 && (item.duration ?? 0) > 0 && (
+          <div className="absolute inset-x-0 bottom-0 h-1 bg-black/35">
+            <div
+              className="h-full bg-pink-500"
+              style={{
+                width: `${Math.min(100, ((item.progress || 0) / (item.duration || 1)) * 100)}%`,
+              }}
             />
-
-            {/* 观看进度条 */}
-            {item.progress !== -1 && (item.progress ?? 0) > 0 && (item.duration ?? 0) > 0 && (
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/30">
-                <div
-                  className="h-full bg-[#fb7299]"
-                  style={{
-                    width: `${Math.min(100, ((item.progress || 0) / (item.duration || 1)) * 100)}%`,
-                  }}
-                />
-              </div>
-            )}
-
-            {/* 进度文字 & 已看完标签 & 类型标签 */}
-            <div className="absolute bottom-2 left-2 right-2 flex justify-between items-end pointer-events-none">
-              {item.progress !== -1 && (item.progress ?? 0) > 0 && (item.duration ?? 0) > 0 ? (
-                <span className="text-[10px] text-white bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded border border-white/10">
-                  {getProgressText()}
-                </span>
-              ) : (
-                <span></span>
-              )}{" "}
-              {/* Empty span to maintain flex spacing if no progress text */}
-              {getTypeTag(item.business) !== "视频" && (
-                <span className="px-2 py-1 rounded text-xs text-white bg-[#fb7299]">
-                  {getTypeTag(item.business)}
-                </span>
-              )}
-            </div>
-
-            {/* "已看完" 标签 (moved to top-left) */}
-            {item.progress === -1 && (
-              <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] text-white bg-black/60 backdrop-blur-sm border border-white/20">
-                已看完
-              </span>
-            )}
-
-            {/* "已收藏" 标签 (positioned at top-right) */}
-            {isFav && (
-              <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[10px] text-white bg-black/60 backdrop-blur-sm border border-white/20">
-                已收藏
-              </span>
-            )}
           </div>
-          <div className="p-2.5">
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="m-0 text-sm leading-[1.4] h-10 overflow-hidden line-clamp-2 flex-1">
-                {item.title}
-              </h3>
-              <button
-                className="p-1 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-full transition-colors"
-                onClick={handleDelete}
-                title={displayMode === "visit" ? "删除本次本地观看记录" : "删除该内容的全部记录"}
-                aria-label={
-                  displayMode === "visit" ? "删除本次本地观看记录" : "删除该内容的全部记录"
-                }
-              >
-                <Trash2 className="w-4 h-4 text-gray-500 dark:text-neutral-400" />
-              </button>
-            </div>
-            <div className="flex justify-between items-center text-gray-500 dark:text-neutral-400 text-xs mt-1">
-              <span
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  window.open(`https://space.bilibili.com/${item.author_mid}`, "_blank");
-                }}
-                className="hover:text-[#fb7299] transition-colors cursor-pointer"
-              >
-                {item.author_name}
-              </span>
-              <span>{new Date(item.view_at * 1000).toLocaleString()}</span>
-            </div>
-          </div>
+        )}
+
+        <div className="pointer-events-none absolute inset-x-2 bottom-2 flex items-end justify-between gap-2">
+          {item.progress !== -1 && (item.progress ?? 0) > 0 && (item.duration ?? 0) > 0 ? (
+            <span className="rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white backdrop-blur-sm">
+              {getProgressText()}
+            </span>
+          ) : (
+            <span />
+          )}
+          {getTypeTag(item.business) !== "视频" && (
+            <span className="rounded-md bg-pink-500 px-2 py-1 text-xs font-medium text-white">
+              {getTypeTag(item.business)}
+            </span>
+          )}
         </div>
+
+        {item.progress === -1 && (
+          <span className="absolute left-2 top-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
+            已看完
+          </span>
+        )}
+
+        {isFav && (
+          <span className="absolute right-2 top-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
+            已收藏
+          </span>
+        )}
       </a>
-    </div>
+
+      <div className="p-3.5">
+        <div className="flex items-start gap-2">
+          <a
+            href={contentUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="min-w-0 flex-1 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+          >
+            <h3
+              className="line-clamp-2 min-h-10 text-sm font-medium leading-5 text-gray-900 transition-colors hover:text-pink-700 dark:text-neutral-100 dark:hover:text-pink-300"
+              title={item.title || "未命名内容"}
+            >
+              {item.title || "未命名内容"}
+            </h3>
+          </a>
+          <button
+            type="button"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:cursor-wait dark:text-neutral-400 dark:hover:bg-red-500/10 dark:hover:text-red-300"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            title={deleteLabel}
+            aria-label={isDeleting ? "正在删除历史记录" : deleteLabel}
+          >
+            {isDeleting ? (
+              <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+
+        <div className="mt-2 flex min-w-0 items-center justify-between gap-3 text-xs text-gray-500 dark:text-neutral-400">
+          <a
+            href={`https://space.bilibili.com/${item.author_mid}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="min-w-0 truncate rounded-sm transition-colors hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 dark:hover:text-pink-300"
+            title={item.author_name || "未知 UP 主"}
+          >
+            {item.author_name || "未知 UP 主"}
+          </a>
+          <time
+            className="shrink-0 whitespace-nowrap tabular-nums"
+            dateTime={hasValidViewDate ? viewDate.toISOString() : undefined}
+            title={hasValidViewDate ? viewDate.toLocaleString() : "时间信息不可用"}
+          >
+            {formattedViewAt}
+          </time>
+        </div>
+      </div>
+    </article>
   );
 };

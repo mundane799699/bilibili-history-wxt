@@ -9,11 +9,14 @@ import { useDebounce } from "use-debounce";
 import {
   RefreshCwIcon,
   ChevronDownIcon,
+  ChevronUpIcon,
   Search,
   X,
   Filter,
   CloudDownload,
   Settings2,
+  AlertCircle,
+  LoaderCircle,
 } from "lucide-react";
 import { Pagination } from "../components/Pagination";
 import {
@@ -22,6 +25,7 @@ import {
   HISTORY_DISPLAY_MODE,
   HISTORY_LOAD_MODE,
   HISTORY_PAGE_SIZE,
+  HISTORY_TOOLBAR_EXPANDED,
 } from "../utils/constants";
 import { DateRangePicker } from "../components/DateRangePicker";
 import { getStorageValue, setStorageValue } from "../utils/storage";
@@ -30,6 +34,23 @@ const DEFAULT_PAGE_SIZE = 100;
 
 const getHistoryItemKey = (item: HistoryListItem) =>
   "event_id" in item ? item.event_id : `${item.business}:${item.id}`;
+
+const HistoryCardSkeleton = () => (
+  <div
+    className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900"
+    aria-hidden="true"
+  >
+    <div className="aspect-video animate-pulse bg-gray-200 motion-reduce:animate-none dark:bg-neutral-800" />
+    <div className="space-y-3 p-3.5">
+      <div className="h-4 w-11/12 animate-pulse rounded bg-gray-200 motion-reduce:animate-none dark:bg-neutral-800" />
+      <div className="h-4 w-7/12 animate-pulse rounded bg-gray-200 motion-reduce:animate-none dark:bg-neutral-800" />
+      <div className="flex justify-between pt-1">
+        <div className="h-3 w-20 animate-pulse rounded bg-gray-100 motion-reduce:animate-none dark:bg-neutral-800" />
+        <div className="h-3 w-28 animate-pulse rounded bg-gray-100 motion-reduce:animate-none dark:bg-neutral-800" />
+      </div>
+    </div>
+  </div>
+);
 
 export const History: React.FC = () => {
   const [history, setHistory] = useState<HistoryListItem[]>([]);
@@ -57,6 +78,8 @@ export const History: React.FC = () => {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [isViewSettingsModalOpen, setIsViewSettingsModalOpen] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [isToolbarExpanded, setIsToolbarExpanded] = useState(true);
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -84,7 +107,21 @@ export const History: React.FC = () => {
     getStorageValue<HistoryDisplayMode>(HISTORY_DISPLAY_MODE, "content").then((mode) => {
       setDisplayMode(mode === "visit" ? "visit" : "content");
     });
+    getStorageValue(HISTORY_TOOLBAR_EXPANDED, true).then(setIsToolbarExpanded);
   }, []);
+
+  useEffect(() => {
+    if (!isSearchKindDropdownOpen && !isTypeDropdownOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setIsSearchKindDropdownOpen(false);
+      setIsTypeDropdownOpen(false);
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isSearchKindDropdownOpen, isTypeDropdownOpen]);
 
   const typeOptions = [
     { value: "all", label: "全部分类" },
@@ -103,6 +140,7 @@ export const History: React.FC = () => {
     try {
       setIsLoading(true);
       isLoadingRef.current = true;
+      setLoadError("");
 
       let cursor = null;
       if (isAppend && historyRef.current.length > 0) {
@@ -136,6 +174,7 @@ export const History: React.FC = () => {
       return true;
     } catch (error) {
       console.error("Failed to load history:", error);
+      setLoadError("历史记录加载失败，请检查本地数据后重试。");
       return false;
     } finally {
       setIsLoading(false);
@@ -155,6 +194,7 @@ export const History: React.FC = () => {
     try {
       setIsLoading(true);
       isLoadingRef.current = true;
+      setLoadError("");
 
       const { items, total } = await getHistoryPage(
         page,
@@ -173,6 +213,7 @@ export const History: React.FC = () => {
       return true;
     } catch (error) {
       console.error("Failed to load history:", error);
+      setLoadError("历史记录加载失败，请检查本地数据后重试。");
       return false;
     } finally {
       setIsLoading(false);
@@ -208,13 +249,25 @@ export const History: React.FC = () => {
   ]);
 
   useEffect(() => {
-    getTotalCount();
+    void getTotalCount().catch((error) => {
+      console.error("Failed to load history count:", error);
+      setLoadError("历史记录数量读取失败，请刷新后重试。");
+    });
   }, [displayMode]);
 
   const getTotalCount = async () => {
     const count = await getTotalHistoryCount(displayMode);
     setTotalHistoryCount(count);
     return count;
+  };
+
+  const handleRefresh = async () => {
+    try {
+      await Promise.all([getTotalCount(), reload()]);
+    } catch (error) {
+      console.error("Failed to refresh history:", error);
+      setLoadError("历史记录刷新失败，请稍后重试。");
+    }
   };
 
   const handleSyncSuccess = async () => {
@@ -251,6 +304,16 @@ export const History: React.FC = () => {
     setHistory((items) => items.filter((item) => getHistoryItemKey(item) !== deletedKey));
     setTotalHistoryCount((count) => Math.max(0, count - 1));
     setTotalFiltered((count) => Math.max(0, count - 1));
+  };
+
+  const handleToolbarToggle = () => {
+    const nextExpanded = !isToolbarExpanded;
+    setIsToolbarExpanded(nextExpanded);
+    setIsSearchKindDropdownOpen(false);
+    setIsTypeDropdownOpen(false);
+    void setStorageValue(HISTORY_TOOLBAR_EXPANDED, nextExpanded).catch((error) => {
+      console.error("Failed to save history toolbar state:", error);
+    });
   };
 
   // Observer 只创建一次，通过 ref 访问最新状态
@@ -298,242 +361,366 @@ export const History: React.FC = () => {
     return isLoading ? "加载中..." : hasMore ? "向下滚动加载更多" : "没有更多了";
   };
 
+  const hasActiveFilters =
+    Boolean(keyword || startDate || endDate) || selectedType !== "all" || searchType !== "all";
+  const isInitialLoading = loadMode === null || (isLoading && history.length === 0);
+
   return (
-    <div>
-      <div
+    <main className="min-h-screen bg-gray-50/70 pb-10 text-gray-900 dark:bg-[#0a0a0a] dark:text-neutral-100">
+      <header
         data-tour="history-toolbar"
-        className="sticky top-0 bg-white/95 dark:bg-[#0a0a0a]/95 backdrop-blur-sm z-20 border-b border-gray-100 dark:border-neutral-800 shadow-sm transition-all duration-300"
+        className="sticky top-0 z-30 border-b border-gray-200/80 bg-white/95 backdrop-blur-md dark:border-neutral-800 dark:bg-[#0a0a0a]/95"
       >
-        <div className="flex flex-col md:flex-row items-center justify-between px-6 py-4 gap-4 max-w-[1600px] mx-auto">
-          {/* 左侧：统计与筛选 */}
-          <div className="flex w-full flex-wrap items-center gap-3 md:w-auto">
-            <button
-              type="button"
-              onClick={() => setIsSyncModalOpen(true)}
-              className="inline-flex items-center gap-2 whitespace-nowrap rounded-lg border border-pink-200 bg-pink-50 px-3 py-1.5 text-sm font-medium text-pink-600 shadow-sm transition-colors hover:border-pink-300 hover:bg-pink-100 dark:border-pink-500/30 dark:bg-pink-500/10 dark:text-pink-400 dark:hover:border-pink-500/50 dark:hover:bg-pink-500/20"
-              title="同步历史记录"
-              aria-label="同步历史记录"
-            >
-              <CloudDownload className="h-4 w-4" />
-              <span>同步历史记录</span>
-            </button>
-
-            <button
-              onClick={() => {
-                void Promise.all([getTotalCount(), reload()]);
-              }}
-              className={`p-2  rounded-full bg-pink-50 text-pink-600 dark:hover:text-pink-400 transition-all shadow-sm border border-pink-200 dark:border-pink-500/30 dark:bg-pink-500/10 dark:text-pink-400 dark:hover:border-pink-500/50 dark:hover:bg-pink-500/20 hover:rotate-180 duration-500 ${
-                isLoading ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-              disabled={isLoading}
-              title="刷新"
-            >
-              <RefreshCwIcon className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
-            </button>
-
-            <span className="text-sm font-medium text-gray-500 dark:text-neutral-400 bg-gray-50 dark:bg-neutral-900 px-3 py-1.5 rounded-full whitespace-nowrap border border-gray-100 dark:border-neutral-800">
-              {totalHistoryCount} {displayMode === "visit" ? "次观看" : "个内容"}
-            </span>
-
-            <div className="inline-flex shrink-0 rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs dark:border-neutral-800 dark:bg-neutral-900">
-              {(
-                [
-                  { value: "content", label: "按视频" },
-                  { value: "visit", label: "按观看次数" },
-                ] as const
-              ).map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => void handleDisplayModeChange(option.value)}
-                  aria-pressed={displayMode === option.value}
-                  className={`rounded-md px-2.5 py-1.5 transition-colors ${
-                    displayMode === option.value
-                      ? "bg-white font-medium text-pink-600 shadow-sm dark:bg-neutral-800 dark:text-pink-400"
-                      : "text-gray-500 hover:text-gray-800 dark:text-neutral-400 dark:hover:text-neutral-200"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
+        <div className="mx-auto max-w-[1600px] px-4 py-4 sm:px-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <h1 className="text-xl font-semibold tracking-[-0.02em] text-gray-950 dark:text-white sm:text-2xl">
+                  历史记录
+                </h1>
+                <span className="whitespace-nowrap text-sm tabular-nums text-gray-500 dark:text-neutral-400">
+                  {totalHistoryCount} {displayMode === "visit" ? "次观看" : "个内容"}
+                </span>
+              </div>
+              <p className="mt-1 hidden text-sm text-gray-500 dark:text-neutral-400 sm:block">
+                搜索、筛选并管理你的本地观看记录
+              </p>
             </div>
 
-            <div className="relative">
+            <div className="flex items-center gap-2">
               <button
-                className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-neutral-900 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg text-sm text-gray-700 dark:text-neutral-200 transition-colors border border-gray-200/50 dark:border-neutral-800"
-                onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
+                type="button"
+                onClick={() => setIsSyncModalOpen(true)}
+                className="inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-lg bg-pink-500 px-3.5 text-sm font-medium text-white transition-colors hover:bg-pink-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 dark:bg-pink-500 dark:hover:bg-pink-400 dark:hover:text-neutral-950 dark:focus-visible:ring-offset-[#0a0a0a]"
               >
-                <Filter className="w-3.5 h-3.5 text-gray-500 dark:text-neutral-400" />
-                <span>{typeOptions.find((opt) => opt.value === selectedType)?.label}</span>
-                <ChevronDownIcon className="w-3.5 h-3.5 text-gray-400 dark:text-neutral-500" />
+                <CloudDownload className="h-4 w-4" />
+                <span className="hidden sm:inline">同步记录</span>
               </button>
+              <button
+                type="button"
+                onClick={() => void handleRefresh()}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition-colors hover:border-pink-200 hover:bg-pink-50 hover:text-pink-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-pink-500/40 dark:hover:bg-pink-500/10 dark:hover:text-pink-400 dark:focus-visible:ring-offset-[#0a0a0a]"
+                disabled={isLoading}
+                title="刷新历史记录"
+                aria-label="刷新历史记录"
+              >
+                <RefreshCwIcon
+                  className={`h-4 w-4 ${isLoading ? "animate-spin motion-reduce:animate-none" : ""}`}
+                />
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsViewSettingsModalOpen(true)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition-colors hover:border-pink-200 hover:bg-pink-50 hover:text-pink-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-pink-500/40 dark:hover:bg-pink-500/10 dark:hover:text-pink-400 dark:focus-visible:ring-offset-[#0a0a0a]"
+                title="历史视图设置"
+                aria-label="历史视图设置"
+              >
+                <Settings2 className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={handleToolbarToggle}
+                className={`relative inline-flex h-10 w-10 items-center justify-center rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0a0a0a] ${
+                  isToolbarExpanded
+                    ? "border-gray-200 bg-white text-gray-600 hover:border-pink-200 hover:bg-pink-50 hover:text-pink-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-pink-500/40 dark:hover:bg-pink-500/10 dark:hover:text-pink-400"
+                    : "border-pink-200 bg-pink-50 text-pink-700 hover:bg-pink-100 dark:border-pink-500/30 dark:bg-pink-500/10 dark:text-pink-300 dark:hover:bg-pink-500/20"
+                }`}
+                title={isToolbarExpanded ? "收起搜索与筛选" : "展开搜索与筛选"}
+                aria-label={isToolbarExpanded ? "收起搜索与筛选" : "展开搜索与筛选"}
+                aria-expanded={isToolbarExpanded}
+                aria-controls="history-toolbar-filters"
+              >
+                {isToolbarExpanded ? (
+                  <ChevronUpIcon className="h-4 w-4" />
+                ) : (
+                  <ChevronDownIcon className="h-4 w-4" />
+                )}
+                {!isToolbarExpanded && hasActiveFilters && (
+                  <span
+                    className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-pink-500"
+                    aria-hidden="true"
+                  />
+                )}
+              </button>
+            </div>
+          </div>
 
-              {isTypeDropdownOpen && (
-                <>
+          <div
+            id="history-toolbar-filters"
+            className={`grid transition-[grid-template-rows,opacity,margin] duration-200 ease-out motion-reduce:transition-none ${
+              isToolbarExpanded
+                ? "mt-4 grid-rows-[1fr] opacity-100"
+                : "mt-0 grid-rows-[0fr] opacity-0"
+            }`}
+            aria-hidden={!isToolbarExpanded}
+            inert={!isToolbarExpanded}
+          >
+            <div className="min-h-0 overflow-hidden">
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+                <div
+                  className="group relative flex h-10 min-w-0 flex-1 items-center rounded-lg border border-gray-200 bg-gray-50 transition-colors focus-within:border-pink-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-pink-100 dark:border-neutral-700 dark:bg-neutral-900 dark:focus-within:border-pink-500 dark:focus-within:ring-pink-500/20"
+                  role="search"
+                >
+                  <div className="relative h-full shrink-0">
+                    <button
+                      type="button"
+                      className="flex h-full items-center gap-1.5 whitespace-nowrap border-r border-gray-200 px-3 text-sm font-medium text-gray-700 transition-colors hover:text-pink-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-pink-500 dark:border-neutral-700 dark:text-neutral-300 dark:hover:text-pink-400"
+                      onClick={() => {
+                        setIsSearchKindDropdownOpen(!isSearchKindDropdownOpen);
+                        setIsTypeDropdownOpen(false);
+                      }}
+                      aria-expanded={isSearchKindDropdownOpen}
+                      aria-haspopup="menu"
+                    >
+                      <span>
+                        {searchType === "all" && "综合"}
+                        {searchType === "title" && "标题"}
+                        {searchType === "up" && "UP主"}
+                        {searchType === "bvid" && "BV号"}
+                        {searchType === "avid" && "AV号"}
+                      </span>
+                      <ChevronDownIcon className="h-3.5 w-3.5 text-gray-400 dark:text-neutral-500" />
+                    </button>
+
+                    {isSearchKindDropdownOpen && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-10 cursor-default"
+                          onClick={() => setIsSearchKindDropdownOpen(false)}
+                        />
+                        <div
+                          className="absolute left-0 top-full z-20 mt-2 w-32 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-[0_10px_30px_rgba(15,23,42,0.12)] dark:border-neutral-700 dark:bg-neutral-900"
+                          role="menu"
+                        >
+                          {[
+                            { value: "all", label: "综合搜索" },
+                            { value: "title", label: "视频标题" },
+                            { value: "up", label: "UP主" },
+                            { value: "bvid", label: "视频BV号" },
+                            { value: "avid", label: "视频AV号" },
+                          ].map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              role="menuitemradio"
+                              aria-checked={searchType === option.value}
+                              className={`w-full px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-pink-500 ${
+                                searchType === option.value
+                                  ? "bg-pink-50 font-medium text-pink-700 dark:bg-pink-500/10 dark:text-pink-300"
+                                  : "text-gray-700 hover:bg-gray-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                              }`}
+                              onClick={() => {
+                                setSearchType(
+                                  option.value as "all" | "title" | "up" | "bvid" | "avid",
+                                );
+                                setIsSearchKindDropdownOpen(false);
+                              }}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <Search className="ml-3 h-4 w-4 shrink-0 text-gray-400 dark:text-neutral-500" />
+                  <input
+                    type="search"
+                    className="history-search-input h-full min-w-0 flex-1 border-none bg-transparent px-2.5 pr-10 text-sm text-gray-800 placeholder:text-gray-500 focus:outline-none focus:ring-0 dark:text-neutral-100 dark:placeholder:text-neutral-500"
+                    aria-label="搜索历史记录"
+                    placeholder={
+                      searchType === "bvid"
+                        ? "输入 BV 号"
+                        : searchType === "avid"
+                          ? "输入 AV 号"
+                          : searchType === "up"
+                            ? "输入 UP 主名称或 UID"
+                            : "搜索标题、UP 主或视频编号"
+                    }
+                    value={keyword}
+                    onChange={(event) => setKeyword(event.target.value)}
+                  />
+
+                  {keyword && (
+                    <button
+                      type="button"
+                      onClick={() => setKeyword("")}
+                      className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-gray-500 transition-colors hover:text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-pink-500 dark:text-neutral-400 dark:hover:text-neutral-100"
+                      aria-label="清除搜索内容"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
                   <div
-                    className="fixed inset-0 z-10"
-                    onClick={() => setIsTypeDropdownOpen(false)}
-                  ></div>
-                  <div className="absolute top-full left-0 mt-1 w-32 bg-white dark:bg-neutral-900 rounded-lg shadow-lg border border-gray-100 dark:border-neutral-800 py-1 z-20 animate-in fade-in zoom-in-95 duration-200">
-                    {typeOptions.map((option) => (
+                    className="inline-flex h-10 shrink-0 items-center rounded-lg border border-gray-200 bg-gray-100 p-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                    role="group"
+                    aria-label="历史记录显示方式"
+                  >
+                    {(
+                      [
+                        { value: "content", label: "按视频" },
+                        { value: "visit", label: "按观看" },
+                      ] as const
+                    ).map((option) => (
                       <button
                         key={option.value}
-                        className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                          selectedType === option.value
-                            ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400 font-medium"
-                            : "text-gray-600 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-800"
+                        type="button"
+                        onClick={() => void handleDisplayModeChange(option.value)}
+                        aria-pressed={displayMode === option.value}
+                        className={`h-8 rounded-md px-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 ${
+                          displayMode === option.value
+                            ? "bg-white font-medium text-pink-700 shadow-sm dark:bg-neutral-800 dark:text-pink-300"
+                            : "text-gray-600 hover:text-gray-950 dark:text-neutral-400 dark:hover:text-white"
                         }`}
-                        onClick={() => {
-                          setSelectedType(option.value);
-                          setIsTypeDropdownOpen(false);
-                        }}
                       >
                         {option.label}
                       </button>
                     ))}
                   </div>
-                </>
-              )}
-            </div>
-          </div>
 
-          {/* 中间：搜索框 (带类型选择) */}
-          <div className="flex-1 w-full md:max-w-lg px-4 flex items-center">
-            <div className="relative group w-full flex items-center bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-full transition-all duration-300 shadow-sm hover:shadow-md focus-within:bg-white dark:focus-within:bg-neutral-900 focus-within:ring-2 focus-within:ring-pink-100 dark:focus-within:ring-pink-500/20 focus-within:border-pink-400 dark:focus-within:border-pink-500">
-              {/* 搜索类型下拉 */}
-              <div className="relative">
-                <button
-                  className="pl-4 pr-3 py-2 text-sm text-gray-600 dark:text-neutral-300 font-medium cursor-pointer border-r border-gray-200 dark:border-neutral-800 hover:text-pink-600 dark:hover:text-pink-400 flex items-center gap-1 transition-colors whitespace-nowrap"
-                  onClick={() => setIsSearchKindDropdownOpen(!isSearchKindDropdownOpen)}
-                >
-                  <span>
-                    {searchType === "all" && "综合"}
-                    {searchType === "title" && "标题"}
-                    {searchType === "up" && "UP主"}
-                    {searchType === "bvid" && "BV号"}
-                    {searchType === "avid" && "AV号"}
-                  </span>
-                  <ChevronDownIcon className="w-3 h-3 text-gray-400 dark:text-neutral-500" />
-                </button>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      className="flex h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 transition-colors hover:border-pink-200 hover:bg-pink-50 hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-pink-500/40 dark:hover:bg-pink-500/10 dark:hover:text-pink-300 dark:focus-visible:ring-offset-[#0a0a0a]"
+                      onClick={() => {
+                        setIsTypeDropdownOpen(!isTypeDropdownOpen);
+                        setIsSearchKindDropdownOpen(false);
+                      }}
+                      aria-expanded={isTypeDropdownOpen}
+                      aria-haspopup="menu"
+                    >
+                      <Filter className="h-4 w-4" />
+                      <span>
+                        {typeOptions.find((option) => option.value === selectedType)?.label}
+                      </span>
+                      <ChevronDownIcon className="h-3.5 w-3.5 text-gray-400 dark:text-neutral-500" />
+                    </button>
 
-                {isSearchKindDropdownOpen && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-10"
-                      onClick={() => setIsSearchKindDropdownOpen(false)}
-                    ></div>
-                    <div className="absolute top-full left-0 mt-2 w-28 bg-white dark:bg-neutral-900 rounded-lg shadow-lg border border-gray-100 dark:border-neutral-800 py-1 z-20 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
-                      {[
-                        { value: "all", label: "综合搜索" },
-                        { value: "title", label: "视频标题" },
-                        { value: "up", label: "UP主" },
-                        { value: "bvid", label: "视频BV号" },
-                        { value: "avid", label: "视频AV号" },
-                      ].map((option) => (
-                        <button
-                          key={option.value}
-                          className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                            searchType === option.value
-                              ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400 font-medium"
-                              : "text-gray-600 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-800"
-                          }`}
-                          onClick={() => {
-                            setSearchType(option.value as any);
-                            setIsSearchKindDropdownOpen(false);
-                          }}
+                    {isTypeDropdownOpen && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-10 cursor-default"
+                          onClick={() => setIsTypeDropdownOpen(false)}
+                        />
+                        <div
+                          className="absolute left-0 top-full z-20 mt-2 w-32 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-[0_10px_30px_rgba(15,23,42,0.12)] dark:border-neutral-700 dark:bg-neutral-900"
+                          role="menu"
                         >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
+                          {typeOptions.map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              role="menuitemradio"
+                              aria-checked={selectedType === option.value}
+                              className={`w-full px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-pink-500 ${
+                                selectedType === option.value
+                                  ? "bg-pink-50 font-medium text-pink-700 dark:bg-pink-500/10 dark:text-pink-300"
+                                  : "text-gray-700 hover:bg-gray-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                              }`}
+                              onClick={() => {
+                                setSelectedType(option.value);
+                                setIsTypeDropdownOpen(false);
+                              }}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
 
-              <input
-                type="text"
-                className="flex-1 bg-transparent border-none focus:ring-0 pl-3 pr-10 py-2 text-sm text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 focus:outline-none"
-                placeholder={
-                  searchType === "bvid"
-                    ? "输入BV号..."
-                    : searchType === "avid"
-                      ? "输入AV号..."
-                      : searchType === "up"
-                        ? "输入UP主名称或UID..."
-                        : "搜索..."
-                }
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-              />
-
-              {keyword ? (
-                <button
-                  onClick={() => setKeyword("")}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 dark:text-neutral-500 hover:text-gray-600 dark:hover:text-neutral-300 transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              ) : (
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-gray-400 dark:text-neutral-500" />
+                  <DateRangePicker
+                    startDate={startDate}
+                    endDate={endDate}
+                    onChange={(start, end) => {
+                      setStartDate(start);
+                      setEndDate(end);
+                    }}
+                    mode={dateSelectionMode}
+                  />
                 </div>
-              )}
+              </div>
             </div>
           </div>
+        </div>
+      </header>
 
-          {/* 右侧：日期、刷新与视图设置 */}
-          <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-            <DateRangePicker
-              startDate={startDate}
-              endDate={endDate}
-              onChange={(start, end) => {
-                setStartDate(start);
-                setEndDate(end);
-              }}
-              mode={dateSelectionMode}
-            />
-
+      {loadError && (
+        <div className="mx-auto mt-5 flex max-w-[1600px] items-center justify-between gap-4 px-4 sm:px-6">
+          <div
+            className="flex w-full items-center justify-between gap-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200"
+            role="alert"
+          >
+            <span className="flex min-w-0 items-center gap-2.5">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{loadError}</span>
+            </span>
             <button
               type="button"
-              onClick={() => setIsViewSettingsModalOpen(true)}
-              className="rounded-full border border-gray-200 bg-white p-2 text-gray-500 shadow-sm transition-colors hover:border-pink-200 hover:bg-pink-50 hover:text-pink-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:border-pink-500/30 dark:hover:bg-pink-500/10 dark:hover:text-pink-400"
-              title="历史视图设置"
-              aria-label="历史视图设置"
+              onClick={() => void reload()}
+              className="shrink-0 font-medium underline decoration-red-300 underline-offset-4 hover:text-red-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:hover:text-white"
             >
-              <Settings2 className="h-4 w-4" />
+              重新加载
             </button>
           </div>
         </div>
-      </div>
+      )}
 
-      <div
-        className="p-6 pt-2 grid gap-5 mx-auto w-full"
-        style={{
-          gridTemplateColumns:
-            gridColumns === "auto"
-              ? "repeat(auto-fill, minmax(280px, 1fr))"
-              : `repeat(${gridColumns}, minmax(0, 1fr))`,
-        }}
+      <section
+        className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6"
+        aria-labelledby="history-list-title"
       >
-        {history.map((item) => (
-          <HistoryItem
-            key={getHistoryItemKey(item)}
-            item={item}
-            displayMode={displayMode}
-            onDelete={() => handleHistoryDelete(item)}
-          />
-        ))}
-        {loadMode === "scroll" && (
-          <div
-            ref={loadMoreCallbackRef}
-            className="col-span-full py-8 text-center text-gray-500 dark:text-neutral-400 text-sm"
-          >
-            {getLoadMoreText()}
-          </div>
-        )}
-      </div>
+        <h2 id="history-list-title" className="sr-only">
+          历史记录列表
+        </h2>
+        <div
+          className="history-grid grid w-full gap-4 sm:gap-5"
+          data-grid-columns={gridColumns}
+          style={{
+            gridTemplateColumns:
+              gridColumns === "auto"
+                ? "repeat(auto-fill, minmax(260px, 1fr))"
+                : `repeat(${gridColumns}, minmax(0, 1fr))`,
+          }}
+          aria-busy={isInitialLoading}
+        >
+          {isInitialLoading && (
+            <span className="sr-only" role="status">
+              正在加载历史记录
+            </span>
+          )}
+          {isInitialLoading
+            ? Array.from({ length: 8 }, (_, index) => <HistoryCardSkeleton key={index} />)
+            : history.map((item) => (
+                <HistoryItem
+                  key={getHistoryItemKey(item)}
+                  item={item}
+                  displayMode={displayMode}
+                  onDelete={() => handleHistoryDelete(item)}
+                />
+              ))}
 
-      {loadMode === "pagination" && (
+          {loadMode === "scroll" && history.length > 0 && (
+            <div
+              ref={loadMoreCallbackRef}
+              className="col-span-full flex min-h-20 items-center justify-center gap-2 py-6 text-sm text-gray-500 dark:text-neutral-400"
+              role="status"
+            >
+              {isLoading && (
+                <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" />
+              )}
+              {getLoadMoreText()}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {loadMode === "pagination" && history.length > 0 && (
         <Pagination
           currentPage={currentPage}
           totalItems={totalFiltered}
@@ -541,23 +728,27 @@ export const History: React.FC = () => {
           onPageChange={loadPage}
           onPageSizeChange={(size) => {
             setPageSize(size);
-            setStorageValue(HISTORY_PAGE_SIZE, size);
+            void setStorageValue(HISTORY_PAGE_SIZE, size);
           }}
         />
       )}
 
-      {history.length === 0 && !isLoading && (
-        <div className="text-center py-20">
-          <div className="text-gray-300 dark:text-neutral-700 mb-4">
-            <Search className="w-16 h-16 mx-auto opacity-50" />
+      {history.length === 0 && !isInitialLoading && !loadError && (
+        <div className="mx-auto flex max-w-lg flex-col items-center px-6 py-20 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-gray-400 dark:bg-neutral-900 dark:text-neutral-500">
+            <Search className="h-5 w-5" />
           </div>
-          <p className="text-gray-500 dark:text-neutral-400 text-lg">
-            {keyword || startDate || selectedType !== "all" || searchType !== "all"
-              ? "没有找到相关记录"
-              : "暂无历史记录"}
+          <h2 className="mt-5 text-lg font-semibold text-gray-900 dark:text-neutral-100">
+            {hasActiveFilters ? "没有找到匹配的记录" : "还没有历史记录"}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-neutral-400">
+            {hasActiveFilters
+              ? "试试更换关键词、分类或日期范围。"
+              : "同步 B 站历史后，你的观看记录会显示在这里。"}
           </p>
-          {(keyword || startDate || selectedType !== "all" || searchType !== "all") && (
+          {hasActiveFilters && (
             <button
+              type="button"
               onClick={() => {
                 setKeyword("");
                 setStartDate("");
@@ -565,9 +756,19 @@ export const History: React.FC = () => {
                 setSelectedType("all");
                 setSearchType("all");
               }}
-              className="mt-4 text-pink-500 dark:text-pink-400 hover:text-pink-600 dark:hover:text-pink-300 hover:underline text-sm"
+              className="mt-5 inline-flex h-10 items-center rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition-colors hover:border-pink-200 hover:bg-pink-50 hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-pink-500/40 dark:hover:bg-pink-500/10 dark:hover:text-pink-300 dark:focus-visible:ring-offset-[#0a0a0a]"
             >
               清除所有筛选
+            </button>
+          )}
+          {!hasActiveFilters && (
+            <button
+              type="button"
+              onClick={() => setIsSyncModalOpen(true)}
+              className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-pink-500 px-4 text-sm font-medium text-white transition-colors hover:bg-pink-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0a0a0a]"
+            >
+              <CloudDownload className="h-4 w-4" />
+              同步历史记录
             </button>
           )}
         </div>
@@ -587,6 +788,6 @@ export const History: React.FC = () => {
         onClose={() => setIsViewSettingsModalOpen(false)}
         onSave={handleViewSettingsSave}
       />
-    </div>
+    </main>
   );
 };

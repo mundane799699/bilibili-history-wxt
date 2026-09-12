@@ -39,6 +39,17 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsOpen(false);
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
+
   const handleDateClick = (dateStr: string) => {
     if (mode === "single") {
       onChange(dateStr, dateStr);
@@ -93,52 +104,67 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
   return (
     <div className="relative" ref={containerRef}>
-      <div
-        className="group relative flex items-center bg-gray-50 dark:bg-neutral-900 hover:bg-white dark:hover:bg-neutral-800 border border-gray-200 dark:border-neutral-800 rounded-lg transition-all focus-within:ring-2 focus-within:ring-pink-100 dark:focus-within:ring-pink-500/20 focus-within:border-pink-400 dark:focus-within:border-pink-500 focus-within:bg-white dark:focus-within:bg-neutral-900 shadow-sm cursor-pointer"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <div className="pl-3 flex items-center pointer-events-none">
-          <CalendarIcon className="h-4 w-4 text-gray-400 dark:text-neutral-500 group-hover:text-pink-500 dark:group-hover:text-pink-400 transition-colors" />
-        </div>
-        <input
-          type="text"
-          readOnly
-          placeholder="yyyy/mm/dd"
-          className="bg-transparent border-none text-sm text-gray-600 dark:text-neutral-200 placeholder-gray-400 dark:placeholder-neutral-500 focus:ring-0 py-1.5 pl-2 pr-1 outline-none w-[180px] cursor-pointer"
-          value={displayText}
-        />
+      <div className="group relative flex h-10 items-center rounded-lg border border-gray-200 bg-white transition-colors hover:border-pink-200 hover:bg-pink-50 focus-within:ring-2 focus-within:ring-pink-500 focus-within:ring-offset-2 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-pink-500/40 dark:hover:bg-pink-500/10 dark:focus-within:ring-offset-[#0a0a0a]">
+        <button
+          type="button"
+          className="flex h-full min-w-0 items-center gap-2 px-3 text-sm text-gray-700 focus-visible:outline-none dark:text-neutral-300"
+          onClick={() => setIsOpen(!isOpen)}
+          aria-expanded={isOpen}
+          aria-haspopup="dialog"
+          aria-label={displayText ? `已选日期：${displayText}` : "选择日期"}
+        >
+          <CalendarIcon className="h-4 w-4 shrink-0 text-gray-500 transition-colors group-hover:text-pink-600 dark:text-neutral-400 dark:group-hover:text-pink-300" />
+          <span
+            className={`max-w-[180px] truncate whitespace-nowrap ${
+              displayText
+                ? "text-gray-700 dark:text-neutral-200"
+                : "text-gray-500 dark:text-neutral-500"
+            }`}
+          >
+            {displayText || "选择日期"}
+          </span>
+        </button>
         {displayText && (
           <button
-            onClick={(e) => {
-              e.stopPropagation();
+            type="button"
+            onClick={() => {
               onChange("", "");
             }}
-            className="pr-2 text-gray-400 dark:text-neutral-500 hover:text-red-500 dark:hover:text-red-400 transition-colors z-10"
+            className="flex h-full w-9 shrink-0 items-center justify-center rounded-r-lg text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-500 dark:text-neutral-400 dark:hover:bg-red-500/10 dark:hover:text-red-300"
             title="清除日期"
+            aria-label="清除日期"
           >
-            <X className="h-3.5 w-3.5" />
+            <X className="h-4 w-4" />
           </button>
         )}
       </div>
 
       {isOpen && (
-        <div className="absolute top-full right-0 mt-2 bg-white dark:bg-neutral-900 rounded-lg shadow-xl border border-gray-100 dark:border-neutral-800 p-4 z-50 w-[320px] animate-in fade-in zoom-in-95 duration-200 select-none">
+        <div
+          className="absolute right-0 top-full z-50 mt-2 w-[min(320px,calc(100vw-2rem))] select-none rounded-xl border border-gray-200 bg-white p-4 shadow-[0_14px_36px_rgba(15,23,42,0.16)] dark:border-neutral-700 dark:bg-neutral-900"
+          role="dialog"
+          aria-label="选择历史记录日期"
+        >
           <div className="flex justify-between items-center mb-4">
             <span className="font-medium text-gray-700 dark:text-neutral-200">
               {currentMonth.format("YYYY年MM月")}
             </span>
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={prevMonth}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
+                aria-label="上个月"
               >
-                <ChevronLeft className="w-4 h-4 text-gray-500 dark:text-neutral-400" />
+                <ChevronLeft className="h-4 w-4" />
               </button>
               <button
+                type="button"
                 onClick={nextMonth}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
+                aria-label="下个月"
               >
-                <ChevronRight className="w-4 h-4 text-gray-500 dark:text-neutral-400" />
+                <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -175,9 +201,12 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               return (
                 <button
                   key={idx}
+                  type="button"
                   onClick={() => handleDateClick(dateStr)}
+                  aria-label={date.format("YYYY年MM月DD日")}
+                  aria-pressed={Boolean(isSelected)}
                   className={`
-                    aspect-square rounded-md text-sm transition-colors flex items-center justify-center
+                    flex aspect-square items-center justify-center rounded-md text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500
                     ${bgClass}
                   `}
                 >
@@ -189,17 +218,20 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
           <div className="flex justify-between mt-4 border-t border-gray-200 dark:border-neutral-800 pt-3">
             <button
+              type="button"
               onClick={() => onChange("", "")}
-              className="text-xs text-gray-500 dark:text-neutral-400 hover:text-red-500 dark:hover:text-red-400"
+              className="rounded text-xs text-gray-600 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-neutral-400 dark:hover:text-red-300"
             >
               清除
             </button>
             <button
+              type="button"
               onClick={() => {
                 const today = dayjs().format("YYYY-MM-DD");
                 onChange(today, today);
+                setIsOpen(false);
               }}
-              className="text-xs text-pink-500 dark:text-pink-400 hover:text-pink-600 dark:hover:text-pink-300"
+              className="rounded text-xs font-medium text-pink-700 hover:text-pink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 dark:text-pink-300 dark:hover:text-pink-200"
             >
               今天
             </button>
