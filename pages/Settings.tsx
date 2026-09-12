@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Check, HardDrive, RefreshCw } from "lucide-react";
-import { clearHistory, deleteDB, getTotalHistoryCount } from "../utils/db";
+import { clearAllDatabaseTables, getTotalHistoryCount } from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
 import {
   IS_SYNC_DELETE,
@@ -17,7 +17,6 @@ import toast from "react-hot-toast";
 import { Checkbox } from "../components/Checkbox";
 import { Select } from "../components/Select";
 import { checkStorageHealth, formatStorageSize, StorageHealthReport } from "../utils/storageHealth";
-import { clearLocalBackupDirectoryHandle } from "../utils/localBackupHandle";
 
 const Settings = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -30,6 +29,7 @@ const Settings = () => {
 
   const [showResetResultDialog, setShowResetResultDialog] = useState(false);
   const [resetResult, setResetResult] = useState("");
+  const [resetSucceeded, setResetSucceeded] = useState(false);
   const [isResetLoading, setIsResetLoading] = useState(false);
   const [resetStatus, setResetStatus] = useState("");
 
@@ -158,19 +158,18 @@ const Settings = () => {
   const handleReset = async () => {
     try {
       setIsResetLoading(true);
-      setResetStatus("正在清空历史记录...");
-      await clearHistory();
-      setResetStatus("正在清理备份目录授权...");
-      await clearLocalBackupDirectoryHandle();
-      setResetStatus("正在清理存储...");
+      setResetSucceeded(false);
+      setResetStatus("正在清空本地数据...");
+      await clearAllDatabaseTables();
+      setResetStatus("正在清理偏好设置...");
       await browser.storage.local.clear();
-      setResetStatus("正在删除全部本地数据...");
-      await deleteDB();
-      setResetStatus("正在重新加载...");
+      setResetStatus("正在完成重置...");
+      setResetSucceeded(true);
       setResetResult("恢复出厂设置成功！");
     } catch (error) {
       console.error("恢复出厂设置失败:", error);
-      setResetResult("恢复出厂设置失败，请重试！");
+      setResetSucceeded(false);
+      setResetResult(error instanceof Error ? error.message : "恢复出厂设置失败，请重试！");
     } finally {
       setIsResetLoading(false);
       setResetStatus("");
@@ -337,7 +336,7 @@ const Settings = () => {
                   恢复出厂设置
                 </h3>
                 <p className="text-sm text-gray-400 dark:text-neutral-500">
-                  清空所有数据，无法恢复
+                  清空应用数据，保留本地备份目录授权
                 </p>
               </div>
               <button
@@ -578,12 +577,17 @@ const Settings = () => {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-neutral-900 p-6 rounded-xl shadow-xl max-w-sm w-full mx-4 border border-transparent dark:border-neutral-800">
             <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100 mb-2">
-              确认恢复出厂设置？
+              确认清空应用数据？
             </h3>
-            <p className="text-gray-500 dark:text-neutral-400 mb-6 text-sm leading-relaxed">
-              此操作将<span className="text-red-600 font-medium">永久删除</span>
-              所有本地存储的历史记录和偏好设置。
-            </p>
+            <div className="mb-6 space-y-2 text-sm leading-relaxed text-gray-600 dark:text-neutral-300">
+              <p>
+                此操作将<span className="font-medium text-red-600 dark:text-red-400">永久删除</span>
+                本地保存的历史记录、喜欢的音乐、收藏夹、收藏资源、订阅合集和合集视频，并清空所有偏好设置。
+              </p>
+              <p className="text-gray-500 dark:text-neutral-400">
+                已选择的本地备份目录授权和目录中的备份文件会保留。
+              </p>
+            </div>
             {isResetLoading && (
               <p className="text-blue-600 mb-4 text-sm animate-pulse">{resetStatus}</p>
             )}
@@ -600,7 +604,7 @@ const Settings = () => {
                 className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm"
                 disabled={isResetLoading}
               >
-                确认删除
+                永久删除应用数据
               </button>
             </div>
           </div>
@@ -617,10 +621,13 @@ const Settings = () => {
               {resetResult}
             </p>
             <button
-              onClick={() => setShowResetResultDialog(false)}
+              onClick={() => {
+                setShowResetResultDialog(false);
+                if (resetSucceeded) window.location.reload();
+              }}
               className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
             >
-              确定
+              {resetSucceeded ? "确定并重新加载" : "确定"}
             </button>
           </div>
         </div>

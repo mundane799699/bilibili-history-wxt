@@ -331,11 +331,11 @@ export default defineBackground(() => {
         if (await isLocalHistoryBackupDue()) {
           const result = await runLocalHistoryBackupOnce();
           if (!result.success) {
-            console.warn("历史记录本地自动备份未完成:", result.error);
+            console.warn("本地自动备份未完成:", result.error);
           }
         }
       } catch (error) {
-        console.error("历史记录本地自动备份失败:", error);
+        console.error("本地自动备份失败:", error);
       }
     }
   });

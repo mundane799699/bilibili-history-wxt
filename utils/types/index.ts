@@ -137,6 +137,7 @@ export interface LocalHistoryBackupResult {
   recordCount?: number;
   contentCount?: number;
   eventCount?: number;
+  summary?: string;
   completedAt?: number;
   cleanupWarning?: string;
   errorCode?: LocalHistoryBackupErrorCode;

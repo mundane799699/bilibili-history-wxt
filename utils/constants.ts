@@ -42,6 +42,7 @@ export const FIRST_RUN_GUIDE_COMPLETED = "firstRunGuideCompleted";
 // 历史记录本地目录自动备份
 export const LOCAL_HISTORY_BACKUP_ALARM = "localHistoryBackup";
 export const LOCAL_HISTORY_BACKUP_ENABLED = "localHistoryBackupEnabled";
+export const LOCAL_HISTORY_BACKUP_ITEMS = "localHistoryBackupItems";
 export const LOCAL_HISTORY_BACKUP_INTERVAL_HOURS = "localHistoryBackupIntervalHours";
 export const LOCAL_HISTORY_BACKUP_RETENTION_COUNT = "localHistoryBackupRetentionCount";
 export const LOCAL_HISTORY_BACKUP_DIRECTORY_NAME = "localHistoryBackupDirectoryName";
@@ -72,8 +73,20 @@ export const DEFAULT_WEBDAV_SYNC_ITEMS = {
   subscribedCollectionResources: true,
 };
 
-export type WebDavSyncItems = typeof DEFAULT_WEBDAV_SYNC_ITEMS;
-export type WebDavSyncKey = keyof WebDavSyncItems;
+export type BackupItems = typeof DEFAULT_WEBDAV_SYNC_ITEMS;
+export type BackupItemKey = keyof BackupItems;
+export type WebDavSyncItems = BackupItems;
+export type WebDavSyncKey = BackupItemKey;
+
+/** 本地目录备份默认仅包含历史记录，用户可在备份页调整 */
+export const DEFAULT_LOCAL_HISTORY_BACKUP_ITEMS: BackupItems = {
+  history: true,
+  likedMusic: false,
+  favFolders: false,
+  favResources: false,
+  subscribedCollections: false,
+  subscribedCollectionResources: false,
+};
 
 export const OPENAI_API_KEY = "openaiApiKey";
 export const OPENAI_BASE_URL = "openaiBaseUrl";

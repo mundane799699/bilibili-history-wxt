@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, FolderOpen } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FolderOpen, LoaderCircle, Play, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   DEFAULT_LOCAL_HISTORY_BACKUP_INTERVAL_HOURS,
+  DEFAULT_LOCAL_HISTORY_BACKUP_ITEMS,
   DEFAULT_LOCAL_HISTORY_BACKUP_RETENTION_COUNT,
+  BackupItemKey,
+  BackupItems,
   LOCAL_HISTORY_BACKUP_DIRECTORY_NAME,
   LOCAL_HISTORY_BACKUP_ENABLED,
   LOCAL_HISTORY_BACKUP_INTERVAL_HOURS,
+  LOCAL_HISTORY_BACKUP_ITEMS,
   LOCAL_HISTORY_BACKUP_LAST_ATTEMPT_AT,
   LOCAL_HISTORY_BACKUP_LAST_CLEANUP_WARNING,
   LOCAL_HISTORY_BACKUP_LAST_ERROR,
@@ -29,9 +33,19 @@ import { getStorageValue, setStorageValue, setStorageValues } from "../utils/sto
 import { LocalHistoryBackupResult } from "../utils/types";
 import { Select } from "./Select";
 
+const LOCAL_BACKUP_ITEM_OPTIONS: { key: BackupItemKey; label: string }[] = [
+  { key: "history", label: "历史记录" },
+  { key: "likedMusic", label: "喜欢的音乐" },
+  { key: "favFolders", label: "收藏夹" },
+  { key: "favResources", label: "收藏资源" },
+  { key: "subscribedCollections", label: "订阅合集" },
+  { key: "subscribedCollectionResources", label: "合集视频" },
+];
+
 export const LocalHistoryBackupPanel = () => {
   const supported = isLocalDirectoryBackupSupported();
   const [enabled, setEnabled] = useState(false);
+  const [backupItems, setBackupItems] = useState<BackupItems>(DEFAULT_LOCAL_HISTORY_BACKUP_ITEMS);
   const [intervalHours, setIntervalHours] = useState(DEFAULT_LOCAL_HISTORY_BACKUP_INTERVAL_HOURS);
   const [retentionCount, setRetentionCount] = useState(
     DEFAULT_LOCAL_HISTORY_BACKUP_RETENTION_COUNT,
@@ -51,6 +65,7 @@ export const LocalHistoryBackupPanel = () => {
   const loadSettings = async () => {
     const [
       storedEnabled,
+      storedBackupItems,
       storedInterval,
       storedRetention,
       storedDirectoryName,
@@ -62,6 +77,7 @@ export const LocalHistoryBackupPanel = () => {
       storedCleanupWarning,
     ] = await Promise.all([
       getStorageValue(LOCAL_HISTORY_BACKUP_ENABLED, false),
+      getStorageValue<BackupItems>(LOCAL_HISTORY_BACKUP_ITEMS, DEFAULT_LOCAL_HISTORY_BACKUP_ITEMS),
       getStorageValue(
         LOCAL_HISTORY_BACKUP_INTERVAL_HOURS,
         DEFAULT_LOCAL_HISTORY_BACKUP_INTERVAL_HOURS,
@@ -80,6 +96,7 @@ export const LocalHistoryBackupPanel = () => {
     ]);
 
     setEnabled(Boolean(storedEnabled));
+    setBackupItems({ ...DEFAULT_LOCAL_HISTORY_BACKUP_ITEMS, ...storedBackupItems });
     setIntervalHours(Number(storedInterval));
     setRetentionCount(Number(storedRetention));
     setDirectoryName(String(storedDirectoryName));
@@ -170,8 +187,8 @@ export const LocalHistoryBackupPanel = () => {
       await loadSettings();
       toast.success(
         result.cleanupWarning
-          ? `历史记录备份成功；${result.cleanupWarning}`
-          : `历史记录备份成功：${result.contentCount ?? 0} 个内容，${result.eventCount ?? result.recordCount ?? 0} 次观看`,
+          ? `本地备份成功；${result.cleanupWarning}`
+          : `本地备份成功：${result.summary || "已写入所选数据"}`,
       );
     } catch (error) {
       console.error("立即备份历史记录失败:", error);
@@ -239,19 +256,29 @@ export const LocalHistoryBackupPanel = () => {
     }
   };
 
+  const toggleBackupItem = async (key: BackupItemKey) => {
+    const selectedCount = Object.values(backupItems).filter(Boolean).length;
+    if (backupItems[key] && selectedCount === 1) {
+      toast.error("请至少保留一项备份内容");
+      return;
+    }
+
+    const next = { ...backupItems, [key]: !backupItems[key] };
+    setBackupItems(next);
+    await setStorageValue(LOCAL_HISTORY_BACKUP_ITEMS, next);
+  };
+
   return (
-    <section className="rounded-lg border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-      <div className="border-b border-gray-100 p-5 dark:border-neutral-800">
+    <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="border-b border-gray-100 px-5 py-4 dark:border-neutral-800">
         <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
-            <FolderOpen className="h-5 w-5" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+            <FolderOpen className="h-4.5 w-4.5" />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-neutral-100">
-              自动备份至本地
-            </h2>
+            <h3 className="font-semibold text-gray-950 dark:text-neutral-100">自动备份至本地</h3>
             <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">
-              浏览器运行期间，定期将历史记录写入你选择的目录
+              浏览器运行期间，定期将所选数据写入你选择的目录
             </p>
           </div>
         </div>
@@ -264,7 +291,7 @@ export const LocalHistoryBackupPanel = () => {
           </div>
         ) : (
           <>
-            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-neutral-700 dark:bg-neutral-800/60">
+            <div className="rounded-xl bg-gray-50 px-4 py-3 dark:bg-neutral-800/70">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs text-gray-500 dark:text-neutral-400">备份目录</p>
@@ -283,8 +310,9 @@ export const LocalHistoryBackupPanel = () => {
                   type="button"
                   onClick={() => void selectDirectory()}
                   disabled={isSelectingDirectory || isRunning}
-                  className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-xs font-medium text-white transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-neutral-800"
                 >
+                  {isSelectingDirectory && <LoaderCircle className="h-3.5 w-3.5 animate-spin" />}
                   {isSelectingDirectory
                     ? "正在选择..."
                     : directoryConfigured
@@ -296,7 +324,7 @@ export const LocalHistoryBackupPanel = () => {
                     type="button"
                     onClick={() => void ensurePermission().then(() => loadSettings())}
                     disabled={isRunning}
-                    className="rounded-md border border-amber-300 px-3 py-2 text-xs font-medium text-amber-700 hover:bg-amber-50 dark:border-amber-500/30 dark:text-amber-300 dark:hover:bg-amber-500/10"
+                    className="min-h-9 rounded-lg border border-amber-300 px-3 text-xs font-medium text-amber-800 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-amber-500/30 dark:text-amber-300 dark:hover:bg-amber-500/10 dark:focus-visible:ring-offset-neutral-800"
                   >
                     重新授权
                   </button>
@@ -307,16 +335,22 @@ export const LocalHistoryBackupPanel = () => {
                       type="button"
                       onClick={() => void runNow()}
                       disabled={isRunning || isSelectingDirectory}
-                      className="rounded-md border border-blue-300 px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50 dark:border-blue-500/30 dark:text-blue-300 dark:hover:bg-blue-500/10"
+                      className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800 dark:focus-visible:ring-offset-neutral-800"
                     >
+                      {isRunning ? (
+                        <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Play className="h-3.5 w-3.5" />
+                      )}
                       {isRunning ? "备份中..." : "立即备份"}
                     </button>
                     <button
                       type="button"
                       onClick={() => void removeDirectory()}
                       disabled={isRunning || isSelectingDirectory}
-                      className="rounded-md px-3 py-2 text-xs font-medium text-gray-500 hover:bg-gray-100 disabled:opacity-50 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                      className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:cursor-not-allowed disabled:opacity-50 dark:text-neutral-400 dark:hover:bg-neutral-700"
                     >
+                      <Trash2 className="h-3.5 w-3.5" />
                       移除目录
                     </button>
                   </>
@@ -327,13 +361,16 @@ export const LocalHistoryBackupPanel = () => {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-medium text-gray-800 dark:text-neutral-200">
-                  启用本地自动同步
+                  启用本地自动备份
                 </p>
                 <p className="mt-1 text-xs text-gray-500 dark:text-neutral-400">
                   关闭后仍可立即备份
                 </p>
               </div>
-              <label className={directoryConfigured ? "cursor-pointer" : "cursor-not-allowed"}>
+              <label
+                className={directoryConfigured ? "cursor-pointer" : "cursor-not-allowed"}
+                aria-label="启用本地自动备份"
+              >
                 <input
                   type="checkbox"
                   className="peer sr-only"
@@ -341,9 +378,48 @@ export const LocalHistoryBackupPanel = () => {
                   disabled={!directoryConfigured || isRunning || isSelectingDirectory}
                   onChange={(event) => void toggleEnabled(event.target.checked)}
                 />
-                <span className="relative block h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-transform peer-checked:bg-emerald-600 peer-checked:after:translate-x-5 peer-disabled:opacity-50 dark:bg-neutral-700 dark:after:border-neutral-600" />
+                <span className="relative block h-6 w-11 rounded-full bg-gray-300 ring-offset-2 after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:bg-emerald-600 peer-checked:after:translate-x-5 peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-500 peer-disabled:opacity-50 dark:bg-neutral-700 dark:ring-offset-neutral-900" />
               </label>
             </div>
+
+            <fieldset disabled={isRunning}>
+              <legend className="mb-2 flex w-full items-center justify-between gap-3 text-sm font-medium text-gray-700 dark:text-neutral-300">
+                <span>备份内容</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allSelected = Object.fromEntries(
+                      LOCAL_BACKUP_ITEM_OPTIONS.map((item) => [item.key, true]),
+                    ) as BackupItems;
+                    setBackupItems(allSelected);
+                    void setStorageValue(LOCAL_HISTORY_BACKUP_ITEMS, allSelected);
+                  }}
+                  className="rounded-md px-2 py-1 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-emerald-500/10"
+                >
+                  全部选择
+                </button>
+              </legend>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {LOCAL_BACKUP_ITEM_OPTIONS.map((item) => (
+                  <label
+                    key={item.key}
+                    className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60 ${
+                      backupItems[item.key]
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200"
+                        : "border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={backupItems[item.key]}
+                      onChange={() => void toggleBackupItem(item.key)}
+                      className="h-4 w-4 accent-emerald-600 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 dark:accent-emerald-500"
+                    />
+                    <span>{item.label}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Select
@@ -381,34 +457,34 @@ export const LocalHistoryBackupPanel = () => {
               />
             </div>
 
-            <div className="space-y-2 text-xs text-gray-500 dark:text-neutral-400">
+            <dl className="space-y-2 text-xs text-gray-600 dark:text-neutral-400">
               <div className="flex justify-between gap-3">
-                <span>最近成功</span>
-                <span className="text-right font-medium text-gray-700 dark:text-neutral-200">
+                <dt>最近成功</dt>
+                <dd className="text-right font-medium tabular-nums text-gray-700 dark:text-neutral-200">
                   {lastSuccessAt ? new Date(lastSuccessAt).toLocaleString() : "尚未备份"}
-                </span>
+                </dd>
               </div>
               {lastFileName && (
                 <div className="flex justify-between gap-3">
-                  <span className="shrink-0">最近文件</span>
-                  <span className="break-all text-right text-gray-700 dark:text-neutral-200">
+                  <dt className="shrink-0">最近文件</dt>
+                  <dd className="break-all text-right text-gray-700 dark:text-neutral-200">
                     {lastFileName}
-                  </span>
+                  </dd>
                 </div>
               )}
-              {lastSuccessAt > 0 && (
+              {lastSuccessAt > 0 && backupItems.history && (
                 <div className="flex justify-between gap-3">
-                  <span>观看次数</span>
-                  <span>{lastRecordCount.toLocaleString()} 次</span>
+                  <dt>观看次数</dt>
+                  <dd className="tabular-nums">{lastRecordCount.toLocaleString()} 次</dd>
                 </div>
               )}
               {!lastSuccessAt && lastAttemptAt > 0 && (
                 <div className="flex justify-between gap-3">
-                  <span>最近尝试</span>
-                  <span>{new Date(lastAttemptAt).toLocaleString()}</span>
+                  <dt>最近尝试</dt>
+                  <dd className="tabular-nums">{new Date(lastAttemptAt).toLocaleString()}</dd>
                 </div>
               )}
-            </div>
+            </dl>
 
             {(lastError || needsPermission) && (
               <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
@@ -417,12 +493,14 @@ export const LocalHistoryBackupPanel = () => {
               </div>
             )}
             {cleanupWarning && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
-                {cleanupWarning}
+              <div className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{cleanupWarning}</span>
               </div>
             )}
-            <p className="text-xs leading-relaxed text-gray-400 dark:text-neutral-500">
-              本地目录自动备份仅包含历史记录；浏览器恢复运行后会补做错过的任务。
+            <p className="flex items-start gap-2 text-xs leading-5 text-gray-600 dark:text-neutral-400">
+              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              本地目录自动备份仅包含已勾选的数据；浏览器恢复运行后会补做错过的任务。
             </p>
           </>
         )}

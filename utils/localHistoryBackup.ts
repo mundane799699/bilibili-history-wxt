@@ -1,8 +1,12 @@
 import {
   DEFAULT_LOCAL_HISTORY_BACKUP_INTERVAL_HOURS,
+  DEFAULT_LOCAL_HISTORY_BACKUP_ITEMS,
   DEFAULT_LOCAL_HISTORY_BACKUP_RETENTION_COUNT,
+  BackupItemKey,
+  BackupItems,
   LOCAL_HISTORY_BACKUP_ENABLED,
   LOCAL_HISTORY_BACKUP_INTERVAL_HOURS,
+  LOCAL_HISTORY_BACKUP_ITEMS,
   LOCAL_HISTORY_BACKUP_LAST_ATTEMPT_AT,
   LOCAL_HISTORY_BACKUP_LAST_CLEANUP_WARNING,
   LOCAL_HISTORY_BACKUP_LAST_ERROR,
@@ -12,12 +16,37 @@ import {
   LOCAL_HISTORY_BACKUP_NEEDS_PERMISSION,
   LOCAL_HISTORY_BACKUP_RETENTION_COUNT,
 } from "./constants";
-import { getAllHistory, getAllHistoryEvents, getAllHistoryTombstones } from "./db";
+import {
+  getAllFavFolders,
+  getAllFavResources,
+  getAllHistory,
+  getAllHistoryEvents,
+  getAllHistoryTombstones,
+  getAllLikedMusic,
+  getAllSubscribedCollectionResources,
+  getAllSubscribedCollections,
+} from "./db";
 import { getLocalBackupDirectoryHandle } from "./localBackupHandle";
 import { getStorageValue, setStorageValues } from "./storage";
 import { LocalHistoryBackupErrorCode, LocalHistoryBackupResult } from "./types";
 
 const AUTO_BACKUP_FILE_PATTERN = /^bilibili-history-\d{4}-\d{2}-\d{2}-\d{6}\.json$/;
+
+const LOCAL_BACKUP_DATA_ITEMS: {
+  key: Exclude<BackupItemKey, "history">;
+  label: string;
+  getAll: () => Promise<unknown[]>;
+}[] = [
+  { key: "likedMusic", label: "喜欢的音乐", getAll: getAllLikedMusic },
+  { key: "favFolders", label: "收藏夹", getAll: getAllFavFolders },
+  { key: "favResources", label: "收藏资源", getAll: getAllFavResources },
+  { key: "subscribedCollections", label: "订阅合集", getAll: getAllSubscribedCollections },
+  {
+    key: "subscribedCollectionResources",
+    label: "合集视频",
+    getAll: getAllSubscribedCollectionResources,
+  },
+];
 
 const toErrorMessage = (error: unknown): string => {
   return error instanceof Error ? error.message : "未知错误";
@@ -92,32 +121,52 @@ export const isLocalDirectoryBackupSupported = (): boolean => {
   return typeof window !== "undefined" && "showDirectoryPicker" in window;
 };
 
-export const buildHistoryBackupJson = async (): Promise<{
+export const buildHistoryBackupJson = async (
+  selectedItems: BackupItems = DEFAULT_LOCAL_HISTORY_BACKUP_ITEMS,
+): Promise<{
   json: string;
   recordCount: number;
   contentCount: number;
   eventCount: number;
+  includesHistory: boolean;
+  summary: string;
 }> => {
-  const [history, historyEvents, historyTombstones] = await Promise.all([
-    getAllHistory(),
-    getAllHistoryEvents(),
-    getAllHistoryTombstones(),
-  ]);
+  const data: Record<string, unknown> = {
+    formatVersion: 2,
+    exportedAt: new Date().toISOString(),
+  };
+  const summaries: string[] = [];
+  let contentCount = 0;
+  let eventCount = 0;
+
+  if (selectedItems.history) {
+    const [history, historyEvents, historyTombstones] = await Promise.all([
+      getAllHistory(),
+      getAllHistoryEvents(),
+      getAllHistoryTombstones(),
+    ]);
+    data.history = history;
+    data.historyEvents = historyEvents;
+    data.historyTombstones = historyTombstones;
+    contentCount = history.length;
+    eventCount = historyEvents.length;
+    summaries.push(`历史记录 ${contentCount} 个内容 / ${eventCount} 次观看`);
+  }
+
+  for (const item of LOCAL_BACKUP_DATA_ITEMS) {
+    if (!selectedItems[item.key]) continue;
+    const records = await item.getAll();
+    data[item.key] = records;
+    summaries.push(`${item.label} ${records.length} 条`);
+  }
+
   return {
-    json: JSON.stringify(
-      {
-        formatVersion: 2,
-        exportedAt: new Date().toISOString(),
-        history,
-        historyEvents,
-        historyTombstones,
-      },
-      null,
-      2,
-    ),
-    recordCount: historyEvents.length,
-    contentCount: history.length,
-    eventCount: historyEvents.length,
+    json: JSON.stringify(data, null, 2),
+    recordCount: eventCount,
+    contentCount,
+    eventCount,
+    includesHistory: selectedItems.history,
+    summary: summaries.join("，"),
   };
 };
 
@@ -195,9 +244,17 @@ export const runLocalHistoryBackup = async (
 
   let backupData: Awaited<ReturnType<typeof buildHistoryBackupJson>>;
   try {
-    backupData = await buildHistoryBackupJson();
+    const storedItems = await getStorageValue<BackupItems>(
+      LOCAL_HISTORY_BACKUP_ITEMS,
+      DEFAULT_LOCAL_HISTORY_BACKUP_ITEMS,
+    );
+    const selectedItems = { ...DEFAULT_LOCAL_HISTORY_BACKUP_ITEMS, ...storedItems };
+    if (!Object.values(selectedItems).some(Boolean)) {
+      return updateFailureState("READ_FAILED", "请至少选择一项要备份的数据");
+    }
+    backupData = await buildHistoryBackupJson(selectedItems);
   } catch (error) {
-    return updateFailureState("READ_FAILED", `读取历史记录失败：${toErrorMessage(error)}`);
+    return updateFailureState("READ_FAILED", `读取备份数据失败：${toErrorMessage(error)}`);
   }
 
   const previousRecordCount = await getStorageValue<number>(
@@ -205,7 +262,10 @@ export const runLocalHistoryBackup = async (
     0,
   );
   const emptyHistoryAnomaly =
-    previousRecordCount > 0 && backupData.contentCount === 0 && backupData.eventCount === 0;
+    backupData.includesHistory &&
+    previousRecordCount > 0 &&
+    backupData.contentCount === 0 &&
+    backupData.eventCount === 0;
   if (!allowEmpty && emptyHistoryAnomaly) {
     return updateFailureState(
       "EMPTY_HISTORY_ANOMALY",
@@ -252,7 +312,9 @@ export const runLocalHistoryBackup = async (
   await setStorageValues({
     [LOCAL_HISTORY_BACKUP_LAST_SUCCESS_AT]: completedAt,
     [LOCAL_HISTORY_BACKUP_LAST_FILE_NAME]: fileName,
-    [LOCAL_HISTORY_BACKUP_LAST_RECORD_COUNT]: backupData.recordCount,
+    [LOCAL_HISTORY_BACKUP_LAST_RECORD_COUNT]: backupData.includesHistory
+      ? backupData.recordCount
+      : previousRecordCount,
     [LOCAL_HISTORY_BACKUP_LAST_ERROR]: "",
     [LOCAL_HISTORY_BACKUP_LAST_CLEANUP_WARNING]: cleanupWarning,
     [LOCAL_HISTORY_BACKUP_NEEDS_PERMISSION]: false,
@@ -264,6 +326,7 @@ export const runLocalHistoryBackup = async (
     recordCount: backupData.recordCount,
     contentCount: backupData.contentCount,
     eventCount: backupData.eventCount,
+    summary: backupData.summary,
     completedAt,
     cleanupWarning: cleanupWarning || undefined,
   };

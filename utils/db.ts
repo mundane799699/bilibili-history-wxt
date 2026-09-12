@@ -60,6 +60,8 @@ const DB_CONFIG: DBConfig = {
   },
 };
 
+let databasePromise: Promise<IDBDatabase> | null = null;
+
 const HISTORY_BUSINESSES = new Set<HistoryItem["business"]>([
   "archive",
   "pgc",
@@ -117,22 +119,34 @@ const transactionDone = (tx: IDBTransaction): Promise<void> =>
   });
 
 export const openDB = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
+  if (databasePromise) return databasePromise;
+
+  const connectionPromise = new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(DB_CONFIG.name, DB_CONFIG.version);
     let migrationReport: { migrated: number; skipped: number; completed_at: number } | null = null;
 
     request.onerror = () => {
+      if (databasePromise === connectionPromise) databasePromise = null;
       void recordStorageWarning(request.error, "open-history-database");
       reject(request.error);
     };
     request.onsuccess = () => {
+      const database = request.result;
+      database.onversionchange = () => {
+        database.close();
+        if (databasePromise === connectionPromise) databasePromise = null;
+      };
+      database.addEventListener("close", () => {
+        if (databasePromise === connectionPromise) databasePromise = null;
+      });
+
       if (!migrationReport) {
-        resolve(request.result);
+        resolve(database);
         return;
       }
       void setStorageValue(HISTORY_EVENT_MIGRATION_REPORT, migrationReport).then(
-        () => resolve(request.result),
-        () => resolve(request.result),
+        () => resolve(database),
+        () => resolve(database),
       );
     };
 
@@ -411,6 +425,9 @@ export const openDB = (): Promise<IDBDatabase> => {
       }
     };
   });
+
+  databasePromise = connectionPromise;
+  return connectionPromise;
 };
 
 let legacyHistoryTombstoneMigration: Promise<void> | null = null;
@@ -801,18 +818,18 @@ export const getHistoryPage = async (
   });
 };
 
-export const deleteDB = () => {
-  return new Promise<void>((resolve, reject) => {
-    const request = indexedDB.deleteDatabase(DB_CONFIG.name);
-    request.onsuccess = () => {
-      console.log("数据库删除成功");
-      resolve();
-    };
-    request.onerror = () => {
-      console.error("数据库删除失败:", request.error);
-      reject(request.error);
-    };
-  });
+/** 清空主数据库中的全部业务数据，保留数据库结构与其他 IndexedDB 数据库。 */
+export const clearAllDatabaseTables = async (): Promise<void> => {
+  const database = await openDB();
+  const storeNames = Object.keys(DB_CONFIG.stores).filter((name) =>
+    database.objectStoreNames.contains(name),
+  );
+  if (storeNames.length === 0) return;
+
+  const transaction = database.transaction(storeNames, "readwrite");
+  const done = transactionDone(transaction);
+  storeNames.forEach((name) => transaction.objectStore(name).clear());
+  await done;
 };
 
 export const getItem = async (store: IDBObjectStore, key: string): Promise<any> => {
