@@ -272,7 +272,7 @@ export const LocalHistoryBackupPanel = () => {
     <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
       <div className="border-b border-gray-100 px-5 py-4 dark:border-neutral-800">
         <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-500/10 dark:text-pink-400">
             <FolderOpen className="h-4.5 w-4.5" />
           </div>
           <div>
@@ -310,7 +310,7 @@ export const LocalHistoryBackupPanel = () => {
                   type="button"
                   onClick={() => void selectDirectory()}
                   disabled={isSelectingDirectory || isRunning}
-                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-xs font-medium text-white transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-neutral-800"
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-pink-600 px-3 text-xs font-medium text-white transition-colors hover:bg-pink-700 dark:bg-pink-500 dark:hover:bg-pink-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-neutral-800"
                 >
                   {isSelectingDirectory && <LoaderCircle className="h-3.5 w-3.5 animate-spin" />}
                   {isSelectingDirectory
@@ -378,7 +378,7 @@ export const LocalHistoryBackupPanel = () => {
                   disabled={!directoryConfigured || isRunning || isSelectingDirectory}
                   onChange={(event) => void toggleEnabled(event.target.checked)}
                 />
-                <span className="relative block h-6 w-11 rounded-full bg-gray-300 ring-offset-2 after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:bg-emerald-600 peer-checked:after:translate-x-5 peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-500 peer-disabled:opacity-50 dark:bg-neutral-700 dark:ring-offset-neutral-900" />
+                <span className="relative block h-6 w-11 rounded-full bg-gray-300 ring-offset-2 after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:bg-pink-600 dark:peer-checked:bg-pink-500 peer-checked:after:translate-x-5 peer-focus-visible:ring-2 peer-focus-visible:ring-pink-500 peer-disabled:opacity-50 dark:bg-neutral-700 dark:ring-offset-neutral-900" />
               </label>
             </div>
 
@@ -394,7 +394,7 @@ export const LocalHistoryBackupPanel = () => {
                     setBackupItems(allSelected);
                     void setStorageValue(LOCAL_HISTORY_BACKUP_ITEMS, allSelected);
                   }}
-                  className="rounded-md px-2 py-1 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-emerald-500/10"
+                  className="rounded-md px-2 py-1 text-xs font-medium text-pink-600 transition-colors hover:bg-pink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:cursor-not-allowed disabled:opacity-50 dark:text-pink-400 dark:hover:bg-pink-500/10"
                 >
                   全部选择
                 </button>
@@ -405,7 +405,7 @@ export const LocalHistoryBackupPanel = () => {
                     key={item.key}
                     className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60 ${
                       backupItems[item.key]
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200"
+                        ? "border-pink-200 bg-pink-50 text-pink-800 dark:border-pink-500/30 dark:bg-pink-500/10 dark:text-pink-200"
                         : "border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
                     }`}
                   >
@@ -413,7 +413,7 @@ export const LocalHistoryBackupPanel = () => {
                       type="checkbox"
                       checked={backupItems[item.key]}
                       onChange={() => void toggleBackupItem(item.key)}
-                      className="h-4 w-4 accent-emerald-600 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 dark:accent-emerald-500"
+                      className="h-4 w-4 accent-pink-600 focus:ring-2 focus:ring-pink-500 focus:ring-offset-1 dark:accent-pink-500"
                     />
                     <span>{item.label}</span>
                   </label>
@@ -499,7 +499,7 @@ export const LocalHistoryBackupPanel = () => {
               </div>
             )}
             <p className="flex items-start gap-2 text-xs leading-5 text-gray-600 dark:text-neutral-400">
-              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-pink-600 dark:text-pink-400" />
               本地目录自动备份仅包含已勾选的数据；浏览器恢复运行后会补做错过的任务。
             </p>
           </>

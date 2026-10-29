@@ -43,11 +43,11 @@ const steps: GuideStep[] = [
   },
   {
     title: "数据备份",
-    description: "从这里进入备份中心，集中管理 WebDAV、本地目录和 JSON 文件备份。",
+    description: "从这里进入备份中心，分为本地目录、WebDAV 和 JSON 文件三种备份方式。",
     icon: DatabaseBackup,
     accent: "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
     target: "[data-tour='backup-menu']",
-    path: "/webdav-sync",
+    path: "/backup/local",
   },
   {
     title: "本地自动备份",
@@ -56,7 +56,7 @@ const steps: GuideStep[] = [
     icon: DatabaseBackup,
     accent: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400",
     target: "[data-tour='backup-local']",
-    path: "/webdav-sync",
+    path: "/backup/local",
   },
   {
     title: "WebDAV 自动备份",
@@ -65,15 +65,15 @@ const steps: GuideStep[] = [
     icon: DatabaseBackup,
     accent: "bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400",
     target: "[data-tour='backup-webdav-auto']",
-    path: "/webdav-sync",
+    path: "/backup/webdav",
   },
   {
     title: "选择备份范围",
-    description: "手动备份默认全选全部数据；你也可以自由取消勾选，只备份需要的部分。",
+    description: "JSON 文件备份默认全选全部数据；你也可以自由取消勾选，只备份需要的部分。",
     icon: Archive,
     accent: "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400",
     target: "[data-tour='backup-manual']",
-    path: "/webdav-sync",
+    path: "/backup/json",
   },
 ];
 

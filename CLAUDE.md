@@ -75,7 +75,7 @@ manifest 在 [wxt.config.ts](wxt.config.ts) 声明，关键权限：`storage / t
 
 ### 前端（[pages/](pages/) + [components/](components/)）
 
-- 路由由 [entrypoints/my-history/App.tsx](entrypoints/my-history/App.tsx) 用 `HashRouter` 定义：`/`(History) `/welcome` `/about` `/settings` `/feedback` `/cloud-sync` `/webdav-sync` `/favorites` `/ai-search` `/music/search` `/music/liked`。`/welcome` 不显示侧边栏。
+- 路由由 [entrypoints/my-history/App.tsx](entrypoints/my-history/App.tsx) 用 `HashRouter` 定义：`/`(History) `/welcome` `/about` `/settings` `/feedback` `/cloud-sync` `/backup/local` `/backup/webdav` `/backup/json`（数据备份三个子菜单，旧的 `/webdav-sync` 重定向到 `/backup/local`） `/favorites` `/ai-search` `/music/search` `/music/liked`。`/welcome` 不显示侧边栏。
 - 侧边栏菜单在 [components/Sidebar.tsx](components/Sidebar.tsx) 写死，可被 `HIDDEN_MENUS` 隐藏；新增页面要同时改 App.tsx 的 `<Route>` 和 Sidebar 的 `menuList`。
 - 状态管理：用户身份用 zustand（[utils/store.ts](utils/store.ts)）；其余页面用本地 `useState` + `browser.storage.local` 持久化。
 - 图标统一 `lucide-react`，路径别名 `@/` 指向项目根（见 [tsconfig.json](tsconfig.json) 继承的 `.wxt/tsconfig.json`）。

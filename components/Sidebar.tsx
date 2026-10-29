@@ -74,8 +74,21 @@ const menuList = [
   {
     title: "数据备份",
     icon: <HardDriveDownload className="w-4 h-4" />,
-    to: "/webdav-sync",
     tourId: "backup-menu",
+    subMenus: [
+      {
+        title: "本地目录",
+        to: "/backup/local",
+      },
+      {
+        title: "WebDAV",
+        to: "/backup/webdav",
+      },
+      {
+        title: "JSON 文件",
+        to: "/backup/json",
+      },
+    ],
   },
   {
     title: "赞赏",
@@ -135,7 +148,7 @@ export const Sidebar = () => {
   const isDark = themeMode === "dark";
 
   return (
-    <div className="fixed top-0 left-0 w-40 bg-gray-100 dark:bg-[#141414] dark:text-neutral-100 flex-shrink-0 h-full">
+    <div className="fixed top-0 left-0 w-48 bg-gray-100 dark:bg-[#141414] dark:text-neutral-100 flex-shrink-0 h-full">
       <nav className="space-y-2 p-4">
         {menuList
           .filter((item) => !hiddenMenus.includes(item.title))

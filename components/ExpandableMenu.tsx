@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronRight } from "lucide-react";
 
 export interface ExpandableMenuProps {
@@ -25,6 +25,12 @@ const ExpandableMenu = ({
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(initialIsOpen);
   const location = useLocation();
+  const isSubMenuActive = !!subMenus?.some((item) => item.to === location.pathname);
+
+  // 进入某个子菜单页面时（例如新手引导跳转），自动展开所属菜单
+  useEffect(() => {
+    if (isSubMenuActive) setIsOpen(true);
+  }, [isSubMenuActive]);
 
   const handleClick = (to: string | undefined, e: React.MouseEvent, isSubMenu: boolean) => {
     // 阻止事件冒泡，避免影响其他点击事件
@@ -41,7 +47,7 @@ const ExpandableMenu = ({
     <div className="cursor-pointer">
       <div
         data-tour={tourId}
-        className={`py-4 flex items-center  pl-6 hover:text-pink-500 text-sm ${
+        className={`py-4 flex items-center pl-6 pr-3 hover:text-pink-500 text-sm whitespace-nowrap ${
           location.pathname === to ? "text-pink-500" : "text-slate-600 dark:text-neutral-300"
         }`}
         onClick={(e) => {
@@ -58,7 +64,7 @@ const ExpandableMenu = ({
         {subMenus && (
           <ChevronRight
             className={`
-                ml-6 w-4 h-4
+                ml-auto w-4 h-4 flex-shrink-0
                 transition-transform duration-300 ease-in-out
                 ${isOpen ? "rotate-90" : "rotate-0"}
               `}
@@ -75,7 +81,7 @@ const ExpandableMenu = ({
             <li key={index}>
               <Link
                 to={item.to}
-                className={`py-4 flex items-center pl-6 hover:text-pink-500 text-sm ${
+                className={`py-4 flex items-center pl-6 hover:text-pink-500 text-sm whitespace-nowrap ${
                   location.pathname === item.to
                     ? "text-pink-500"
                     : "text-slate-600 dark:text-neutral-400"

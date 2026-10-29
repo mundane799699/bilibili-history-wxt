@@ -8,7 +8,9 @@ import ScrollToTopButton from "../../components/ScrollToTopButton";
 import toast, { Toaster } from "react-hot-toast";
 import Feedback from "../../pages/Feedback";
 import CloudSync from "../../pages/CloudSync";
-import WebDavSync from "../../pages/WebDavSync";
+import LocalBackup from "../../pages/backup/LocalBackup";
+import WebDavBackup from "../../pages/backup/WebDavBackup";
+import JsonBackup from "../../pages/backup/JsonBackup";
 import SearchMusic from "../../pages/music/SearchMusic";
 import LikedMusic from "../../pages/music/LikedMusic";
 import { Favorites } from "../../pages/Favorites";
@@ -211,7 +213,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
     <div className="flex h-screen dark:bg-[#0a0a0a] dark:text-neutral-100">
       {!isWelcome && <Sidebar />}
       {/* 主内容区域 */}
-      <div className={`${!isWelcome ? "ml-40" : ""} w-full transition-all duration-300`}>
+      <div className={`${!isWelcome ? "ml-48" : ""} w-full transition-all duration-300`}>
         {children}
       </div>
       {!isWelcome && isFirstRunGuideReady && !isFirstRunGuideOpen && (
@@ -245,7 +247,10 @@ const App = () => {
             <Route path="/settings" element={<Settings />} />
             <Route path="/feedback" element={<Feedback />} />
             <Route path="/cloud-sync" element={<CloudSync />} />
-            <Route path="/webdav-sync" element={<WebDavSync />} />
+            <Route path="/backup/local" element={<LocalBackup />} />
+            <Route path="/backup/webdav" element={<WebDavBackup />} />
+            <Route path="/backup/json" element={<JsonBackup />} />
+            <Route path="/webdav-sync" element={<Navigate to="/backup/local" replace />} />
             <Route path="/reward" element={<Reward />} />
             <Route path="/favorites" element={<Favorites />} />
             <Route path="/collections" element={<SubscribedCollections />} />
