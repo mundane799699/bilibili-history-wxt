@@ -5,7 +5,7 @@ interface LoginModalProps {
 
 export const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
   const handleLoginClick = () => {
-    const baseUrl = import.meta.env.VITE_BASE_API || "https://bilibilihistory.com";
+    const baseUrl = import.meta.env.VITE_BASE_API || "https://bilibilihistory.mundane.ink";
     window.open(`${baseUrl}/login`, "_blank");
     onClose();
   };

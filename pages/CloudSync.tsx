@@ -98,12 +98,12 @@ const CloudSync = () => {
   };
 
   const handleViewCloudData = () => {
-    const baseUrl = import.meta.env.VITE_BASE_API || "https://bilibilihistory.com";
+    const baseUrl = import.meta.env.VITE_BASE_API || "https://bilibilihistory.mundane.ink";
     window.open(`${baseUrl}/dashboard`, "_blank");
   };
 
   const handleUpgrade = () => {
-    const baseUrl = import.meta.env.VITE_BASE_API || "https://bilibilihistory.com";
+    const baseUrl = import.meta.env.VITE_BASE_API || "https://bilibilihistory.mundane.ink";
     window.open(`${baseUrl}/pricing`, "_blank");
   };
 

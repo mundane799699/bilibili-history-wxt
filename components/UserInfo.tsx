@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { getSession } from "@/services/auth";
 import { useUserStore } from "@/utils/store";
 
-const baseUrl = import.meta.env.VITE_BASE_API || "https://bilibilihistory.com";
+const baseUrl = import.meta.env.VITE_BASE_API || "https://bilibilihistory.mundane.ink";
 
 export const UserInfo = () => {
   const { userInfo, isLoading, setUserInfo, setIsLoading } = useUserStore();
