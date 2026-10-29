@@ -255,7 +255,7 @@ const JsonBackup = () => {
         >
           <div className="flex items-start gap-3 border-b border-gray-100 px-5 py-4 dark:border-neutral-800">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-500/10 dark:text-pink-400">
-              <FileJson2 className="h-4.5 w-4.5" />
+              <FileJson2 className="h-[18px] w-[18px]" />
             </div>
             <div>
               <h3 className="font-semibold text-gray-950 dark:text-neutral-100">JSON 文件</h3>
@@ -360,7 +360,7 @@ const JsonBackup = () => {
               <span>恢复和导入默认智能合并，不会覆盖本地更新的记录。</span>
             </li>
             <li className="flex items-start gap-2.5">
-              <ShieldCheck className="mt-1 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <ShieldCheck className="mt-1 h-4 w-4 shrink-0 text-pink-600 dark:text-pink-400" />
               <span>数据只写入你选择的目录或服务器，不经过第三方中转。</span>
             </li>
           </ul>

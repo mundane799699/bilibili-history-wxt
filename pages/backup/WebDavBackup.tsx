@@ -44,10 +44,25 @@ import {
   getHistoryV2Backup,
   mergeHistoryV2Backup,
 } from "@/utils/db";
+import { Select } from "@/components/Select";
 import { DATA_ITEMS } from "./dataItems";
 import { BackupPageHeader, BackupPageLayout } from "./BackupPageHeader";
 
 const HISTORY_V2_FILE = "history-v2.json";
+
+/** 自动同步间隔，单位分钟 */
+const AUTO_SYNC_INTERVAL_OPTIONS = [
+  { value: "15", label: "每 15 分钟" },
+  { value: "30", label: "每 30 分钟" },
+  { value: "60", label: "每 1 小时" },
+  { value: "120", label: "每 2 小时" },
+  { value: "360", label: "每 6 小时" },
+  { value: "720", label: "每 12 小时" },
+  { value: "1440", label: "每 24 小时" },
+  { value: "4320", label: "每 3 天" },
+  { value: "10080", label: "每 7 天" },
+  { value: "20160", label: "每 14 天" },
+];
 
 const mergeRemoteHistoryFiles = async (
   config: WebDavConfig,
@@ -477,7 +492,7 @@ const WebDavBackup = () => {
         <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4 dark:border-neutral-800">
           <div className="flex min-w-0 items-start gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-500/10 dark:text-pink-400">
-              <Server className="h-4.5 w-4.5" />
+              <Server className="h-[18px] w-[18px]" />
             </div>
             <div>
               <h3 className="font-semibold text-gray-950 dark:text-neutral-100">WebDAV 同步</h3>
@@ -653,37 +668,18 @@ const WebDavBackup = () => {
               >
                 <span
                   className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
-                    autoSyncEnabled ? "translate-x-5.5" : "translate-x-0.5"
+                    autoSyncEnabled ? "translate-x-[22px]" : "translate-x-0.5"
                   }`}
                 />
               </button>
             </div>
             {autoSyncEnabled && (
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                <label
-                  htmlFor="webdav-auto-sync-interval"
-                  className="whitespace-nowrap text-sm font-medium text-gray-700 dark:text-neutral-300"
-                >
-                  同步间隔
-                </label>
-                <select
-                  id="webdav-auto-sync-interval"
-                  value={autoSyncInterval}
-                  onChange={(e) => handleIntervalChange(Number(e.target.value))}
-                  className="min-h-10 flex-1 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 outline-none transition-colors focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
-                >
-                  <option value={15}>每 15 分钟</option>
-                  <option value={30}>每 30 分钟</option>
-                  <option value={60}>每 1 小时</option>
-                  <option value={120}>每 2 小时</option>
-                  <option value={360}>每 6 小时</option>
-                  <option value={720}>每 12 小时</option>
-                  <option value={1440}>每 24 小时</option>
-                  <option value={4320}>每 3 天</option>
-                  <option value={10080}>每 7 天</option>
-                  <option value={20160}>每 14 天</option>
-                </select>
-              </div>
+              <Select
+                label="同步间隔"
+                value={String(autoSyncInterval)}
+                onChange={(value) => handleIntervalChange(Number(value))}
+                options={AUTO_SYNC_INTERVAL_OPTIONS}
+              />
             )}
           </div>
 

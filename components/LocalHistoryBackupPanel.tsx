@@ -273,7 +273,7 @@ export const LocalHistoryBackupPanel = () => {
       <div className="border-b border-gray-100 px-5 py-4 dark:border-neutral-800">
         <div className="flex items-start gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-500/10 dark:text-pink-400">
-            <FolderOpen className="h-4.5 w-4.5" />
+            <FolderOpen className="h-[18px] w-[18px]" />
           </div>
           <div>
             <h3 className="font-semibold text-gray-950 dark:text-neutral-100">自动备份至本地</h3>
