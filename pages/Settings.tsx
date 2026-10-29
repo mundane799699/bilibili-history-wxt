@@ -6,7 +6,6 @@ import {
   IS_SYNC_DELETE,
   SYNC_INTERVAL,
   IS_SYNC_DELETE_FROM_BILIBILI,
-  HIDE_USER_INFO,
   HIDDEN_MENUS,
   DATE_SELECTION_MODE,
   HISTORY_LOAD_MODE,
@@ -22,7 +21,6 @@ const Settings = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isSyncDelete, setIsSyncDelete] = useState(false);
   const [isSyncDeleteFromBilibili, setIsSyncDeleteFromBilibili] = useState(false);
-  const [isHideUserInfo, setIsHideUserInfo] = useState(false);
   const [hiddenMenus, setHiddenMenus] = useState<string[]>([]);
   const [dateSelectionMode, setDateSelectionMode] = useState<"range" | "single">("range");
   const [historyLoadMode, setHistoryLoadMode] = useState<"pagination" | "scroll">("pagination");
@@ -71,7 +69,6 @@ const Settings = () => {
     const loadSettings = async () => {
       const syncDelete = await getStorageValue(IS_SYNC_DELETE, false);
       const syncDeleteFromBilibili = await getStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, false);
-      const hideUserInfo = await getStorageValue(HIDE_USER_INFO, false);
       const menus = await getStorageValue<string[]>(HIDDEN_MENUS, []);
       const storedSyncInterval = await getStorageValue(SYNC_INTERVAL, 1);
       const storedDateMode = await getStorageValue(DATE_SELECTION_MODE, "range");
@@ -83,7 +80,6 @@ const Settings = () => {
 
       setIsSyncDelete(syncDelete);
       setIsSyncDeleteFromBilibili(syncDeleteFromBilibili);
-      setIsHideUserInfo(hideUserInfo);
       setHiddenMenus(
         menus.includes("WebDAV") && !menus.includes("数据备份") ? [...menus, "数据备份"] : menus,
       );
@@ -106,11 +102,6 @@ const Settings = () => {
     const newValue = e.target.checked;
     setIsSyncDeleteFromBilibili(newValue);
     await setStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, newValue);
-  };
-
-  const handleHideUserInfoChange = async (checked: boolean) => {
-    setIsHideUserInfo(checked);
-    await setStorageValue(HIDE_USER_INFO, checked);
   };
 
   const toggleHiddenMenu = async (title: string, checked: boolean) => {
@@ -549,12 +540,6 @@ const Settings = () => {
                 选择需要隐藏并禁用的菜单项
               </p>
               <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                <Checkbox
-                  label="隐藏用户信息"
-                  checked={isHideUserInfo}
-                  onChange={handleHideUserInfoChange}
-                />
-
                 {["收藏夹", "合集", "AI探索", "听歌", "云同步", "数据备份", "关于", "反馈"].map(
                   (title) => (
                     <Checkbox

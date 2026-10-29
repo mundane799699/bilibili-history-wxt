@@ -16,7 +16,6 @@ export const FAV_SYNC_TIME_REMAIN = "favSyncTimeRemain"; // 单位：分钟
 export const FAVORITE_FOLDER_SYNC_PROGRESS = "favoriteFolderSyncProgress";
 export const ALL_FAVORITE_FOLDERS_SYNC_PROGRESS = "allFavoriteFoldersSyncProgress";
 
-export const HIDE_USER_INFO = "hideUserInfo";
 export const HIDDEN_MENUS = "hiddenMenus"; // Array of hidden titles
 export const DATE_SELECTION_MODE = "date_selection_mode";
 export const GRID_COLUMNS = "gridColumns";

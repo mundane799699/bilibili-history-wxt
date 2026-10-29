@@ -59,26 +59,31 @@ export const UserInfo = () => {
   };
 
   return (
-    <div className="py-2 px-4">
-      <div className="flex items-center space-x-3">
-        <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-300 dark:bg-neutral-700">
-          {userInfo ? (
-            <div className="w-full h-full bg-pink-400 dark:bg-gray-700 flex items-center justify-center">
-              <span className="text-white font-medium text-sm">{getInitial(userInfo.name)}</span>
-            </div>
-          ) : (
-            <img src="/noface.jpg" alt="用户头像" className="w-full h-full object-cover" />
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p
-            className={`text-sm font-medium text-gray-900 dark:text-neutral-100 truncate cursor-pointer hover:text-pink-400`}
-            onClick={handleUserNameClick}
-          >
-            {isLoading ? "加载中..." : userInfo ? userInfo.name : "未登录"}
-          </p>
-        </div>
+    <div className="mb-8 flex items-center gap-4 p-4 bg-gray-50 dark:bg-neutral-900 rounded-lg border border-gray-200 dark:border-neutral-800">
+      <div className="w-12 h-12 flex-shrink-0 rounded-full overflow-hidden bg-gray-300 dark:bg-neutral-700">
+        {userInfo ? (
+          <div className="w-full h-full bg-pink-400 dark:bg-gray-700 flex items-center justify-center">
+            <span className="text-white font-medium text-lg">{getInitial(userInfo.name)}</span>
+          </div>
+        ) : (
+          <img src="/noface.jpg" alt="用户头像" className="w-full h-full object-cover" />
+        )}
       </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-base font-medium text-gray-900 dark:text-neutral-100 truncate">
+          {isLoading ? "加载中..." : userInfo ? userInfo.name : "未登录"}
+        </p>
+        <p className="text-sm text-gray-500 dark:text-neutral-400">
+          {userInfo ? "已登录，可以使用云同步" : "登录后即可使用云同步"}
+        </p>
+      </div>
+      <button
+        onClick={handleUserNameClick}
+        disabled={isLoading}
+        className="flex-shrink-0 px-4 py-2 text-sm font-medium text-white bg-pink-400 hover:bg-pink-500 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {userInfo ? "账户中心" : "去登录"}
+      </button>
     </div>
   );
 };

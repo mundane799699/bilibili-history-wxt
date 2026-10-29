@@ -15,9 +15,8 @@ import {
   Heart,
   LibraryBig,
 } from "lucide-react";
-import { UserInfo } from "./UserInfo";
 import ExpandableMenu from "./ExpandableMenu";
-import { UPDATE_HISTORY, HIDE_USER_INFO, HIDDEN_MENUS, THEME_MODE } from "../utils/constants";
+import { UPDATE_HISTORY, HIDDEN_MENUS, THEME_MODE } from "../utils/constants";
 import { getStorageValue } from "../utils/storage";
 import { setTheme, type ThemeMode } from "../utils/theme";
 
@@ -94,12 +93,10 @@ export const Sidebar = () => {
   const location = useLocation();
 
   const [version, setVersion] = useState<string>(UPDATE_HISTORY[0]?.version || "");
-  const [hideUserInfo, setHideUserInfo] = useState(false);
   const [hiddenMenus, setHiddenMenus] = useState<string[]>([]);
   const [themeMode, setThemeMode] = useState<ThemeMode>("light");
 
   useEffect(() => {
-    getStorageValue(HIDE_USER_INFO, false).then(setHideUserInfo);
     getStorageValue<string[]>(HIDDEN_MENUS, []).then((menus) => {
       // Keep the renamed entry hidden for users who previously hid "WebDAV".
       setHiddenMenus(
@@ -115,9 +112,6 @@ export const Sidebar = () => {
       areaName: string,
     ) => {
       if (areaName === "local") {
-        if (changes[HIDE_USER_INFO]) {
-          setHideUserInfo(changes[HIDE_USER_INFO].newValue as boolean);
-        }
         if (changes[HIDDEN_MENUS]) {
           setHiddenMenus((changes[HIDDEN_MENUS].newValue as string[]) || []);
         }
@@ -142,8 +136,6 @@ export const Sidebar = () => {
 
   return (
     <div className="fixed top-0 left-0 w-40 bg-gray-100 dark:bg-[#141414] dark:text-neutral-100 flex-shrink-0 h-full">
-      {!hideUserInfo && <UserInfo />}
-
       <nav className="space-y-2 p-4">
         {menuList
           .filter((item) => !hiddenMenus.includes(item.title))

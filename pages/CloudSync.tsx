@@ -8,6 +8,7 @@ import { toast } from "react-hot-toast";
 import { useState } from "react";
 import { useUserStore } from "@/utils/store";
 import { LoginModal } from "@/components/LoginModal";
+import { UserInfo } from "@/components/UserInfo";
 const FREE_LIMIT_MESSAGE = "免费用户最多可以上传500条历史记录";
 const EXPIRED_MESSAGE = "您的会员已过期，无法上传更多记录";
 
@@ -122,6 +123,7 @@ const CloudSync = () => {
   return (
     <div className="max-w-[800px] mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">云同步</h1>
+      <UserInfo />
       <p className="text-gray-600 text-base mb-2">云同步允许你将数据在浏览器插件和云端之间同步。</p>
       <p className="text-gray-600 text-base mb-8">该功能是付费功能，免费用户最多可以上传500条。</p>
       <p className="-mt-6 mb-8 text-sm text-amber-600 dark:text-amber-400">
