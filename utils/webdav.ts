@@ -270,3 +270,54 @@ export const downloadFile = async (
     throw error;
   }
 };
+
+const PROPFIND_BODY = `<?xml version="1.0" encoding="utf-8"?>
+<d:propfind xmlns:d="DAV:"><d:prop><d:getetag/><d:getlastmodified/><d:getcontentlength/></d:prop></d:propfind>`;
+
+const readXmlTag = (xml: string, tag: string): string => {
+  const match = xml.match(
+    new RegExp(`<(?:[\\w-]+:)?${tag}\\b[^>]*>([^<]*)</(?:[\\w-]+:)?${tag}>`, "i"),
+  );
+  return match ? match[1].trim() : "";
+};
+
+/**
+ * 列出远程目录下的文件及其指纹（ETag，缺失时退化为修改时间 + 大小）。
+ * 只传输几 KB 的元数据，用来判断文件是否变化。service worker 中没有 DOMParser，所以用正则解析。
+ * @returns 文件名 → 指纹（服务器未提供任何元数据时为空字符串）；请求失败或服务器不支持时返回 null
+ */
+export const listRemoteFiles = async (
+  config: WebDavConfig,
+): Promise<Map<string, string> | null> => {
+  try {
+    const response = await fetch(getFullUrl(config), {
+      method: "PROPFIND",
+      headers: {
+        ...getAuthHeaders(config),
+        Depth: "1",
+        "Content-Type": "application/xml; charset=utf-8",
+      },
+      body: PROPFIND_BODY,
+    });
+    if (response.status !== 207) return null;
+
+    const xml = await response.text();
+    const files = new Map<string, string>();
+    const responses = xml.match(/<(?:[\w-]+:)?response\b[\s\S]*?<\/(?:[\w-]+:)?response>/gi) ?? [];
+    for (const block of responses) {
+      const href = readXmlTag(block, "href");
+      const name = decodeURIComponent(href.replace(/\/+$/, "").split("/").pop() ?? "");
+      if (!name || href.endsWith("/")) continue;
+      const etag = readXmlTag(block, "getetag")
+        .replace(/^W\//, "")
+        .replace(/&quot;|"/g, "");
+      const lastModified = readXmlTag(block, "getlastmodified");
+      const length = readXmlTag(block, "getcontentlength");
+      files.set(name, etag || (lastModified || length ? `${lastModified}|${length}` : ""));
+    }
+    return files;
+  } catch (error) {
+    console.error("WebDAV 获取远程文件列表失败:", error);
+    return null;
+  }
+};

@@ -44,13 +44,7 @@ import {
 } from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
 import { recordStorageWarning } from "../utils/storageHealth";
-import {
-  ensureDirectory,
-  uploadFile,
-  downloadFile,
-  withWebDavOperationLock,
-  loadWebDavConfig,
-} from "../utils/webdav";
+import { ensureDirectory, withWebDavOperationLock, loadWebDavConfig } from "../utils/webdav";
 import {
   FavoriteFolder,
   RefreshFavoriteFoldersResponse,
@@ -70,6 +64,7 @@ import {
   HistoryItem,
 } from "../utils/types";
 import { isLocalHistoryBackupDue, runLocalHistoryBackup } from "../utils/localHistoryBackup";
+import { createWebDavTransferSession, digestArray, digestHistoryV2 } from "../utils/webdavTransfer";
 
 const FAVORITE_FOLDER_RATE_LIMIT_COOLDOWNS_MS = [10, 30, 60].map((minutes) => minutes * 60 * 1000);
 const FAVORITE_FOLDER_PAGE_DELAY_MIN_MS = 1500;
@@ -1796,45 +1791,55 @@ export default defineBackground(() => {
         throw new Error("WebDAV 备份目录创建失败");
       }
 
-      // ===== 第一步：拉取远端数据并合并到本地 =====
-      console.log("[WebDAV 同步] 步骤 1/2：拉取并合并远端数据...");
-      const deletedHistoryIds = await getDeletedHistoryIds();
-      for (const item of items) {
-        const remote = await downloadFile(config, item.file);
-        if (remote) {
+      const transfer = await createWebDavTransferSession(config);
+      const summary: string[] = [];
+      try {
+        // ===== 第一步：拉取有变化的远端文件并合并到本地 =====
+        console.log("[WebDAV 同步] 步骤 1/2：拉取并合并远端数据...");
+        const deletedHistoryIds = await getDeletedHistoryIds();
+        for (const item of items) {
           if (item.key === "history") {
-            await smartMergeHistory(JSON.parse(remote), deletedHistoryIds);
+            await transfer.pull(item.file, {
+              digest: digestArray,
+              getLocalCount: async () => (await getAllHistory()).length,
+              merge: (data) => smartMergeHistory(data, deletedHistoryIds),
+            });
+            await transfer.pull("history-v2.json", {
+              digest: digestHistoryV2,
+              getLocalCount: async () => (await getHistoryV2Backup()).events.length,
+              merge: mergeHistoryV2Backup,
+            });
           } else {
-            await item.merge(JSON.parse(remote));
+            await transfer.pull(item.file, {
+              digest: digestArray,
+              getLocalCount: async () => (await item.getAll()).length,
+              merge: item.merge,
+            });
           }
         }
-        if (item.key === "history") {
-          const remoteV2 = await downloadFile(config, "history-v2.json");
-          if (remoteV2) await mergeHistoryV2Backup(JSON.parse(remoteV2));
+
+        // ===== 第二步：只推送内容有变化的文件 =====
+        console.log("[WebDAV 同步] 步骤 2/2：推送本地数据到远端...");
+        for (const item of items) {
+          const data = await item.getAll();
+          if (item.key === "history") {
+            // 历史记录只上传 v2 文件；旧版 history.json 不再写入，仅在拉取时读取以合并历史遗留数据
+            const v2 = await getHistoryV2Backup();
+            await transfer.push("history-v2.json", v2, { digest: digestHistoryV2 });
+            summary.push(`${item.label} ${data.length} 个内容 / ${v2.events.length} 次观看`);
+          } else {
+            await transfer.push(item.file, data, { digest: digestArray });
+            summary.push(`${item.label} ${data.length}`);
+          }
         }
+      } finally {
+        await transfer.finish();
       }
 
-      // ===== 第二步：将合并后的最新本地数据推送到远端 =====
-      console.log("[WebDAV 同步] 步骤 2/2：推送本地数据到远端...");
-      const summary: string[] = [];
-      for (const item of items) {
-        const data = await item.getAll();
-        if (item.key === "history") {
-          const v2 = await getHistoryV2Backup();
-          if (!(await uploadFile(config, "history-v2.json", JSON.stringify(v2)))) {
-            throw new Error("WebDAV 上传历史 v2 失败");
-          }
-        }
-        if (!(await uploadFile(config, item.file, JSON.stringify(data)))) {
-          throw new Error(`WebDAV 上传${item.label}失败`);
-        }
-        if (item.key === "history") {
-          const v2 = await getHistoryV2Backup();
-          summary.push(`${item.label} ${data.length} 个内容 / ${v2.events.length} 次观看`);
-        } else {
-          summary.push(`${item.label} ${data.length}`);
-        }
-      }
+      const { downloaded, skippedDownloads, uploaded, skippedUploads } = transfer.stats;
+      console.log(
+        `[WebDAV 同步] 下载 ${downloaded} 个文件（跳过未变化的 ${skippedDownloads} 个），上传 ${uploaded} 个文件（跳过未变化的 ${skippedUploads} 个）`,
+      );
 
       // 同步完成，记录时间戳
       await setStorageValue(WEBDAV_LAST_SYNC, Date.now());

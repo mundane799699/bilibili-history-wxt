@@ -61,6 +61,7 @@ export const WEBDAV_LAST_SYNC = "webdavLastSync";
 export const WEBDAV_AUTO_SYNC_ENABLED = "webdavAutoSyncEnabled";
 export const WEBDAV_AUTO_SYNC_INTERVAL = "webdavAutoSyncInterval"; // 单位：分钟，默认 30
 export const WEBDAV_SYNC_ITEMS = "webdavSyncItems"; // 勾选的同步数据项，页面与后台自动同步共用
+export const WEBDAV_TRANSFER_STATE = "webdavTransferState"; // 自动同步记录的远端文件指纹与内容哈希，用于跳过未变化的文件
 
 /** 各数据项是否参与备份，新配置默认全部选中 */
 export const DEFAULT_WEBDAV_SYNC_ITEMS = {

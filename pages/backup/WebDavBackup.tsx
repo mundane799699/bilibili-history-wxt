@@ -76,11 +76,9 @@ const uploadHistoryFiles = async (
 ): Promise<{ contentCount: number; eventCount: number }> => {
   const history = await getAllHistory();
   const v2 = await getHistoryV2Backup();
+  // 只上传 v2 文件；旧版 history.json 不再写入，恢复时仍会读取以合并历史遗留数据
   if (!(await uploadFile(config, HISTORY_V2_FILE, JSON.stringify(v2)))) {
-    throw new Error("上传历史记录 v2 失败");
-  }
-  if (!(await uploadFile(config, "history.json", JSON.stringify(history)))) {
-    throw new Error("上传历史记录兼容文件失败");
+    throw new Error("上传历史记录失败");
   }
   return { contentCount: history.length, eventCount: v2.events.length };
 };
@@ -637,7 +635,7 @@ const WebDavBackup = () => {
                   启用自动同步
                 </p>
                 <p className="mt-1 text-xs text-gray-600 dark:text-neutral-400">
-                  开启后在后台定时同步下方勾选的数据，关闭后仍可手动同步。
+                  开启后在后台定时同步下方勾选的数据，只传输有变化的文件；关闭后仍可手动同步。
                 </p>
               </div>
               <button
@@ -681,6 +679,9 @@ const WebDavBackup = () => {
                   <option value={360}>每 6 小时</option>
                   <option value={720}>每 12 小时</option>
                   <option value={1440}>每 24 小时</option>
+                  <option value={4320}>每 3 天</option>
+                  <option value={10080}>每 7 天</option>
+                  <option value={20160}>每 14 天</option>
                 </select>
               </div>
             )}
