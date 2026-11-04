@@ -21,11 +21,15 @@ import {
   UPDATE_HISTORY,
   HIDDEN_MENUS,
   THEME_MODE,
-  SUBSCRIBE_PROMO_DISMISSED,
+  SUBSCRIBE_PROMO_DISMISSED_FOR,
 } from "../utils/constants";
 import { getStorageValue, setStorageValue } from "../utils/storage";
 import { setTheme, type ThemeMode } from "../utils/theme";
 import { getMembershipStatus } from "../services/membership";
+import { getSession } from "../services/auth";
+
+/** 未登录时也允许关闭，用一个固定标识代替会话 token */
+const ANONYMOUS_PROMO_KEY = "__anonymous__";
 
 const iconClass = "h-4 w-4";
 
@@ -129,6 +133,7 @@ export const Sidebar = () => {
   const [hiddenMenus, setHiddenMenus] = useState<string[]>([]);
   const [themeMode, setThemeMode] = useState<ThemeMode>("light");
   const [showSubscribePromo, setShowSubscribePromo] = useState(false);
+  const [promoSessionKey, setPromoSessionKey] = useState<string>("");
 
   useEffect(() => {
     getStorageValue<string[]>(HIDDEN_MENUS, []).then((menus) => {
@@ -162,13 +167,20 @@ export const Sidebar = () => {
     };
   }, []);
 
-  // 订阅引导：用户手动关闭过、或已经是会员，都不再展示
+  // 订阅引导：会员不展示；关闭只对当前登录会话生效，下次登录会重新出现
   useEffect(() => {
     let isActive = true;
-    Promise.all([getStorageValue<boolean>(SUBSCRIBE_PROMO_DISMISSED, false), getMembershipStatus()])
-      .then(([dismissed, membership]) => {
+    Promise.all([
+      getStorageValue<string>(SUBSCRIBE_PROMO_DISMISSED_FOR, ""),
+      getMembershipStatus(),
+      getSession().catch(() => null),
+    ])
+      .then(([dismissedFor, membership, session]) => {
         if (!isActive) return;
-        setShowSubscribePromo(!dismissed && !membership.active);
+        const token = (session as any)?.session?.token ?? "";
+        const key = token || ANONYMOUS_PROMO_KEY;
+        setPromoSessionKey(key);
+        setShowSubscribePromo(!membership.active && dismissedFor !== key);
       })
       .catch((error) => {
         console.error("读取订阅引导状态失败:", error);
@@ -180,7 +192,8 @@ export const Sidebar = () => {
 
   const dismissSubscribePromo = () => {
     setShowSubscribePromo(false);
-    void setStorageValue(SUBSCRIBE_PROMO_DISMISSED, true).catch((error) => {
+    const key = promoSessionKey || ANONYMOUS_PROMO_KEY;
+    void setStorageValue(SUBSCRIBE_PROMO_DISMISSED_FOR, key).catch((error) => {
       console.error("保存订阅引导状态失败:", error);
     });
   };

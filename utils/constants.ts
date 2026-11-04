@@ -100,8 +100,11 @@ export const DELETED_HISTORY_IDS = "deletedHistoryIds";
 // "light" | "dark"
 export const THEME_MODE = "themeMode";
 
-/** 侧边栏订阅引导是否已被用户关闭 */
-export const SUBSCRIBE_PROMO_DISMISSED = "subscribePromoDismissed";
+/**
+ * 侧边栏订阅引导被关闭时所处的登录会话标识。
+ * 只对当前这次登录生效，用户下次登录（会话变化）会重新展示。
+ */
+export const SUBSCRIBE_PROMO_DISMISSED_FOR = "subscribePromoDismissedFor";
 
 export const UPDATE_HISTORY = [
   {
