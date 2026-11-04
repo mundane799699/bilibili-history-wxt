@@ -134,9 +134,9 @@ export const SubscribedCollections = () => {
     SEARCH_OPTIONS.find((option) => option.value === searchType)?.label || "综合搜索";
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-[#0a0a0a]">
-      <aside className="w-64 bg-white dark:bg-neutral-900 border-r border-gray-200 dark:border-neutral-800 overflow-y-auto flex-shrink-0">
-        <div className="p-4 border-b border-gray-200 dark:border-neutral-800 flex items-center justify-between gap-3">
+    <div className="flex h-screen bg-wash dark:bg-night">
+      <aside className="w-64 bg-white dark:bg-night-card border-r border-line dark:border-night-line overflow-y-auto flex-shrink-0">
+        <div className="p-4 border-b border-line dark:border-night-line flex items-center justify-between gap-3">
           <h2 className="text-lg font-bold flex items-center gap-2 min-w-0">
             <LibraryBig className="w-5 h-5 shrink-0" />
             <span className="truncate">我的订阅合集</span>
@@ -147,7 +147,7 @@ export const SubscribedCollections = () => {
             aria-label="同步订阅合集"
             onClick={refreshCollections}
             disabled={isSyncingCollections}
-            className="p-2 rounded-md text-gray-500 hover:bg-gray-100 hover:text-pink-500 disabled:opacity-50 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-pink-400 transition-colors"
+            className="p-2 rounded-md text-ink-muted hover:bg-wash hover:text-brand disabled:opacity-50 dark:text-night-muted dark:hover:bg-night-line/60 dark:hover:text-brand transition-colors"
           >
             <RefreshCw className={`w-4 h-4 ${isSyncingCollections ? "animate-spin" : ""}`} />
           </button>
@@ -161,19 +161,19 @@ export const SubscribedCollections = () => {
               onClick={() => setSelectedCollectionId(collection.id)}
               className={`w-full p-3 rounded-lg text-left mb-1 transition-colors ${
                 selectedCollectionId === collection.id
-                  ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                  : "hover:bg-gray-100 dark:hover:bg-neutral-800"
+                  ? "bg-brand-soft dark:bg-brand/10 text-brand-strong dark:text-brand"
+                  : "hover:bg-wash dark:hover:bg-night-line/60"
               }`}
             >
               <div className="font-medium truncate">{collection.title}</div>
-              <div className="text-xs text-gray-400 dark:text-neutral-500 mt-1 truncate">
+              <div className="text-xs text-ink-faint dark:text-night-muted mt-1 truncate">
                 {collection.upper?.name || "未知 UP 主"} · {collection.media_count} 个视频
               </div>
             </button>
           ))}
 
           {!isSyncingCollections && collections.length === 0 && (
-            <div className="p-5 text-center text-sm text-gray-400 dark:text-neutral-500">
+            <div className="p-5 text-center text-sm text-ink-faint dark:text-night-muted">
               暂无订阅合集
             </div>
           )}
@@ -184,31 +184,31 @@ export const SubscribedCollections = () => {
         <div className="p-6">
           {selectedCollection ? (
             <>
-              <section className="mb-6 flex flex-col md:flex-row justify-between md:items-center gap-4 bg-white dark:bg-neutral-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-neutral-800">
+              <section className="mb-6 flex flex-col md:flex-row justify-between md:items-center gap-4 bg-white dark:bg-night-card p-4 rounded-xl shadow-sm border border-line dark:border-night-line">
                 <div className="min-w-0">
                   <h1 className="text-xl font-bold flex items-center gap-2 min-w-0">
                     <span className="truncate">{selectedCollection.title}</span>
-                    <span className="shrink-0 text-sm font-normal text-gray-500 dark:text-neutral-400 bg-gray-50 dark:bg-neutral-800 px-2 py-1 rounded-full border border-gray-100 dark:border-neutral-700">
+                    <span className="shrink-0 text-sm font-normal text-ink-muted dark:text-night-muted bg-wash dark:bg-night-line px-2 py-1 rounded-full border border-line dark:border-night-line">
                       {filteredResources.length} 个视频
                     </span>
                   </h1>
                   {selectedCollection.intro && (
-                    <p className="mt-2 text-sm text-gray-500 dark:text-neutral-400 line-clamp-1">
+                    <p className="mt-2 text-sm text-ink-muted dark:text-night-muted line-clamp-1">
                       {selectedCollection.intro}
                     </p>
                   )}
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                  <div className="relative flex-1 md:w-[32rem] group flex items-center bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-full transition-all duration-300 shadow-sm hover:shadow-md focus-within:bg-white dark:focus-within:bg-neutral-800 focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-500/20 focus-within:border-blue-400 dark:focus-within:border-blue-500">
+                  <div className="relative flex-1 md:w-[32rem] group flex items-center bg-wash dark:bg-night-line border border-line dark:border-night-line rounded-full transition-all duration-300 shadow-sm hover:shadow-md focus-within:bg-white dark:focus-within:bg-night-card focus-within:ring-2 focus-within:ring-brand/20 dark:focus-within:ring-brand/20 focus-within:border-brand/40 dark:focus-within:border-brand">
                     <div className="relative">
                       <button
                         type="button"
-                        className="pl-4 pr-3 py-2 text-sm text-gray-600 dark:text-neutral-300 font-medium border-r border-gray-200 dark:border-neutral-700 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1 transition-colors whitespace-nowrap"
+                        className="pl-4 pr-3 py-2 text-sm text-ink-soft dark:text-night-muted font-medium border-r border-line dark:border-night-line hover:text-brand-strong dark:hover:text-brand flex items-center gap-1 transition-colors whitespace-nowrap"
                         onClick={() => setIsSearchKindDropdownOpen((open) => !open)}
                       >
                         <span>{searchLabel}</span>
-                        <ChevronDownIcon className="w-3 h-3 text-gray-400 dark:text-neutral-500" />
+                        <ChevronDownIcon className="w-3 h-3 text-ink-faint dark:text-night-muted" />
                       </button>
 
                       {isSearchKindDropdownOpen && (
@@ -219,15 +219,15 @@ export const SubscribedCollections = () => {
                             className="fixed inset-0 z-10 cursor-default"
                             onClick={() => setIsSearchKindDropdownOpen(false)}
                           />
-                          <div className="absolute top-full left-0 mt-2 w-32 bg-white dark:bg-neutral-900 rounded-lg shadow-lg border border-gray-100 dark:border-neutral-800 py-1 z-20 overflow-hidden">
+                          <div className="absolute top-full left-0 mt-2 w-32 bg-white dark:bg-night-card rounded-lg shadow-lg border border-line dark:border-night-line py-1 z-20 overflow-hidden">
                             {SEARCH_OPTIONS.map((option) => (
                               <button
                                 key={option.value}
                                 type="button"
                                 className={`w-full text-left px-4 py-2 text-sm transition-colors ${
                                   searchType === option.value
-                                    ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium"
-                                    : "text-gray-600 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-800"
+                                    ? "bg-brand-soft dark:bg-brand/10 text-brand-strong dark:text-brand font-medium"
+                                    : "text-ink-soft dark:text-night-muted hover:bg-wash dark:hover:bg-night-line/60"
                                 }`}
                                 onClick={() => {
                                   setSearchType(option.value);
@@ -245,7 +245,7 @@ export const SubscribedCollections = () => {
 
                     <input
                       type="text"
-                      className="flex-1 min-w-0 bg-transparent border-none focus:ring-0 pl-4 pr-10 py-2 text-sm text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 focus:outline-none"
+                      className="flex-1 min-w-0 bg-transparent border-none focus:ring-0 pl-4 pr-10 py-2 text-sm text-ink-soft dark:text-night-text placeholder-ink-faint dark:placeholder-night-muted focus:outline-none"
                       placeholder="搜索..."
                       value={keyword}
                       onChange={(event) => {
@@ -261,13 +261,13 @@ export const SubscribedCollections = () => {
                           setKeyword("");
                           setCurrentPage(1);
                         }}
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 dark:text-neutral-500 hover:text-gray-600 dark:hover:text-neutral-300 transition-colors"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-ink-faint dark:text-night-muted hover:text-ink-soft dark:hover:text-neutral-300 transition-colors"
                       >
                         <X className="h-4 w-4" />
                       </button>
                     ) : (
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                        <Search className="h-4 w-4 text-gray-400 dark:text-neutral-500" />
+                        <Search className="h-4 w-4 text-ink-faint dark:text-night-muted" />
                       </div>
                     )}
                   </div>
@@ -278,7 +278,7 @@ export const SubscribedCollections = () => {
                     aria-label="同步合集内容"
                     onClick={() => refreshResources(selectedCollection)}
                     disabled={isSyncingResources}
-                    className="p-2.5 rounded-full text-gray-500 bg-gray-50 border border-gray-200 hover:bg-gray-100 hover:text-pink-500 disabled:opacity-50 dark:text-neutral-400 dark:bg-neutral-800 dark:border-neutral-700 dark:hover:bg-neutral-700 dark:hover:text-pink-400 transition-colors"
+                    className="p-2.5 rounded-full text-ink-muted bg-wash border border-line hover:bg-wash hover:text-brand disabled:opacity-50 dark:text-night-muted dark:bg-night-line dark:border-night-line dark:hover:bg-night-line/60 dark:hover:text-brand transition-colors"
                   >
                     <RefreshCw className={`w-4 h-4 ${isSyncingResources ? "animate-spin" : ""}`} />
                   </button>
@@ -286,7 +286,7 @@ export const SubscribedCollections = () => {
               </section>
 
               {isSyncingResources && resources.length === 0 ? (
-                <div className="text-center py-10 text-gray-500 dark:text-neutral-400">
+                <div className="text-center py-10 text-ink-muted dark:text-night-muted">
                   正在同步合集内容...
                 </div>
               ) : (
@@ -298,9 +298,9 @@ export const SubscribedCollections = () => {
                         href={`https://www.bilibili.com/video/${item.bvid}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="border border-gray-200 dark:border-neutral-800 rounded-lg overflow-hidden flex flex-col bg-white dark:bg-neutral-900 hover:shadow-md transition-shadow no-underline text-inherit"
+                        className="border border-line dark:border-night-line rounded-lg overflow-hidden flex flex-col bg-white dark:bg-night-card hover:shadow-md transition-shadow no-underline text-inherit"
                       >
-                        <div className="relative w-full aspect-video bg-gray-100 dark:bg-neutral-800">
+                        <div className="relative w-full aspect-video bg-wash dark:bg-night-line">
                           {item.cover ? (
                             <img
                               src={`${item.cover.replace("http:", "https:")}@760w_428h_1c.avif`}
@@ -309,7 +309,7 @@ export const SubscribedCollections = () => {
                               loading="lazy"
                             />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-neutral-500">
+                            <div className="w-full h-full flex items-center justify-center text-ink-faint dark:text-night-muted">
                               <LibraryBig className="w-8 h-8" />
                             </div>
                           )}
@@ -321,7 +321,7 @@ export const SubscribedCollections = () => {
                           >
                             {item.title}
                           </h3>
-                          <div className="flex justify-between items-center text-gray-500 dark:text-neutral-400 text-xs mt-2 gap-2">
+                          <div className="flex justify-between items-center text-ink-muted dark:text-night-muted text-xs mt-2 gap-2">
                             <button
                               type="button"
                               onClick={(event) => {
@@ -348,7 +348,7 @@ export const SubscribedCollections = () => {
                   </div>
 
                   {currentResources.length === 0 && (
-                    <div className="text-center py-16 text-gray-400 dark:text-neutral-500">
+                    <div className="text-center py-16 text-ink-faint dark:text-night-muted">
                       这个合集暂时没有可显示的视频
                     </div>
                   )}
@@ -368,7 +368,7 @@ export const SubscribedCollections = () => {
               )}
             </>
           ) : (
-            <div className="h-full min-h-[24rem] flex flex-col items-center justify-center text-gray-400 dark:text-neutral-500">
+            <div className="h-full min-h-[24rem] flex flex-col items-center justify-center text-ink-faint dark:text-night-muted">
               <LibraryBig className="w-12 h-12 mb-4" />
               <p>{isSyncingCollections ? "正在同步订阅合集..." : "还没有订阅任何合集"}</p>
             </div>

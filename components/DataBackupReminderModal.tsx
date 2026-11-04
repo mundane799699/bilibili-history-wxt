@@ -83,12 +83,12 @@ export const DataBackupReminderModal = ({
         aria-modal="true"
         aria-labelledby="data-backup-reminder-title"
         tabIndex={-1}
-        className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-transparent bg-white p-6 shadow-xl outline-none dark:border-neutral-800 dark:bg-neutral-900"
+        className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-transparent bg-white p-6 shadow-xl outline-none dark:border-night-line dark:bg-night-card"
       >
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+          className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-wash hover:text-ink-soft focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-night-muted dark:hover:bg-night-line/60 dark:hover:text-night-text"
           aria-label="关闭数据备份提醒"
         >
           <X className="h-4 w-4" />
@@ -101,17 +101,17 @@ export const DataBackupReminderModal = ({
           <div>
             <h2
               id="data-backup-reminder-title"
-              className="text-xl font-bold text-gray-900 dark:text-neutral-100"
+              className="text-xl font-bold text-ink dark:text-night-text"
             >
               请及时备份你的数据
             </h2>
-            <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">
+            <p className="mt-1 text-sm text-ink-muted dark:text-night-muted">
               为重要数据保留一份浏览器之外的副本
             </p>
           </div>
         </div>
 
-        <div className="mt-5 space-y-3 text-sm leading-relaxed text-gray-600 dark:text-neutral-300">
+        <div className="mt-5 space-y-3 text-sm leading-relaxed text-ink-soft dark:text-night-muted">
           <p>
             历史记录保存在当前浏览器的本地存储中。清理浏览器数据、卸载或重装扩展、浏览器异常、设备故障等情况，都可能导致数据永久丢失。
           </p>
@@ -128,7 +128,7 @@ export const DataBackupReminderModal = ({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            className="rounded-lg px-4 py-2.5 text-sm font-medium text-ink-soft transition-colors hover:bg-wash focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-night-muted dark:hover:bg-night-line/60"
           >
             我已了解
           </button>
@@ -137,7 +137,7 @@ export const DataBackupReminderModal = ({
             onClick={onBackup}
             disabled={isBackingUp}
             aria-busy={isBackingUp}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-offset-neutral-900"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-strong focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-offset-neutral-900"
           >
             <DatabaseBackup className="h-4 w-4" />
             {isBackingUp ? "备份中..." : "立即备份"}

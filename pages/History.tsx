@@ -37,16 +37,16 @@ const getHistoryItemKey = (item: HistoryListItem) =>
 
 const HistoryCardSkeleton = () => (
   <div
-    className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900"
+    className="overflow-hidden rounded-xl border border-line bg-white dark:border-night-line dark:bg-night-card"
     aria-hidden="true"
   >
-    <div className="aspect-video animate-pulse bg-gray-200 motion-reduce:animate-none dark:bg-neutral-800" />
+    <div className="aspect-video animate-pulse bg-wash motion-reduce:animate-none dark:bg-night-line" />
     <div className="space-y-3 p-3.5">
-      <div className="h-4 w-11/12 animate-pulse rounded bg-gray-200 motion-reduce:animate-none dark:bg-neutral-800" />
-      <div className="h-4 w-7/12 animate-pulse rounded bg-gray-200 motion-reduce:animate-none dark:bg-neutral-800" />
+      <div className="h-4 w-11/12 animate-pulse rounded bg-wash motion-reduce:animate-none dark:bg-night-line" />
+      <div className="h-4 w-7/12 animate-pulse rounded bg-wash motion-reduce:animate-none dark:bg-night-line" />
       <div className="flex justify-between pt-1">
-        <div className="h-3 w-20 animate-pulse rounded bg-gray-100 motion-reduce:animate-none dark:bg-neutral-800" />
-        <div className="h-3 w-28 animate-pulse rounded bg-gray-100 motion-reduce:animate-none dark:bg-neutral-800" />
+        <div className="h-3 w-20 animate-pulse rounded bg-wash motion-reduce:animate-none dark:bg-night-line" />
+        <div className="h-3 w-28 animate-pulse rounded bg-wash motion-reduce:animate-none dark:bg-night-line" />
       </div>
     </div>
   </div>
@@ -366,23 +366,23 @@ export const History: React.FC = () => {
   const isInitialLoading = loadMode === null || (isLoading && history.length === 0);
 
   return (
-    <main className="min-h-screen bg-gray-50/70 pb-10 text-gray-900 dark:bg-[#0a0a0a] dark:text-neutral-100">
+    <main className="min-h-screen bg-wash/70 pb-10 text-ink dark:bg-night dark:text-night-text">
       <header
         data-tour="history-toolbar"
-        className="sticky top-0 z-30 border-b border-gray-200/80 bg-white/95 backdrop-blur-md dark:border-neutral-800 dark:bg-[#0a0a0a]/95"
+        className="sticky top-0 z-30 border-b border-line/80 bg-white/95 backdrop-blur-md dark:border-night-line dark:bg-night/95"
       >
         <div className="mx-auto max-w-[1600px] px-4 py-4 sm:px-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <h1 className="text-xl font-semibold tracking-[-0.02em] text-gray-950 dark:text-white sm:text-2xl">
+                <h1 className="text-xl font-semibold tracking-[-0.02em] text-ink dark:text-white sm:text-2xl">
                   历史记录
                 </h1>
-                <span className="whitespace-nowrap text-sm tabular-nums text-gray-500 dark:text-neutral-400">
+                <span className="whitespace-nowrap text-sm tabular-nums text-ink-muted dark:text-night-muted">
                   {totalHistoryCount} {displayMode === "visit" ? "次观看" : "个内容"}
                 </span>
               </div>
-              <p className="mt-1 hidden text-sm text-gray-500 dark:text-neutral-400 sm:block">
+              <p className="mt-1 hidden text-sm text-ink-muted dark:text-night-muted sm:block">
                 搜索、筛选并管理你的本地观看记录
               </p>
             </div>
@@ -391,7 +391,7 @@ export const History: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsSyncModalOpen(true)}
-                className="inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-lg bg-pink-500 px-3.5 text-sm font-medium text-white transition-colors hover:bg-pink-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 dark:bg-pink-500 dark:hover:bg-pink-400 dark:hover:text-neutral-950 dark:focus-visible:ring-offset-[#0a0a0a]"
+                className="inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-lg bg-brand px-3.5 text-sm font-medium text-white transition-colors hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 dark:bg-brand dark:hover:bg-brand dark:hover:text-neutral-950 dark:focus-visible:ring-offset-night"
               >
                 <CloudDownload className="h-4 w-4" />
                 <span className="hidden sm:inline">同步记录</span>
@@ -399,7 +399,7 @@ export const History: React.FC = () => {
               <button
                 type="button"
                 onClick={() => void handleRefresh()}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition-colors hover:border-pink-200 hover:bg-pink-50 hover:text-pink-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-pink-500/40 dark:hover:bg-pink-500/10 dark:hover:text-pink-400 dark:focus-visible:ring-offset-[#0a0a0a]"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-white text-ink-soft transition-colors hover:border-brand/25 hover:bg-brand-soft hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-night-line dark:bg-night-card dark:text-night-muted dark:hover:border-brand/40 dark:hover:bg-brand/10 dark:hover:text-brand dark:focus-visible:ring-offset-night"
                 disabled={isLoading}
                 title="刷新历史记录"
                 aria-label="刷新历史记录"
@@ -411,7 +411,7 @@ export const History: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsViewSettingsModalOpen(true)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition-colors hover:border-pink-200 hover:bg-pink-50 hover:text-pink-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-pink-500/40 dark:hover:bg-pink-500/10 dark:hover:text-pink-400 dark:focus-visible:ring-offset-[#0a0a0a]"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-white text-ink-soft transition-colors hover:border-brand/25 hover:bg-brand-soft hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 dark:border-night-line dark:bg-night-card dark:text-night-muted dark:hover:border-brand/40 dark:hover:bg-brand/10 dark:hover:text-brand dark:focus-visible:ring-offset-night"
                 title="历史视图设置"
                 aria-label="历史视图设置"
               >
@@ -420,10 +420,10 @@ export const History: React.FC = () => {
               <button
                 type="button"
                 onClick={handleToolbarToggle}
-                className={`relative inline-flex h-10 w-10 items-center justify-center rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0a0a0a] ${
+                className={`relative inline-flex h-10 w-10 items-center justify-center rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 dark:focus-visible:ring-offset-night ${
                   isToolbarExpanded
-                    ? "border-gray-200 bg-white text-gray-600 hover:border-pink-200 hover:bg-pink-50 hover:text-pink-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-pink-500/40 dark:hover:bg-pink-500/10 dark:hover:text-pink-400"
-                    : "border-pink-200 bg-pink-50 text-pink-700 hover:bg-pink-100 dark:border-pink-500/30 dark:bg-pink-500/10 dark:text-pink-300 dark:hover:bg-pink-500/20"
+                    ? "border-line bg-white text-ink-soft hover:border-brand/25 hover:bg-brand-soft hover:text-brand-strong dark:border-night-line dark:bg-night-card dark:text-night-muted dark:hover:border-brand/40 dark:hover:bg-brand/10 dark:hover:text-brand"
+                    : "border-brand/25 bg-brand-soft text-brand-strong hover:bg-brand-soft dark:border-brand/30 dark:bg-brand/10 dark:text-brand dark:hover:bg-brand/20"
                 }`}
                 title={isToolbarExpanded ? "收起搜索与筛选" : "展开搜索与筛选"}
                 aria-label={isToolbarExpanded ? "收起搜索与筛选" : "展开搜索与筛选"}
@@ -437,7 +437,7 @@ export const History: React.FC = () => {
                 )}
                 {!isToolbarExpanded && hasActiveFilters && (
                   <span
-                    className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-pink-500"
+                    className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-brand"
                     aria-hidden="true"
                   />
                 )}
@@ -460,13 +460,13 @@ export const History: React.FC = () => {
             >
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
                 <div
-                  className="group relative flex h-10 min-w-0 flex-1 items-center rounded-lg border border-gray-200 bg-gray-50 transition-colors focus-within:border-pink-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-pink-100 dark:border-neutral-700 dark:bg-neutral-900 dark:focus-within:border-pink-500 dark:focus-within:ring-pink-500/20"
+                  className="group relative flex h-10 min-w-0 flex-1 items-center rounded-lg border border-line bg-wash transition-colors focus-within:border-brand focus-within:bg-white focus-within:ring-2 focus-within:ring-brand/20 dark:border-night-line dark:bg-night-card dark:focus-within:border-brand dark:focus-within:ring-brand/20"
                   role="search"
                 >
                   <div className="relative h-full shrink-0">
                     <button
                       type="button"
-                      className="flex h-full items-center gap-1.5 whitespace-nowrap border-r border-gray-200 px-3 text-sm font-medium text-gray-700 transition-colors hover:text-pink-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-pink-500 dark:border-neutral-700 dark:text-neutral-300 dark:hover:text-pink-400"
+                      className="flex h-full items-center gap-1.5 whitespace-nowrap border-r border-line px-3 text-sm font-medium text-ink-soft transition-colors hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand dark:border-night-line dark:text-night-muted dark:hover:text-brand"
                       onClick={() => {
                         setIsSearchKindDropdownOpen(!isSearchKindDropdownOpen);
                         setIsTypeDropdownOpen(false);
@@ -481,7 +481,7 @@ export const History: React.FC = () => {
                         {searchType === "bvid" && "BV号"}
                         {searchType === "avid" && "AV号"}
                       </span>
-                      <ChevronDownIcon className="h-3.5 w-3.5 text-gray-400 dark:text-neutral-500" />
+                      <ChevronDownIcon className="h-3.5 w-3.5 text-ink-faint dark:text-night-muted" />
                     </button>
 
                     {isSearchKindDropdownOpen && (
@@ -491,7 +491,7 @@ export const History: React.FC = () => {
                           onClick={() => setIsSearchKindDropdownOpen(false)}
                         />
                         <div
-                          className="absolute left-0 top-full z-20 mt-2 w-32 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-[0_10px_30px_rgba(15,23,42,0.12)] dark:border-neutral-700 dark:bg-neutral-900"
+                          className="absolute left-0 top-full z-20 mt-2 w-32 overflow-hidden rounded-xl border border-line bg-white py-1 shadow-[0_10px_30px_rgba(15,23,42,0.12)] dark:border-night-line dark:bg-night-card"
                           role="menu"
                         >
                           {[
@@ -506,10 +506,10 @@ export const History: React.FC = () => {
                               type="button"
                               role="menuitemradio"
                               aria-checked={searchType === option.value}
-                              className={`w-full px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-pink-500 ${
+                              className={`w-full px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand ${
                                 searchType === option.value
-                                  ? "bg-pink-50 font-medium text-pink-700 dark:bg-pink-500/10 dark:text-pink-300"
-                                  : "text-gray-700 hover:bg-gray-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                                  ? "bg-brand-soft font-medium text-brand-strong dark:bg-brand/10 dark:text-brand"
+                                  : "text-ink-soft hover:bg-wash dark:text-night-muted dark:hover:bg-night-line/60"
                               }`}
                               onClick={() => {
                                 setSearchType(
@@ -526,10 +526,10 @@ export const History: React.FC = () => {
                     )}
                   </div>
 
-                  <Search className="ml-3 h-4 w-4 shrink-0 text-gray-400 dark:text-neutral-500" />
+                  <Search className="ml-3 h-4 w-4 shrink-0 text-ink-faint dark:text-night-muted" />
                   <input
                     type="search"
-                    className="history-search-input h-full min-w-0 flex-1 border-none bg-transparent px-2.5 pr-10 text-sm text-gray-800 placeholder:text-gray-500 focus:outline-none focus:ring-0 dark:text-neutral-100 dark:placeholder:text-neutral-500"
+                    className="history-search-input h-full min-w-0 flex-1 border-none bg-transparent px-2.5 pr-10 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-0 dark:text-night-text dark:placeholder:text-neutral-500"
                     aria-label="搜索历史记录"
                     placeholder={
                       searchType === "bvid"
@@ -548,7 +548,7 @@ export const History: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setKeyword("")}
-                      className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-gray-500 transition-colors hover:text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-pink-500 dark:text-neutral-400 dark:hover:text-neutral-100"
+                      className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-ink-muted transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand dark:text-night-muted dark:hover:text-neutral-100"
                       aria-label="清除搜索内容"
                     >
                       <X className="h-4 w-4" />
@@ -558,7 +558,7 @@ export const History: React.FC = () => {
 
                 <div className="flex flex-wrap items-center gap-2">
                   <div
-                    className="inline-flex h-10 shrink-0 items-center rounded-lg border border-gray-200 bg-gray-100 p-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                    className="inline-flex h-10 shrink-0 items-center rounded-lg border border-line bg-wash p-1 text-sm dark:border-night-line dark:bg-night-card"
                     role="group"
                     aria-label="历史记录显示方式"
                   >
@@ -573,10 +573,10 @@ export const History: React.FC = () => {
                         type="button"
                         onClick={() => void handleDisplayModeChange(option.value)}
                         aria-pressed={displayMode === option.value}
-                        className={`h-8 rounded-md px-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 ${
+                        className={`h-8 rounded-md px-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
                           displayMode === option.value
-                            ? "bg-white font-medium text-pink-700 shadow-sm dark:bg-neutral-800 dark:text-pink-300"
-                            : "text-gray-600 hover:text-gray-950 dark:text-neutral-400 dark:hover:text-white"
+                            ? "bg-white font-medium text-brand-strong shadow-sm dark:bg-night-line dark:text-brand"
+                            : "text-ink-soft hover:text-ink dark:text-night-muted dark:hover:text-white"
                         }`}
                       >
                         {option.label}
@@ -587,7 +587,7 @@ export const History: React.FC = () => {
                   <div className="relative">
                     <button
                       type="button"
-                      className="flex h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 transition-colors hover:border-pink-200 hover:bg-pink-50 hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-pink-500/40 dark:hover:bg-pink-500/10 dark:hover:text-pink-300 dark:focus-visible:ring-offset-[#0a0a0a]"
+                      className="flex h-10 items-center gap-2 rounded-lg border border-line bg-white px-3 text-sm text-ink-soft transition-colors hover:border-brand/25 hover:bg-brand-soft hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 dark:border-night-line dark:bg-night-card dark:text-night-muted dark:hover:border-brand/40 dark:hover:bg-brand/10 dark:hover:text-brand dark:focus-visible:ring-offset-night"
                       onClick={() => {
                         setIsTypeDropdownOpen(!isTypeDropdownOpen);
                         setIsSearchKindDropdownOpen(false);
@@ -599,7 +599,7 @@ export const History: React.FC = () => {
                       <span>
                         {typeOptions.find((option) => option.value === selectedType)?.label}
                       </span>
-                      <ChevronDownIcon className="h-3.5 w-3.5 text-gray-400 dark:text-neutral-500" />
+                      <ChevronDownIcon className="h-3.5 w-3.5 text-ink-faint dark:text-night-muted" />
                     </button>
 
                     {isTypeDropdownOpen && (
@@ -609,7 +609,7 @@ export const History: React.FC = () => {
                           onClick={() => setIsTypeDropdownOpen(false)}
                         />
                         <div
-                          className="absolute left-0 top-full z-20 mt-2 w-32 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-[0_10px_30px_rgba(15,23,42,0.12)] dark:border-neutral-700 dark:bg-neutral-900"
+                          className="absolute left-0 top-full z-20 mt-2 w-32 overflow-hidden rounded-xl border border-line bg-white py-1 shadow-[0_10px_30px_rgba(15,23,42,0.12)] dark:border-night-line dark:bg-night-card"
                           role="menu"
                         >
                           {typeOptions.map((option) => (
@@ -618,10 +618,10 @@ export const History: React.FC = () => {
                               type="button"
                               role="menuitemradio"
                               aria-checked={selectedType === option.value}
-                              className={`w-full px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-pink-500 ${
+                              className={`w-full px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand ${
                                 selectedType === option.value
-                                  ? "bg-pink-50 font-medium text-pink-700 dark:bg-pink-500/10 dark:text-pink-300"
-                                  : "text-gray-700 hover:bg-gray-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                                  ? "bg-brand-soft font-medium text-brand-strong dark:bg-brand/10 dark:text-brand"
+                                  : "text-ink-soft hover:bg-wash dark:text-night-muted dark:hover:bg-night-line/60"
                               }`}
                               onClick={() => {
                                 setSelectedType(option.value);
@@ -710,7 +710,7 @@ export const History: React.FC = () => {
           {loadMode === "scroll" && history.length > 0 && (
             <div
               ref={loadMoreCallbackRef}
-              className="col-span-full flex min-h-20 items-center justify-center gap-2 py-6 text-sm text-gray-500 dark:text-neutral-400"
+              className="col-span-full flex min-h-20 items-center justify-center gap-2 py-6 text-sm text-ink-muted dark:text-night-muted"
               role="status"
             >
               {isLoading && (
@@ -737,13 +737,13 @@ export const History: React.FC = () => {
 
       {history.length === 0 && !isInitialLoading && !loadError && (
         <div className="mx-auto flex max-w-lg flex-col items-center px-6 py-20 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-gray-400 dark:bg-neutral-900 dark:text-neutral-500">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-wash text-ink-faint dark:bg-night-card dark:text-night-muted">
             <Search className="h-5 w-5" />
           </div>
-          <h2 className="mt-5 text-lg font-semibold text-gray-900 dark:text-neutral-100">
+          <h2 className="mt-5 text-lg font-semibold text-ink dark:text-night-text">
             {hasActiveFilters ? "没有找到匹配的记录" : "还没有历史记录"}
           </h2>
-          <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-neutral-400">
+          <p className="mt-2 text-sm leading-6 text-ink-muted dark:text-night-muted">
             {hasActiveFilters
               ? "试试更换关键词、分类或日期范围。"
               : "同步 B 站历史后，你的观看记录会显示在这里。"}
@@ -758,7 +758,7 @@ export const History: React.FC = () => {
                 setSelectedType("all");
                 setSearchType("all");
               }}
-              className="mt-5 inline-flex h-10 items-center rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition-colors hover:border-pink-200 hover:bg-pink-50 hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-pink-500/40 dark:hover:bg-pink-500/10 dark:hover:text-pink-300 dark:focus-visible:ring-offset-[#0a0a0a]"
+              className="mt-5 inline-flex h-10 items-center rounded-lg border border-line bg-white px-4 text-sm font-medium text-ink-soft transition-colors hover:border-brand/25 hover:bg-brand-soft hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 dark:border-night-line dark:bg-night-card dark:text-night-text dark:hover:border-brand/40 dark:hover:bg-brand/10 dark:hover:text-brand dark:focus-visible:ring-offset-night"
             >
               清除所有筛选
             </button>
@@ -767,7 +767,7 @@ export const History: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsSyncModalOpen(true)}
-              className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-pink-500 px-4 text-sm font-medium text-white transition-colors hover:bg-pink-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0a0a0a]"
+              className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-brand px-4 text-sm font-medium text-white transition-colors hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 dark:focus-visible:ring-offset-night"
             >
               <CloudDownload className="h-4 w-4" />
               同步历史记录

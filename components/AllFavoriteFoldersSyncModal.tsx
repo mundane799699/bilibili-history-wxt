@@ -287,30 +287,30 @@ export const AllFavoriteFoldersSyncModal = ({
         aria-modal="true"
         aria-labelledby="all-favorite-folders-sync-title"
         tabIndex={-1}
-        className="relative w-full max-w-lg rounded-2xl border border-transparent bg-white p-6 shadow-xl outline-none dark:border-neutral-800 dark:bg-neutral-900"
+        className="relative w-full max-w-lg rounded-2xl border border-transparent bg-white p-6 shadow-xl outline-none dark:border-night-line dark:bg-night-card"
       >
         <button
           type="button"
           onClick={handleClose}
           disabled={isSyncing}
-          className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-30 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+          className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-wash hover:text-ink-soft disabled:cursor-not-allowed disabled:opacity-30 dark:text-night-muted dark:hover:bg-night-line/60 dark:hover:text-night-text"
           aria-label="关闭同步所有收藏夹弹窗"
         >
           <X className="h-4 w-4" />
         </button>
 
         <div className="flex items-start gap-3 pr-10">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-pink-50 text-pink-600 dark:bg-pink-500/10 dark:text-pink-400">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand-strong dark:bg-brand/10 dark:text-brand">
             <CloudDownload className="h-5 w-5" />
           </div>
           <div>
             <h2
               id="all-favorite-folders-sync-title"
-              className="text-xl font-bold text-gray-900 dark:text-neutral-100"
+              className="text-xl font-bold text-ink dark:text-night-text"
             >
               同步所有收藏夹
             </h2>
-            <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">
+            <p className="mt-1 text-sm text-ink-muted dark:text-night-muted">
               将按顺序同步 {folders.length} 个收藏夹
             </p>
           </div>
@@ -319,15 +319,15 @@ export const AllFavoriteFoldersSyncModal = ({
         {(syncPhase === "idle" || syncPhase === "syncing") && (
           <div className="mt-6">
             <fieldset disabled={isSyncing} className={isSyncing ? "opacity-60" : ""}>
-              <legend className="text-sm font-semibold text-gray-800 dark:text-neutral-200">
+              <legend className="text-sm font-semibold text-ink dark:text-night-text">
                 选择同步方式
               </legend>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <label
-                  className={`group relative rounded-xl border p-4 transition-all focus-within:ring-2 focus-within:ring-pink-500 focus-within:ring-offset-2 dark:focus-within:ring-offset-neutral-900 ${
+                  className={`group relative rounded-xl border p-4 transition-all focus-within:ring-2 focus-within:ring-brand focus-within:ring-offset-2 dark:focus-within:ring-offset-neutral-900 ${
                     !isFullSync
-                      ? "border-pink-500 bg-pink-50/80 shadow-sm ring-1 ring-pink-500 dark:bg-pink-500/10"
-                      : "border-gray-200 hover:border-pink-300 hover:bg-gray-50 dark:border-neutral-700 dark:hover:border-pink-500/40 dark:hover:bg-neutral-800/70"
+                      ? "border-brand bg-brand-soft/80 shadow-sm ring-1 ring-brand dark:bg-brand/10"
+                      : "border-line hover:border-brand/30 hover:bg-wash dark:border-night-line dark:hover:border-brand/40 dark:hover:bg-night-line/60/70"
                   } ${isSyncing ? "cursor-not-allowed" : "cursor-pointer"}`}
                 >
                   <input
@@ -342,8 +342,8 @@ export const AllFavoriteFoldersSyncModal = ({
                     <span
                       className={`flex h-9 w-9 items-center justify-center rounded-lg ${
                         !isFullSync
-                          ? "bg-pink-600 text-white dark:bg-pink-500"
-                          : "bg-gray-100 text-gray-500 group-hover:text-pink-600 dark:bg-neutral-800 dark:text-neutral-400 dark:group-hover:text-pink-400"
+                          ? "bg-brand-strong text-white dark:bg-brand"
+                          : "bg-wash text-ink-muted group-hover:text-brand-strong dark:bg-night-line dark:text-night-muted dark:group-hover:text-brand"
                       }`}
                     >
                       <Zap className="h-4 w-4" />
@@ -352,22 +352,22 @@ export const AllFavoriteFoldersSyncModal = ({
                       aria-hidden="true"
                       className={`mt-1 flex h-4 w-4 items-center justify-center rounded-full border ${
                         !isFullSync
-                          ? "border-pink-600 bg-pink-600 dark:border-pink-400 dark:bg-pink-400"
-                          : "border-gray-300 bg-white dark:border-neutral-600 dark:bg-neutral-900"
+                          ? "border-pink-600 bg-brand-strong dark:border-brand dark:bg-brand"
+                          : "border-line bg-white dark:border-night-line dark:bg-night-card"
                       }`}
                     >
                       {!isFullSync && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
                     </span>
                   </span>
                   <span className="mt-4 flex items-center gap-2">
-                    <span className="text-sm font-semibold text-gray-900 dark:text-neutral-100">
+                    <span className="text-sm font-semibold text-ink dark:text-night-text">
                       增量同步
                     </span>
-                    <span className="rounded-full bg-pink-100 px-2 py-0.5 text-[10px] font-semibold text-pink-700 dark:bg-pink-500/20 dark:text-pink-300">
+                    <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-semibold text-brand-strong dark:bg-brand/20 dark:text-brand">
                       推荐
                     </span>
                   </span>
-                  <span className="mt-2 block text-xs leading-relaxed text-gray-500 dark:text-neutral-400">
+                  <span className="mt-2 block text-xs leading-relaxed text-ink-muted dark:text-night-muted">
                     每个收藏夹同步到本地已有内容后停止。
                   </span>
                 </label>
@@ -376,7 +376,7 @@ export const AllFavoriteFoldersSyncModal = ({
                   className={`group relative rounded-xl border p-4 transition-all focus-within:ring-2 focus-within:ring-amber-500 focus-within:ring-offset-2 dark:focus-within:ring-offset-neutral-900 ${
                     isFullSync
                       ? "border-amber-500 bg-amber-50/80 shadow-sm ring-1 ring-amber-500 dark:bg-amber-500/10"
-                      : "border-gray-200 hover:border-amber-300 hover:bg-gray-50 dark:border-neutral-700 dark:hover:border-amber-500/40 dark:hover:bg-neutral-800/70"
+                      : "border-line hover:border-amber-300 hover:bg-wash dark:border-night-line dark:hover:border-amber-500/40 dark:hover:bg-night-line/60/70"
                   } ${isSyncing ? "cursor-not-allowed" : "cursor-pointer"}`}
                 >
                   <input
@@ -392,7 +392,7 @@ export const AllFavoriteFoldersSyncModal = ({
                       className={`flex h-9 w-9 items-center justify-center rounded-lg ${
                         isFullSync
                           ? "bg-amber-500 text-white"
-                          : "bg-gray-100 text-gray-500 group-hover:text-amber-600 dark:bg-neutral-800 dark:text-neutral-400 dark:group-hover:text-amber-400"
+                          : "bg-wash text-ink-muted group-hover:text-amber-600 dark:bg-night-line dark:text-night-muted dark:group-hover:text-amber-400"
                       }`}
                     >
                       <Database className="h-4 w-4" />
@@ -402,16 +402,16 @@ export const AllFavoriteFoldersSyncModal = ({
                       className={`mt-1 flex h-4 w-4 items-center justify-center rounded-full border ${
                         isFullSync
                           ? "border-amber-500 bg-amber-500"
-                          : "border-gray-300 bg-white dark:border-neutral-600 dark:bg-neutral-900"
+                          : "border-line bg-white dark:border-night-line dark:bg-night-card"
                       }`}
                     >
                       {isFullSync && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
                     </span>
                   </span>
-                  <span className="mt-4 block text-sm font-semibold text-gray-900 dark:text-neutral-100">
+                  <span className="mt-4 block text-sm font-semibold text-ink dark:text-night-text">
                     全量同步
                   </span>
-                  <span className="mt-2 block text-xs leading-relaxed text-gray-500 dark:text-neutral-400">
+                  <span className="mt-2 block text-xs leading-relaxed text-ink-muted dark:text-night-muted">
                     遍历所有收藏夹的全部内容，耗时较长。
                   </span>
                 </label>
@@ -424,7 +424,7 @@ export const AllFavoriteFoldersSyncModal = ({
           <div
             role="status"
             aria-live="polite"
-            className="mt-5 rounded-lg border border-pink-200 bg-pink-50 p-4 text-pink-700 dark:border-pink-500/20 dark:bg-pink-500/10 dark:text-pink-300"
+            className="mt-5 rounded-lg border border-brand/25 bg-brand-soft p-4 text-brand-strong dark:border-brand/20 dark:bg-brand/10 dark:text-brand"
           >
             <div className="flex items-center gap-3">
               <RefreshCw className="h-5 w-5 shrink-0 animate-spin" />
@@ -438,9 +438,9 @@ export const AllFavoriteFoldersSyncModal = ({
                 </p>
               </div>
             </div>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-pink-100 dark:bg-pink-950/50">
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-brand-soft dark:bg-pink-950/50">
               <div
-                className="h-full rounded-full bg-pink-600 transition-all duration-300 dark:bg-pink-400"
+                className="h-full rounded-full bg-brand-strong transition-all duration-300 dark:bg-brand"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -478,7 +478,7 @@ export const AllFavoriteFoldersSyncModal = ({
                       ? "全部收藏夹同步已中断"
                       : `同步失败：${errorMessage || "未知错误"}`}
                 </p>
-                <p className="mt-2 text-xs leading-relaxed text-gray-600 dark:text-neutral-300">
+                <p className="mt-2 text-xs leading-relaxed text-ink-soft dark:text-night-muted">
                   已完成 {completedCount} / {folders.length} 个收藏夹
                   {currentFolderTitle ? `，当前「${currentFolderTitle}」` : ""}。进度已保存，将从第
                   {nextPage} 页{syncPhase === "error" ? "重试" : "继续"}。
@@ -525,12 +525,12 @@ export const AllFavoriteFoldersSyncModal = ({
           </div>
         )}
 
-        <div className="mt-6 flex justify-end gap-3 border-t border-gray-100 pt-5 dark:border-neutral-800">
+        <div className="mt-6 flex justify-end gap-3 border-t border-line pt-5 dark:border-night-line">
           {syncPhase === "complete" ? (
             <button
               type="button"
               onClick={handleClose}
-              className="rounded-lg bg-pink-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-pink-700 dark:bg-pink-500 dark:hover:bg-pink-600"
+              className="rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-strong dark:bg-brand dark:hover:bg-brand-strong"
             >
               完成
             </button>
@@ -540,7 +540,7 @@ export const AllFavoriteFoldersSyncModal = ({
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                  className="rounded-lg border border-line bg-white px-4 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-white dark:border-night-line dark:bg-night-card dark:text-night-muted dark:hover:bg-night-line/60"
                 >
                   {syncPhase === "idle" ? "取消" : "关闭"}
                 </button>
@@ -549,7 +549,7 @@ export const AllFavoriteFoldersSyncModal = ({
                 <button
                   type="button"
                   onClick={handleBackgroundSync}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                  className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-4 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-white dark:border-night-line dark:bg-night-card dark:text-night-muted dark:hover:bg-night-line/60"
                 >
                   <Minimize2 className="h-4 w-4" />
                   后台同步
@@ -559,7 +559,7 @@ export const AllFavoriteFoldersSyncModal = ({
                 type="button"
                 onClick={handleSync}
                 disabled={isSyncing || isCoolingDown || folders.length === 0}
-                className="inline-flex min-w-28 items-center justify-center gap-2 rounded-lg bg-pink-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-pink-700 disabled:cursor-not-allowed disabled:bg-pink-400 dark:bg-pink-500 dark:hover:bg-pink-600 dark:disabled:bg-pink-500/50"
+                className="inline-flex min-w-28 items-center justify-center gap-2 rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-strong disabled:cursor-not-allowed disabled:bg-brand dark:bg-brand dark:hover:bg-brand-strong dark:disabled:bg-brand/50"
               >
                 {isSyncing && <RefreshCw className="h-4 w-4 animate-spin" />}
                 {isSyncing

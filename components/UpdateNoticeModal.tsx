@@ -65,32 +65,32 @@ export const UpdateNoticeModal = ({ onOpenChange, onReady }: UpdateNoticeModalPr
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md rounded-xl border border-transparent bg-white p-6 shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="relative w-full max-w-md rounded-xl border border-transparent bg-white p-6 shadow-xl dark:border-night-line dark:bg-night-card">
         <button
           type="button"
           onClick={handleClose}
-          className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+          className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-wash hover:text-ink-soft dark:text-night-muted dark:hover:bg-night-line/60 dark:hover:text-night-text"
           aria-label="关闭更新提示"
         >
           <X className="h-4 w-4" />
         </button>
 
         <div className="pr-10">
-          <p className="mb-2 text-sm font-medium text-pink-500 dark:text-pink-600">版本更新</p>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-neutral-100">
+          <p className="mb-2 text-sm font-medium text-brand dark:text-brand-strong">版本更新</p>
+          <h2 className="text-xl font-bold text-ink dark:text-night-text">
             v{latestUpdate.version}
           </h2>
-          <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">{latestUpdate.date}</p>
+          <p className="mt-1 text-sm text-ink-muted dark:text-night-muted">{latestUpdate.date}</p>
         </div>
 
-        <div className="mt-5 rounded-lg bg-gray-50 p-4 dark:bg-neutral-800/70">
+        <div className="mt-5 rounded-lg bg-wash p-4 dark:bg-night-line/70">
           <ul className="space-y-2">
             {latestUpdate.changes.map((change) => (
               <li
                 key={change}
-                className="flex gap-2 text-sm leading-relaxed text-gray-700 dark:text-neutral-200"
+                className="flex gap-2 text-sm leading-relaxed text-ink-soft dark:text-night-text"
               >
-                <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-pink-500" />
+                <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-brand" />
                 <span>{change}</span>
               </li>
             ))}
@@ -100,7 +100,7 @@ export const UpdateNoticeModal = ({ onOpenChange, onReady }: UpdateNoticeModalPr
         <button
           type="button"
           onClick={handleClose}
-          className="mt-6 w-full rounded-lg bg-pink-500 dark:bg-pink-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-pink-600"
+          className="mt-6 w-full rounded-lg bg-brand dark:bg-brand-strong px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-strong"
         >
           我知道了
         </button>

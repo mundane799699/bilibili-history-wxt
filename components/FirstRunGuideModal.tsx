@@ -21,7 +21,7 @@ const steps: GuideStep[] = [
     title: "欢迎使用 Bilibili History",
     description: "接下来用几步了解历史记录和备份。每一步都会指向真实功能，也可以随时跳过。",
     icon: History,
-    accent: "bg-pink-50 text-pink-600 dark:bg-pink-500/10 dark:text-pink-400",
+    accent: "bg-brand-soft text-brand-strong dark:bg-brand/10 dark:text-brand",
     target: null,
     path: null,
   },
@@ -29,7 +29,7 @@ const steps: GuideStep[] = [
     title: "历史记录入口",
     description: "从这里进入历史记录。扩展会在本地保存你看过的视频，支持搜索、筛选和分页浏览。",
     icon: History,
-    accent: "bg-pink-50 text-pink-600 dark:bg-pink-500/10 dark:text-pink-400",
+    accent: "bg-brand-soft text-brand-strong dark:bg-brand/10 dark:text-brand",
     target: "[data-tour='history-menu']",
     path: "/",
   },
@@ -37,7 +37,7 @@ const steps: GuideStep[] = [
     title: "历史记录工具栏",
     description: "页面顶部可以刷新、筛选、搜索和调整显示方式，快速定位想找的视频。",
     icon: History,
-    accent: "bg-pink-50 text-pink-600 dark:bg-pink-500/10 dark:text-pink-400",
+    accent: "bg-brand-soft text-brand-strong dark:bg-brand/10 dark:text-brand",
     target: "[data-tour='history-toolbar']",
     path: "/",
   },
@@ -71,7 +71,7 @@ const steps: GuideStep[] = [
     title: "选择备份范围",
     description: "JSON 文件备份默认全选全部数据；你也可以自由取消勾选，只备份需要的部分。",
     icon: Archive,
-    accent: "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400",
+    accent: "bg-brand-soft text-brand-strong dark:bg-brand/10 dark:text-brand",
     target: "[data-tour='backup-manual']",
     path: "/backup/json",
   },
@@ -257,15 +257,15 @@ export const FirstRunGuideModal = ({ open, onComplete, onNavigate }: FirstRunGui
         aria-labelledby="first-run-guide-title"
         tabIndex={-1}
         style={{ left: popoverPosition.left, top: popoverPosition.top, width: POPOVER_WIDTH }}
-        className={`fixed z-[63] max-h-[calc(100vh-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-2xl outline-none dark:border-neutral-700 dark:bg-neutral-900 ${
+        className={`fixed z-[63] max-h-[calc(100vh-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border border-line bg-white shadow-2xl outline-none dark:border-night-line dark:bg-night-card ${
           isPositionReady ? "visible opacity-100" : "invisible opacity-0"
         }`}
       >
-        <div className="border-b border-gray-100 p-5 dark:border-neutral-800">
+        <div className="border-b border-line p-5 dark:border-night-line">
           <button
             type="button"
             onClick={onComplete}
-            className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+            className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-faint hover:bg-wash hover:text-ink-soft dark:hover:bg-night-line/60 dark:hover:text-night-text"
             aria-label="跳过首次引导"
           >
             <X className="h-4 w-4" />
@@ -277,29 +277,29 @@ export const FirstRunGuideModal = ({ open, onComplete, onNavigate }: FirstRunGui
               <Icon className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs font-medium text-blue-600 dark:text-blue-400">首次引导</p>
+              <p className="text-xs font-medium text-brand-strong dark:text-brand">首次引导</p>
               <h1
                 id="first-run-guide-title"
-                className="mt-0.5 text-lg font-bold text-gray-900 dark:text-neutral-100"
+                className="mt-0.5 text-lg font-bold text-ink dark:text-night-text"
               >
                 {current.title}
               </h1>
             </div>
           </div>
-          <p className="mt-4 text-sm leading-relaxed text-gray-600 dark:text-neutral-300">
+          <p className="mt-4 text-sm leading-relaxed text-ink-soft dark:text-night-muted">
             {current.description}
           </p>
         </div>
 
-        <div className="flex items-center justify-between gap-3 bg-gray-50 px-5 py-4 dark:bg-neutral-950/50">
-          <span className="text-xs text-gray-500 dark:text-neutral-400">
+        <div className="flex items-center justify-between gap-3 bg-wash px-5 py-4 dark:bg-night/50">
+          <span className="text-xs text-ink-muted dark:text-night-muted">
             {step + 1} / {steps.length}
           </span>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onComplete}
-              className="rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-200 dark:text-neutral-400 dark:hover:bg-neutral-800"
+              className="rounded-md px-3 py-2 text-sm text-ink-muted hover:bg-wash dark:text-night-muted dark:hover:bg-night-line/60"
             >
               跳过
             </button>
@@ -307,7 +307,7 @@ export const FirstRunGuideModal = ({ open, onComplete, onNavigate }: FirstRunGui
               <button
                 type="button"
                 onClick={previousStep}
-                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
+                className="rounded-md border border-line bg-white px-3 py-2 text-sm font-medium text-ink-soft hover:bg-white dark:border-night-line dark:bg-night-card dark:text-night-text"
               >
                 上一步
               </button>
@@ -315,7 +315,7 @@ export const FirstRunGuideModal = ({ open, onComplete, onNavigate }: FirstRunGui
             <button
               type="button"
               onClick={nextStep}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong"
             >
               {isLast ? "完成" : "下一步"}
             </button>

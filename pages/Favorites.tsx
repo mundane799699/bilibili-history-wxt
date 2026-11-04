@@ -399,10 +399,10 @@ export const Favorites = () => {
     syncProgress?.status === "syncing" || allSyncProgress?.status === "syncing";
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-[#0a0a0a]">
+    <div className="flex h-screen bg-wash dark:bg-night">
       {/* 左侧收藏夹列表 */}
-      <div className="w-64 bg-white dark:bg-neutral-900 border-r border-gray-200 dark:border-neutral-800 overflow-y-auto flex-shrink-0">
-        <div className="flex items-center justify-between gap-2 border-b border-gray-200 p-4 dark:border-neutral-800">
+      <div className="w-64 bg-white dark:bg-night-card border-r border-line dark:border-night-line overflow-y-auto flex-shrink-0">
+        <div className="flex items-center justify-between gap-2 border-b border-line p-4 dark:border-night-line">
           <h2 className="flex min-w-0 items-center gap-2 text-lg font-bold">
             <Folder className="h-5 w-5 shrink-0" />
             <span className="truncate">收藏夹</span>
@@ -411,7 +411,7 @@ export const Favorites = () => {
             type="button"
             onClick={() => setIsAllFoldersSyncOpen(true)}
             disabled={folders.length === 0}
-            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-pink-200 bg-white/80 px-2 py-1 text-xs font-medium text-pink-600 shadow-sm transition-colors hover:border-pink-300 hover:bg-pink-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-pink-500/30 dark:bg-neutral-900/80 dark:text-pink-400 dark:hover:border-pink-500/50 dark:hover:bg-pink-500/20"
+            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-brand/25 bg-white/80 px-2 py-1 text-xs font-medium text-brand-strong shadow-sm transition-colors hover:border-brand/30 hover:bg-brand-soft disabled:cursor-not-allowed disabled:opacity-50 dark:border-brand/30 dark:bg-night-card/80 dark:text-brand dark:hover:border-brand/50 dark:hover:bg-brand/20"
             title="同步所有收藏夹"
             aria-label="同步所有收藏夹"
           >
@@ -423,11 +423,11 @@ export const Favorites = () => {
         {allSyncProgress && allSyncProgress.status === "syncing" && (
           <div
             role="status"
-            className="m-2 rounded-lg border border-pink-200 bg-pink-50 p-3 text-pink-700 dark:border-pink-500/20 dark:bg-pink-500/10 dark:text-pink-300"
+            className="m-2 rounded-lg border border-brand/25 bg-brand-soft p-3 text-brand-strong dark:border-brand/20 dark:bg-brand/10 dark:text-brand"
           >
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
-                <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin text-pink-600 dark:text-pink-400" />
+                <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin text-brand-strong dark:text-brand" />
                 <p className="text-xs font-semibold truncate">
                   {allSyncProgress.currentFolderTitle
                     ? `正在同步「${allSyncProgress.currentFolderTitle}」`
@@ -438,9 +438,9 @@ export const Favorites = () => {
                 {allSyncProgress.completedCount}/{allSyncProgress.totalFolders}
               </span>
             </div>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-pink-100 dark:bg-pink-950/60">
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-brand-soft dark:bg-pink-950/60">
               <div
-                className="h-full rounded-full bg-pink-600 transition-[width] duration-300 dark:bg-pink-400"
+                className="h-full rounded-full bg-brand-strong transition-[width] duration-300 dark:bg-brand"
                 style={{
                   width: allSyncProgress.totalFolders
                     ? `${Math.max(4, Math.floor((allSyncProgress.completedCount / allSyncProgress.totalFolders) * 100))}%`
@@ -479,15 +479,15 @@ export const Favorites = () => {
           syncProgress.status === "syncing" && (
             <div
               role="status"
-              className="m-2 rounded-lg border border-pink-200 bg-pink-50 p-3 text-pink-700 dark:border-pink-500/20 dark:bg-pink-500/10 dark:text-pink-300"
+              className="m-2 rounded-lg border border-brand/25 bg-brand-soft p-3 text-brand-strong dark:border-brand/20 dark:bg-brand/10 dark:text-brand"
             >
               <div className="flex items-center gap-2">
-                <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin text-pink-600 dark:text-pink-400" />
+                <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin text-brand-strong dark:text-brand" />
                 <p className="text-xs font-semibold truncate">同步「{syncProgress.folderTitle}」</p>
               </div>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-pink-100 dark:bg-pink-950/60">
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-brand-soft dark:bg-pink-950/60">
                 <div
-                  className={`h-full rounded-full bg-pink-600 transition-[width] duration-300 dark:bg-pink-400 ${
+                  className={`h-full rounded-full bg-brand-strong transition-[width] duration-300 dark:bg-brand ${
                     syncProgress.mode !== "full" ? "animate-pulse" : ""
                   }`}
                   style={{
@@ -497,7 +497,7 @@ export const Favorites = () => {
                   }}
                 />
               </div>
-              <p className="mt-1.5 text-[11px] text-pink-600 dark:text-pink-300 truncate">
+              <p className="mt-1.5 text-[11px] text-brand-strong dark:text-brand truncate">
                 {syncProgress.currentPage
                   ? syncProgress.totalItems > 0
                     ? `${syncProgress.processedItems}/${syncProgress.totalItems} (${Math.floor((syncProgress.processedItems / syncProgress.totalItems) * 100)}%) 第${syncProgress.currentPage}页`
@@ -513,8 +513,8 @@ export const Favorites = () => {
               key={folder.id}
               className={`relative mb-1 cursor-pointer rounded-lg p-3 pr-10 transition-colors ${
                 selectedFolderId === folder.id
-                  ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400"
-                  : "hover:bg-gray-100 dark:hover:bg-neutral-800"
+                  ? "bg-brand-soft dark:bg-brand/10 text-brand-strong dark:text-brand"
+                  : "hover:bg-wash dark:hover:bg-night-line/60"
               }`}
               onClick={() => setSelectedFolderId(folder.id)}
             >
@@ -522,7 +522,7 @@ export const Favorites = () => {
                 <div className="truncate font-medium" title={folder.title}>
                   {folder.title}
                 </div>
-                <div className="mt-1 text-xs text-gray-400 dark:text-neutral-500">
+                <div className="mt-1 text-xs text-ink-faint dark:text-night-muted">
                   {folder.media_count}个内容
                 </div>
               </div>
@@ -533,7 +533,7 @@ export const Favorites = () => {
                   event.stopPropagation();
                   setOpenFolderMenuId((current) => (current === folder.id ? null : folder.id));
                 }}
-                className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-white hover:text-gray-700 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-white hover:text-ink-soft dark:text-night-muted dark:hover:bg-night-line/60 dark:hover:text-night-text"
                 title={`更多操作：${folder.title}`}
                 aria-label={`更多操作：${folder.title}`}
                 aria-haspopup="menu"
@@ -555,7 +555,7 @@ export const Favorites = () => {
                   />
                   <div
                     role="menu"
-                    className="absolute right-2 top-10 z-20 min-w-28 overflow-hidden rounded-lg border border-gray-100 bg-white py-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
+                    className="absolute right-2 top-10 z-20 min-w-28 overflow-hidden rounded-lg border border-line bg-white py-1 shadow-lg dark:border-night-line dark:bg-night-card"
                     onClick={(event) => event.stopPropagation()}
                   >
                     <button
@@ -566,9 +566,9 @@ export const Favorites = () => {
                         setOpenFolderMenuId(null);
                         setSyncTargetFolder(folder);
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink-soft transition-colors hover:bg-wash disabled:cursor-not-allowed disabled:opacity-40 dark:text-night-text dark:hover:bg-night-line/60"
                     >
-                      <CloudDownload className="h-4 w-4 text-pink-500" />
+                      <CloudDownload className="h-4 w-4 text-brand" />
                       同步
                     </button>
                     <button
@@ -596,11 +596,11 @@ export const Favorites = () => {
       <div className="flex-1 overflow-y-auto" ref={contentRef}>
         <div className="p-6">
           {selectedFolderId && (
-            <div className="mb-6 flex flex-col md:flex-row justify-between md:items-center gap-4 bg-white dark:bg-neutral-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-neutral-800">
+            <div className="mb-6 flex flex-col md:flex-row justify-between md:items-center gap-4 bg-white dark:bg-night-card p-4 rounded-xl shadow-sm border border-line dark:border-night-line">
               <div className="flex flex-wrap items-center gap-3">
                 <h1 className="flex items-center gap-2 text-xl font-bold">
                   {selectedFolder?.title}
-                  <span className="whitespace-nowrap rounded-full border border-gray-100 bg-gray-50 px-2 py-1 text-sm font-normal text-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400">
+                  <span className="whitespace-nowrap rounded-full border border-line bg-wash px-2 py-1 text-sm font-normal text-ink-muted dark:border-night-line dark:bg-night-line dark:text-night-muted">
                     {filteredResources.length} 个内容
                   </span>
                 </h1>
@@ -614,7 +614,7 @@ export const Favorites = () => {
                     isClearingFolder ||
                     isFavoriteSyncing
                   }
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-500/30 dark:bg-neutral-900 dark:text-red-400 dark:hover:border-red-500/50 dark:hover:bg-red-500/10"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-500/30 dark:bg-night-card dark:text-red-400 dark:hover:border-red-500/50 dark:hover:bg-red-500/10"
                   title={isFavoriteSyncing ? "收藏夹同步期间不能清空" : "清空当前收藏夹的本地数据"}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -622,11 +622,11 @@ export const Favorites = () => {
                 </button>
               </div>
 
-              <div className="relative w-full md:max-w-xl group flex items-center bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-full transition-all duration-300 shadow-sm hover:shadow-md focus-within:bg-white dark:focus-within:bg-neutral-800 focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-500/20 focus-within:border-blue-400 dark:focus-within:border-blue-500">
+              <div className="relative w-full md:max-w-xl group flex items-center bg-wash dark:bg-night-line border border-line dark:border-night-line rounded-full transition-all duration-300 shadow-sm hover:shadow-md focus-within:bg-white dark:focus-within:bg-night-card focus-within:ring-2 focus-within:ring-brand/20 dark:focus-within:ring-brand/20 focus-within:border-brand/40 dark:focus-within:border-brand">
                 {/* 搜索类型下拉 */}
                 <div className="relative">
                   <button
-                    className="pl-4 pr-3 py-2 text-sm text-gray-600 dark:text-neutral-300 font-medium cursor-pointer border-r border-gray-200 dark:border-neutral-700 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1 transition-colors whitespace-nowrap"
+                    className="pl-4 pr-3 py-2 text-sm text-ink-soft dark:text-night-muted font-medium cursor-pointer border-r border-line dark:border-night-line hover:text-brand-strong dark:hover:text-brand flex items-center gap-1 transition-colors whitespace-nowrap"
                     onClick={() => setIsSearchKindDropdownOpen(!isSearchKindDropdownOpen)}
                   >
                     <span>
@@ -636,7 +636,7 @@ export const Favorites = () => {
                       {searchType === "bvid" && "BV号"}
                       {searchType === "avid" && "AV号"}
                     </span>
-                    <ChevronDownIcon className="w-3 h-3 text-gray-400 dark:text-neutral-500" />
+                    <ChevronDownIcon className="w-3 h-3 text-ink-faint dark:text-night-muted" />
                   </button>
 
                   {isSearchKindDropdownOpen && (
@@ -645,7 +645,7 @@ export const Favorites = () => {
                         className="fixed inset-0 z-10"
                         onClick={() => setIsSearchKindDropdownOpen(false)}
                       ></div>
-                      <div className="absolute top-full left-0 mt-2 w-28 bg-white dark:bg-neutral-900 rounded-lg shadow-lg border border-gray-100 dark:border-neutral-800 py-1 z-20 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+                      <div className="absolute top-full left-0 mt-2 w-28 bg-white dark:bg-night-card rounded-lg shadow-lg border border-line dark:border-night-line py-1 z-20 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
                         {[
                           { value: "all", label: "综合搜索" },
                           { value: "title", label: "视频标题" },
@@ -657,8 +657,8 @@ export const Favorites = () => {
                             key={option.value}
                             className={`w-full text-left px-4 py-2 text-sm transition-colors ${
                               searchType === option.value
-                                ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium"
-                                : "text-gray-600 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-800"
+                                ? "bg-brand-soft dark:bg-brand/10 text-brand-strong dark:text-brand font-medium"
+                                : "text-ink-soft dark:text-night-muted hover:bg-wash dark:hover:bg-night-line/60"
                             }`}
                             onClick={() => {
                               setSearchType(option.value as any);
@@ -675,7 +675,7 @@ export const Favorites = () => {
 
                 <input
                   type="text"
-                  className="flex-1 bg-transparent border-none focus:ring-0 pl-4 pr-10 py-2 text-sm text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 focus:outline-none"
+                  className="flex-1 bg-transparent border-none focus:ring-0 pl-4 pr-10 py-2 text-sm text-ink-soft dark:text-night-text placeholder-ink-faint dark:placeholder-night-muted focus:outline-none"
                   placeholder={
                     searchType === "bvid"
                       ? "输入BV号..."
@@ -697,13 +697,13 @@ export const Favorites = () => {
                       setKeyword("");
                       setCurrentPage(1);
                     }}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 dark:text-neutral-500 hover:text-gray-600 dark:hover:text-neutral-300 transition-colors"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-ink-faint dark:text-night-muted hover:text-ink-soft dark:hover:text-neutral-300 transition-colors"
                   >
                     <X className="h-4 w-4" />
                   </button>
                 ) : (
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <Search className="h-4 w-4 text-gray-400 dark:text-neutral-500" />
+                    <Search className="h-4 w-4 text-ink-faint dark:text-night-muted" />
                   </div>
                 )}
               </div>
@@ -712,14 +712,16 @@ export const Favorites = () => {
 
           <div className="w-full">
             {loading ? (
-              <div className="text-center py-10 text-gray-500 dark:text-neutral-400">加载中...</div>
+              <div className="text-center py-10 text-ink-muted dark:text-night-muted">
+                加载中...
+              </div>
             ) : (
               <>
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-6">
                   {currentResources.map((item) => (
                     <div
                       key={item.id}
-                      className="border border-gray-200 dark:border-neutral-800 rounded-lg overflow-hidden flex flex-col bg-white dark:bg-neutral-900 hover:shadow-md transition-shadow"
+                      className="border border-line dark:border-night-line rounded-lg overflow-hidden flex flex-col bg-white dark:bg-night-card hover:shadow-md transition-shadow"
                     >
                       <a
                         href={`https://www.bilibili.com/video/${item.bvid}`}
@@ -745,7 +747,7 @@ export const Favorites = () => {
                                 {item.title}
                               </h3>
                             </div>
-                            <div className="flex justify-between items-center text-gray-500 dark:text-neutral-400 text-xs mt-2">
+                            <div className="flex justify-between items-center text-ink-muted dark:text-night-muted text-xs mt-2">
                               <span
                                 onClick={(e) => {
                                   e.preventDefault();
@@ -771,7 +773,7 @@ export const Favorites = () => {
                     </div>
                   ))}
                   {currentResources.length === 0 && (
-                    <div className="col-span-full text-center py-10 text-gray-400 dark:text-neutral-500">
+                    <div className="col-span-full text-center py-10 text-ink-faint dark:text-night-muted">
                       这个收藏夹是空的
                     </div>
                   )}

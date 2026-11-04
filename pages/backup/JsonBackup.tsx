@@ -251,15 +251,15 @@ const JsonBackup = () => {
       <div className="space-y-5">
         <article
           data-tour="backup-manual"
-          className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900"
+          className="overflow-hidden rounded-2xl border border-line bg-white dark:border-night-line dark:bg-night-card"
         >
-          <div className="flex items-start gap-3 border-b border-gray-100 px-5 py-4 dark:border-neutral-800">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-500/10 dark:text-pink-400">
+          <div className="flex items-start gap-3 border-b border-line px-5 py-4 dark:border-night-line">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand-strong dark:bg-brand/10 dark:text-brand">
               <FileJson2 className="h-[18px] w-[18px]" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-950 dark:text-neutral-100">JSON 文件</h3>
-              <p className="mt-1 text-sm text-gray-600 dark:text-neutral-400">
+              <h3 className="font-semibold text-ink dark:text-night-text">JSON 文件</h3>
+              <p className="mt-1 text-sm text-ink-soft dark:text-night-muted">
                 下载到设备保存，或从已有文件恢复。
               </p>
             </div>
@@ -268,7 +268,7 @@ const JsonBackup = () => {
           <div className="p-5">
             <fieldset className="mb-5">
               <div className="mb-2 flex items-center justify-between gap-3">
-                <legend className="text-sm font-medium text-gray-700 dark:text-neutral-300">
+                <legend className="text-sm font-medium text-ink-soft dark:text-night-muted">
                   备份内容
                 </legend>
                 <button
@@ -277,7 +277,7 @@ const JsonBackup = () => {
                     setManualBackupItems(DEFAULT_WEBDAV_SYNC_ITEMS);
                     void setStorageValue(MANUAL_BACKUP_ITEMS, DEFAULT_WEBDAV_SYNC_ITEMS);
                   }}
-                  className="rounded-md px-2 py-1 text-xs font-medium text-pink-600 transition-colors hover:bg-pink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 dark:text-pink-400 dark:hover:bg-pink-500/10"
+                  className="rounded-md px-2 py-1 text-xs font-medium text-brand-strong transition-colors hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-brand dark:hover:bg-brand/10"
                 >
                   全部选择
                 </button>
@@ -288,8 +288,8 @@ const JsonBackup = () => {
                     key={item.key}
                     className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
                       manualBackupItems[item.key]
-                        ? "border-pink-200 bg-pink-50 text-pink-800 dark:border-pink-500/30 dark:bg-pink-500/10 dark:text-pink-200"
-                        : "border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                        ? "border-brand/25 bg-brand-soft text-brand-strong dark:border-brand/30 dark:bg-brand/10 dark:text-brand"
+                        : "border-line text-ink-soft hover:bg-wash dark:border-night-line dark:text-night-muted dark:hover:bg-night-line/60"
                     }`}
                   >
                     <input
@@ -303,7 +303,7 @@ const JsonBackup = () => {
                         setManualBackupItems(next);
                         void setStorageValue(MANUAL_BACKUP_ITEMS, next);
                       }}
-                      className="h-4 w-4 accent-pink-600 focus:ring-2 focus:ring-pink-500 focus:ring-offset-1 dark:accent-pink-500"
+                      className="h-4 w-4 accent-pink-600 focus:ring-2 focus:ring-brand focus:ring-offset-1 dark:accent-pink-500"
                     />
                     <span>{item.label}</span>
                   </label>
@@ -316,7 +316,7 @@ const JsonBackup = () => {
                 type="button"
                 onClick={handleExportAll}
                 disabled={isExporting}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-pink-600 px-4 text-sm font-medium text-white transition-colors hover:bg-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-pink-500 dark:hover:bg-pink-600 dark:focus-visible:ring-offset-neutral-900"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand-strong px-4 text-sm font-medium text-white transition-colors hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-brand dark:hover:bg-brand-strong dark:focus-visible:ring-offset-neutral-900"
               >
                 {isExporting ? (
                   <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -330,7 +330,7 @@ const JsonBackup = () => {
                 type="button"
                 onClick={handleImportAll}
                 disabled={isImporting}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800 dark:focus-visible:ring-offset-neutral-900"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line bg-white px-4 text-sm font-medium text-ink-soft transition-colors hover:bg-wash focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-night-line dark:bg-night-card dark:text-night-text dark:hover:bg-night-line/60 dark:focus-visible:ring-offset-neutral-900"
               >
                 {isImporting ? (
                   <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -341,26 +341,26 @@ const JsonBackup = () => {
               </button>
             </div>
 
-            <div className="mt-4 flex items-start gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-xs leading-5 text-gray-600 dark:bg-neutral-800 dark:text-neutral-300">
+            <div className="mt-4 flex items-start gap-2 rounded-lg bg-wash px-3 py-2.5 text-xs leading-5 text-ink-soft dark:bg-night-line dark:text-night-muted">
               <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               导出文件仅包含已勾选的数据；导入时会智能合并，并兼容旧版历史记录或音乐 JSON。
             </div>
           </div>
         </article>
 
-        <aside className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
-          <h3 className="text-sm font-semibold text-gray-950 dark:text-neutral-100">备份说明</h3>
-          <ul className="mt-4 space-y-3 text-sm leading-6 text-gray-600 dark:text-neutral-300">
+        <aside className="rounded-2xl border border-line bg-white p-5 dark:border-night-line dark:bg-night-card">
+          <h3 className="text-sm font-semibold text-ink dark:text-night-text">备份说明</h3>
+          <ul className="mt-4 space-y-3 text-sm leading-6 text-ink-soft dark:text-night-muted">
             <li className="flex items-start gap-2.5">
-              <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-pink-600 dark:text-pink-400" />
+              <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-brand-strong dark:text-brand" />
               <span>WebDAV 适合多设备同步；JSON 文件适合离线保存和迁移。</span>
             </li>
             <li className="flex items-start gap-2.5">
-              <ArrowLeftRight className="mt-1 h-4 w-4 shrink-0 text-pink-600 dark:text-pink-400" />
+              <ArrowLeftRight className="mt-1 h-4 w-4 shrink-0 text-brand-strong dark:text-brand" />
               <span>恢复和导入默认智能合并，不会覆盖本地更新的记录。</span>
             </li>
             <li className="flex items-start gap-2.5">
-              <ShieldCheck className="mt-1 h-4 w-4 shrink-0 text-pink-600 dark:text-pink-400" />
+              <ShieldCheck className="mt-1 h-4 w-4 shrink-0 text-brand-strong dark:text-brand" />
               <span>数据只写入你选择的目录或服务器，不经过第三方中转。</span>
             </li>
           </ul>

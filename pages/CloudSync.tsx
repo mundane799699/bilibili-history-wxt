@@ -5,16 +5,43 @@ import {
 } from "@/utils/db";
 import { uploadBatchHistory } from "@/services/history";
 import { toast } from "react-hot-toast";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useUserStore } from "@/utils/store";
 import { LoginModal } from "@/components/LoginModal";
 import { UserInfo } from "@/components/UserInfo";
+import { SubscribePromo } from "@/components/SubscribePromo";
+import { getMembershipStatus } from "@/services/membership";
+import { Card, CardTitle, PageHeader, Button } from "@/components/ui/Primitives";
+import {
+  CheckCircle2,
+  DownloadCloud,
+  ExternalLink,
+  Loader2,
+  RotateCcw,
+  Sparkles,
+  UploadCloud,
+  XCircle,
+} from "lucide-react";
 const FREE_LIMIT_MESSAGE = "免费用户最多可以上传500条历史记录";
 const EXPIRED_MESSAGE = "您的会员已过期，无法上传更多记录";
 
 const CloudSync = () => {
   const { userInfo } = useUserStore();
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isMember, setIsMember] = useState(false);
+
+  // 已是会员就不再展示订阅引导
+  useEffect(() => {
+    let isActive = true;
+    getMembershipStatus()
+      .then((membership) => {
+        if (isActive) setIsMember(membership.active);
+      })
+      .catch(() => {});
+    return () => {
+      isActive = false;
+    };
+  }, []);
   const [uploadInfo, setUploadInfo] = useState({
     isUploading: false,
     isOpen: false,
@@ -121,227 +148,190 @@ const CloudSync = () => {
       : 0;
 
   return (
-    <div className="max-w-[800px] mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">云同步</h1>
+    <div className="mx-auto max-w-[880px] px-6 py-8 pb-16">
+      <PageHeader
+        title="云同步"
+        description="把浏览器里的历史记录同步到云端，换设备也能接着找。免费用户最多上传 500 条，会员不限量。"
+      />
+
       <UserInfo />
-      <p className="text-gray-600 text-base mb-2">云同步允许你将数据在浏览器插件和云端之间同步。</p>
-      <p className="text-gray-600 text-base mb-8">该功能是付费功能，免费用户最多可以上传500条。</p>
-      <p className="-mt-6 mb-8 text-sm text-amber-600 dark:text-amber-400">
-        当前云端按视频保存最近一次观看；完整观看次数保存在本地、JSON 和 WebDAV v2 备份中。
-      </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <button
-          onClick={handleUpload}
-          className="flex items-center justify-center gap-3 px-6 py-3 bg-pink-400 hover:bg-pink-500 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 w-full"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3-3m0 0l3 3m-3-3v12"
-            />
-          </svg>
-          上传数据到云端
-        </button>
+      <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <Card className="flex flex-col">
+          <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-brand-soft text-brand-strong dark:bg-brand/10 dark:text-brand">
+            <UploadCloud className="h-4 w-4" />
+          </div>
+          <h3 className="text-[14px] font-semibold text-ink dark:text-night-text">上传到云端</h3>
+          <p className="mt-1 flex-1 text-[12.5px] leading-relaxed text-ink-muted dark:text-night-muted">
+            把本地尚未同步的记录分批上传，已经传过的不会重复上传。
+          </p>
+          <Button className="mt-4 w-full" onClick={handleUpload}>
+            开始上传
+          </Button>
+        </Card>
 
-        <button
-          onClick={handleViewCloudData}
-          className="flex items-center justify-center gap-3 px-6 py-3 bg-blue-400 hover:bg-blue-500 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 w-full"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          查看云端数据
-        </button>
+        <Card className="flex flex-col">
+          <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-wash text-ink-soft dark:bg-night-line dark:text-night-text">
+            <ExternalLink className="h-4 w-4" />
+          </div>
+          <h3 className="text-[14px] font-semibold text-ink dark:text-night-text">查看云端数据</h3>
+          <p className="mt-1 flex-1 text-[12.5px] leading-relaxed text-ink-muted dark:text-night-muted">
+            在网页端仪表盘浏览已经同步的记录，支持搜索与筛选。
+          </p>
+          <Button variant="secondary" className="mt-4 w-full" onClick={handleViewCloudData}>
+            打开仪表盘
+          </Button>
+        </Card>
 
-        <button
-          onClick={handleResetHistory}
-          className="flex items-center justify-center gap-3 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 w-full"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
-          </svg>
-          将本地所有数据标记为未上传
-        </button>
+        <Card className="flex flex-col">
+          <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-wash text-ink-soft dark:bg-night-line dark:text-night-text">
+            <DownloadCloud className="h-4 w-4" />
+          </div>
+          <h3 className="flex items-center gap-2 text-[14px] font-semibold text-ink dark:text-night-text">
+            从云端取回
+            <span className="rounded-full bg-wash px-2 py-0.5 text-[11px] font-normal text-ink-muted dark:bg-night-line dark:text-night-muted">
+              待开发
+            </span>
+          </h3>
+          <p className="mt-1 flex-1 text-[12.5px] leading-relaxed text-ink-muted dark:text-night-muted">
+            把云端记录拉回本地。目前请先用 JSON 或 WebDAV 备份恢复数据。
+          </p>
+          <Button variant="secondary" className="mt-4 w-full" disabled>
+            暂不可用
+          </Button>
+        </Card>
 
-        <button
-          onClick={handleDownload}
-          disabled
-          className="disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400 flex items-center justify-center gap-3 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 w-full"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3 3m0 0l-3-3m3 3V8"
-            />
-          </svg>
-          从云端获取数据(待开发)
-        </button>
+        <Card className="flex flex-col">
+          <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-wash text-ink-soft dark:bg-night-line dark:text-night-text">
+            <RotateCcw className="h-4 w-4" />
+          </div>
+          <h3 className="text-[14px] font-semibold text-ink dark:text-night-text">重置上传标记</h3>
+          <p className="mt-1 flex-1 text-[12.5px] leading-relaxed text-ink-muted dark:text-night-muted">
+            把所有本地记录改回未上传，下次上传会重新同步一遍。
+          </p>
+          <Button variant="ghost" className="mt-4 w-full" onClick={handleResetHistory}>
+            标记为未上传
+          </Button>
+        </Card>
       </div>
 
-      <div className="mt-8 p-4 bg-gray-50 dark:bg-neutral-900 rounded-lg border border-gray-200 dark:border-neutral-800">
-        <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-neutral-100">使用说明</h3>
-        <ul className="text-sm text-gray-600 dark:text-neutral-300 space-y-1 list-disc pl-5">
-          <li>点击"上传数据到云端"将本地数据同步到云端服务器</li>
-          <li>点击"查看云端数据"查看已同步到云端的数据</li>
-          <li>点击"从云端获取数据"将云端数据同步到浏览器插件</li>
-          <li className="text-red-500 dark:text-red-400">
-            已经上传的数据会标记为已上传，再次点击上传时不会重复上传
+      <Card className="mt-6">
+        <CardTitle hint="云端只保留每个视频最近一次观看；完整观看次数保存在本地、JSON 和 WebDAV v2 备份中。">
+          使用说明
+        </CardTitle>
+        <ul className="space-y-2 text-[13px] text-ink-soft dark:text-night-muted">
+          <li className="flex gap-2">
+            <span className="mt-[7px] h-1 w-1 flex-shrink-0 rounded-full bg-ink-faint" />
+            点击「开始上传」把本地数据同步到云端服务器。
+          </li>
+          <li className="flex gap-2">
+            <span className="mt-[7px] h-1 w-1 flex-shrink-0 rounded-full bg-ink-faint" />
+            点击「打开仪表盘」查看已经同步到云端的数据。
+          </li>
+          <li className="flex gap-2">
+            <span className="mt-[7px] h-1 w-1 flex-shrink-0 rounded-full bg-ink-faint" />
+            上传成功后记录会被标记为已上传，重复点击不会重复上传。
           </li>
         </ul>
-      </div>
+      </Card>
+
+      {!isMember && <SubscribePromo variant="card" />}
 
       {/* 上传进度弹窗 */}
       {uploadInfo.isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] flex flex-col">
-            {/* 弹窗标题 */}
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-800 text-center">数据上传</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="mx-4 flex max-h-[90vh] w-full max-w-md flex-col rounded-2xl border border-line bg-white shadow-lift dark:border-night-line dark:bg-night-card">
+            <div className="border-b border-line px-6 py-4 dark:border-night-line">
+              <h2 className="text-[15px] font-semibold text-ink dark:text-night-text">数据上传</h2>
             </div>
 
-            {/* 弹窗内容 */}
-            <div className="p-8 flex-grow overflow-y-auto">
-              <div className="text-center mb-6">
+            <div className="flex-grow overflow-y-auto p-6">
+              <div className="mb-6 text-center">
                 {uploadInfo.isUploading ? (
                   <>
-                    <svg
-                      className="animate-spin h-12 w-12 text-blue-500 mx-auto"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    <h3 className="text-lg font-semibold text-gray-700 mt-4">
-                      正在上传您的数据...
+                    <Loader2 className="mx-auto h-8 w-8 animate-spin text-brand" />
+                    <h3 className="mt-3 text-[14px] font-medium text-ink dark:text-night-text">
+                      正在上传…
                     </h3>
-                    <p className="text-sm text-gray-500">请稍候，不要关闭此页面</p>
+                    <p className="mt-1 text-[12.5px] text-ink-muted dark:text-night-muted">
+                      请稍候，不要关闭此页面
+                    </p>
                   </>
                 ) : (
                   <>
                     {uploadInfo.failedCount === 0 && uploadInfo.successCount > 0 ? (
-                      <svg
-                        className="h-12 w-12 text-green-500 mx-auto"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
+                      <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-500" />
                     ) : (
-                      <svg
-                        className="h-12 w-12 text-red-500 mx-auto"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
+                      <XCircle className="mx-auto h-8 w-8 text-red-500" />
                     )}
-                    <h3 className="text-lg font-semibold text-gray-700 mt-4">
+                    <h3 className="mt-3 text-[14px] font-medium text-ink dark:text-night-text">
                       上传{uploadInfo.failedCount > 0 ? "完成" : "成功"}
                     </h3>
                   </>
                 )}
               </div>
 
-              {/* 进度条 */}
-              <div className="mb-6">
-                <div className="flex justify-between mb-1">
-                  <span className="text-base font-medium text-blue-700">进度</span>
-                  <span className="text-sm font-medium text-blue-700">{progress}%</span>
+              <div className="mb-5">
+                <div className="mb-1.5 flex justify-between text-[12.5px]">
+                  <span className="text-ink-muted dark:text-night-muted">进度</span>
+                  <span className="font-medium tabular-nums text-ink dark:text-night-text">
+                    {progress}%
+                  </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-wash dark:bg-night-line">
                   <div
-                    className="bg-blue-600 h-2.5 rounded-full"
+                    className="h-full rounded-full bg-brand transition-all"
                     style={{ width: `${progress}%` }}
-                  ></div>
+                  />
                 </div>
               </div>
 
-              {/* 统计数据 */}
-              <div className="grid grid-cols-3 gap-4 text-center text-sm bg-gray-50 p-4 rounded-lg">
+              <div className="grid grid-cols-3 gap-3 rounded-xl bg-wash p-4 text-center dark:bg-night-line/40">
                 <div>
-                  <p className="font-semibold text-gray-700">总计</p>
-                  <p className="text-2xl font-bold text-gray-900">{uploadInfo.totalCount}</p>
+                  <p className="text-[12px] text-ink-muted dark:text-night-muted">总计</p>
+                  <p className="mt-0.5 text-xl font-semibold tabular-nums text-ink dark:text-night-text">
+                    {uploadInfo.totalCount}
+                  </p>
                 </div>
                 <div>
-                  <p className="font-semibold text-green-600">成功</p>
-                  <p className="text-2xl font-bold text-green-600">{uploadInfo.successCount}</p>
+                  <p className="text-[12px] text-ink-muted dark:text-night-muted">成功</p>
+                  <p className="mt-0.5 text-xl font-semibold tabular-nums text-emerald-600">
+                    {uploadInfo.successCount}
+                  </p>
                 </div>
                 <div>
-                  <p className="font-semibold text-red-600">失败</p>
-                  <p className="text-2xl font-bold text-red-600">{uploadInfo.failedCount}</p>
+                  <p className="text-[12px] text-ink-muted dark:text-night-muted">失败</p>
+                  <p className="mt-0.5 text-xl font-semibold tabular-nums text-red-500">
+                    {uploadInfo.failedCount}
+                  </p>
                 </div>
               </div>
 
               {uploadInfo.message && (
-                <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-lg text-center text-sm">
-                  <p>{uploadInfo.message}</p>
+                <div className="mt-4 rounded-xl bg-red-50 px-3 py-2.5 text-center text-[12.5px] text-red-600 dark:bg-red-500/10 dark:text-red-400">
+                  {uploadInfo.message}
                 </div>
               )}
 
-              {uploadInfo.message === FREE_LIMIT_MESSAGE ||
-                (uploadInfo.message === EXPIRED_MESSAGE && !uploadInfo.isUploading && (
-                  <div className="mt-6 text-center">
-                    <button
-                      onClick={handleUpgrade}
-                      className="w-full px-6 py-3 bg-pink-500 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 hover:bg-pink-600"
-                    >
-                      升级到高级版，解锁无限上传
-                    </button>
-                  </div>
-                ))}
+              {(uploadInfo.message === FREE_LIMIT_MESSAGE ||
+                uploadInfo.message === EXPIRED_MESSAGE) &&
+                !uploadInfo.isUploading && (
+                  <Button className="mt-5 w-full" onClick={handleUpgrade}>
+                    <Sparkles className="h-4 w-4" />
+                    升级会员，解锁不限量上传
+                  </Button>
+                )}
             </div>
 
-            {/* 弹窗页脚 */}
             {!uploadInfo.isUploading && (
-              <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
-                <button
+              <div className="flex justify-end border-t border-line px-6 py-3 dark:border-night-line">
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => setUploadInfo((prev) => ({ ...prev, isOpen: false }))}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   关闭
-                </button>
+                </Button>
               </div>
             )}
           </div>

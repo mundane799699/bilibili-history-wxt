@@ -18,8 +18,8 @@ export const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
         {/* 弹窗标题 */}
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">需要登录</h2>
+        <div className="px-6 py-4 border-b border-line">
+          <h2 className="text-xl font-semibold text-ink">需要登录</h2>
         </div>
 
         {/* 弹窗内容 */}
@@ -40,21 +40,21 @@ export const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
                 />
               </svg>
             </div>
-            <p className="text-gray-600 mb-6">您还未登录，无法使用云同步功能。请先登录后再试。</p>
+            <p className="text-ink-soft mb-6">您还未登录，无法使用云同步功能。请先登录后再试。</p>
           </div>
         </div>
 
         {/* 底部按钮 */}
-        <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+        <div className="px-6 py-4 border-t border-line flex justify-end space-x-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+            className="px-4 py-2 text-ink-soft hover:text-ink transition-colors"
           >
             取消
           </button>
           <button
             onClick={handleLoginClick}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-strong transition-colors"
           >
             去登录
           </button>

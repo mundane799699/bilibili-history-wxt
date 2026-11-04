@@ -126,10 +126,10 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, displayMode, onD
 
   return (
     <article
-      className={`history-card group overflow-hidden rounded-xl border bg-white transition-[border-color,transform,opacity] duration-200 hover:-translate-y-0.5 hover:border-pink-200 focus-within:border-pink-300 dark:bg-neutral-900 dark:hover:border-pink-500/40 dark:focus-within:border-pink-500/50 ${
+      className={`history-card group overflow-hidden rounded-xl border bg-white transition-[border-color,transform,opacity] duration-200 hover:-translate-y-0.5 hover:border-brand/25 focus-within:border-brand/30 dark:bg-night-card dark:hover:border-brand/40 dark:focus-within:border-brand/50 ${
         isDeleting
-          ? "pointer-events-none border-gray-200 opacity-60 dark:border-neutral-800"
-          : "border-gray-200 dark:border-neutral-800"
+          ? "pointer-events-none border-line opacity-60 dark:border-night-line"
+          : "border-line dark:border-night-line"
       }`}
       aria-busy={isDeleting}
     >
@@ -137,7 +137,7 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, displayMode, onD
         href={contentUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="relative block aspect-video overflow-hidden bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-pink-500 dark:bg-neutral-800"
+        className="relative block aspect-video overflow-hidden bg-wash focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand dark:bg-night-line"
         aria-label={`打开：${item.title || "未命名内容"}`}
       >
         <img
@@ -160,7 +160,7 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, displayMode, onD
         {item.progress !== -1 && (item.progress ?? 0) > 0 && (item.duration ?? 0) > 0 && (
           <div className="absolute inset-x-0 bottom-0 h-1 bg-black/35">
             <div
-              className="h-full bg-pink-500"
+              className="h-full bg-brand"
               style={{
                 width: `${Math.min(100, ((item.progress || 0) / (item.duration || 1)) * 100)}%`,
               }}
@@ -177,7 +177,7 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, displayMode, onD
             <span />
           )}
           {getTypeTag(item.business) !== "视频" && (
-            <span className="rounded-md bg-pink-500 px-2 py-1 text-xs font-medium text-white">
+            <span className="rounded-md bg-brand px-2 py-1 text-xs font-medium text-white">
               {getTypeTag(item.business)}
             </span>
           )}
@@ -202,10 +202,10 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, displayMode, onD
             href={contentUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="min-w-0 flex-1 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+            className="min-w-0 flex-1 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             <h3
-              className="line-clamp-2 min-h-10 text-sm font-medium leading-5 text-gray-900 transition-colors hover:text-pink-700 dark:text-neutral-100 dark:hover:text-pink-300"
+              className="line-clamp-2 min-h-10 text-sm font-medium leading-5 text-ink transition-colors hover:text-brand-strong dark:text-night-text dark:hover:text-brand"
               title={item.title || "未命名内容"}
             >
               {item.title || "未命名内容"}
@@ -213,7 +213,7 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, displayMode, onD
           </a>
           <button
             type="button"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:cursor-wait dark:text-neutral-400 dark:hover:bg-red-500/10 dark:hover:text-red-300"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:cursor-wait dark:text-night-muted dark:hover:bg-red-500/10 dark:hover:text-red-300"
             onClick={handleDelete}
             disabled={isDeleting}
             title={deleteLabel}
@@ -227,12 +227,12 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, displayMode, onD
           </button>
         </div>
 
-        <div className="mt-2 flex min-w-0 items-center justify-between gap-3 text-xs text-gray-500 dark:text-neutral-400">
+        <div className="mt-2 flex min-w-0 items-center justify-between gap-3 text-xs text-ink-muted dark:text-night-muted">
           <a
             href={`https://space.bilibili.com/${item.author_mid}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="min-w-0 truncate rounded-sm transition-colors hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 dark:hover:text-pink-300"
+            className="min-w-0 truncate rounded-sm transition-colors hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:hover:text-brand"
             title={item.author_name || "未知 UP 主"}
           >
             {item.author_name || "未知 UP 主"}

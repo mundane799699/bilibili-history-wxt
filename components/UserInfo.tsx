@@ -59,28 +59,30 @@ export const UserInfo = () => {
   };
 
   return (
-    <div className="mb-8 flex items-center gap-4 p-4 bg-gray-50 dark:bg-neutral-900 rounded-lg border border-gray-200 dark:border-neutral-800">
-      <div className="w-12 h-12 flex-shrink-0 rounded-full overflow-hidden bg-gray-300 dark:bg-neutral-700">
+    <div className="flex items-center gap-3 rounded-2xl border border-line bg-white p-4 shadow-card dark:border-night-line dark:bg-night-card">
+      <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-brand-soft dark:bg-brand/15">
         {userInfo ? (
-          <div className="w-full h-full bg-pink-400 dark:bg-gray-700 flex items-center justify-center">
-            <span className="text-white font-medium text-lg">{getInitial(userInfo.name)}</span>
+          <div className="flex h-full w-full items-center justify-center">
+            <span className="text-[15px] font-semibold text-brand-strong dark:text-brand">
+              {getInitial(userInfo.name)}
+            </span>
           </div>
         ) : (
-          <img src="/noface.jpg" alt="用户头像" className="w-full h-full object-cover" />
+          <img src="/noface.jpg" alt="用户头像" className="h-full w-full object-cover" />
         )}
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-base font-medium text-gray-900 dark:text-neutral-100 truncate">
-          {isLoading ? "加载中..." : userInfo ? userInfo.name : "未登录"}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13.5px] font-medium text-ink dark:text-night-text">
+          {isLoading ? "加载中…" : userInfo ? userInfo.name : "未登录"}
         </p>
-        <p className="text-sm text-gray-500 dark:text-neutral-400">
+        <p className="mt-0.5 text-[12.5px] text-ink-muted dark:text-night-muted">
           {userInfo ? "已登录，可以使用云同步" : "登录后即可使用云同步"}
         </p>
       </div>
       <button
         onClick={handleUserNameClick}
         disabled={isLoading}
-        className="flex-shrink-0 px-4 py-2 text-sm font-medium text-white bg-pink-400 hover:bg-pink-500 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex-shrink-0 rounded-xl border border-line px-3 py-1.5 text-[12.5px] font-medium text-ink-soft transition-colors hover:border-brand/30 hover:bg-brand-soft hover:text-brand-strong disabled:cursor-not-allowed disabled:opacity-50 dark:border-night-line dark:text-night-text dark:hover:border-brand/40 dark:hover:bg-brand/10"
       >
         {userInfo ? "账户中心" : "去登录"}
       </button>

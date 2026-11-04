@@ -83,7 +83,7 @@ export const ClearFavoriteFolderModal = ({
         aria-labelledby="clear-favorite-folder-title"
         aria-describedby="clear-favorite-folder-description"
         tabIndex={-1}
-        className="w-full max-w-md rounded-2xl border border-transparent bg-white p-6 shadow-xl outline-none dark:border-neutral-800 dark:bg-neutral-900"
+        className="w-full max-w-md rounded-2xl border border-transparent bg-white p-6 shadow-xl outline-none dark:border-night-line dark:bg-night-card"
       >
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400">
@@ -92,13 +92,13 @@ export const ClearFavoriteFolderModal = ({
           <div className="min-w-0">
             <h2
               id="clear-favorite-folder-title"
-              className="text-lg font-bold text-gray-900 dark:text-neutral-100"
+              className="text-lg font-bold text-ink dark:text-night-text"
             >
               确认清空本地收藏？
             </h2>
             <p
               id="clear-favorite-folder-description"
-              className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-neutral-400"
+              className="mt-2 text-sm leading-relaxed text-ink-soft dark:text-night-muted"
             >
               将永久删除插件本地保存的「{folder.title}」中 {localResourceCount}
               条收藏记录。此操作不会取消 B 站线上收藏，下次同步时可能重新下载。
@@ -111,7 +111,7 @@ export const ClearFavoriteFolderModal = ({
             type="button"
             onClick={onClose}
             disabled={isClearing}
-            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            className="rounded-lg border border-line bg-white px-4 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-wash disabled:cursor-not-allowed disabled:opacity-50 dark:border-night-line dark:bg-night-card dark:text-night-muted dark:hover:bg-night-line/60"
           >
             取消
           </button>

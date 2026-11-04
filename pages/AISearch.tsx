@@ -267,18 +267,18 @@ ${historyTextStr}
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-[#0a0a0a] overflow-hidden">
+    <div className="flex h-screen bg-wash dark:bg-night overflow-hidden">
       {/* 侧边历史记录栏 */}
-      <div className="w-64 bg-white dark:bg-neutral-900 border-r border-gray-200 dark:border-neutral-800 flex flex-col hidden md:flex flex-shrink-0 z-10">
-        <div className="p-4 border-b border-gray-200 dark:border-neutral-800 flex items-center justify-between">
-          <h2 className="text-[15px] font-bold flex items-center gap-2 text-gray-800 dark:text-neutral-100">
-            <Clock className="w-4 h-4 text-indigo-500" />
+      <div className="w-64 bg-white dark:bg-night-card border-r border-line dark:border-night-line flex flex-col hidden md:flex flex-shrink-0 z-10">
+        <div className="p-4 border-b border-line dark:border-night-line flex items-center justify-between">
+          <h2 className="text-[15px] font-bold flex items-center gap-2 text-ink dark:text-night-text">
+            <Clock className="w-4 h-4 text-brand" />
             探索历史
           </h2>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {historyLogs.length === 0 ? (
-            <div className="text-center text-xs text-gray-400 dark:text-neutral-500 mt-6">
+            <div className="text-center text-xs text-ink-faint dark:text-night-muted mt-6">
               暂无搜索历史
             </div>
           ) : (
@@ -286,17 +286,17 @@ ${historyTextStr}
               <div
                 key={log.id}
                 onClick={() => loadHistoryItem(log)}
-                className="group p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-neutral-800 cursor-pointer transition-colors border border-transparent hover:border-gray-100 dark:hover:border-neutral-700 flex flex-col gap-1 relative"
+                className="group p-3 rounded-xl hover:bg-wash dark:hover:bg-night-line/60 cursor-pointer transition-colors border border-transparent hover:border-brand/30 dark:hover:border-brand/30 flex flex-col gap-1 relative"
               >
-                <div className="text-sm font-medium text-gray-700 dark:text-neutral-200 truncate pr-6 leading-tight">
+                <div className="text-sm font-medium text-ink-soft dark:text-night-text truncate pr-6 leading-tight">
                   {log.query}
                 </div>
-                <div className="text-[10px] text-gray-400 dark:text-neutral-500">
+                <div className="text-[10px] text-ink-faint dark:text-night-muted">
                   {new Date(log.timestamp).toLocaleString()}
                 </div>
                 <button
                   onClick={(e) => deleteHistoryItem(e, log.id)}
-                  className="absolute right-2 top-3 opacity-0 group-hover:opacity-100 text-gray-400 dark:text-neutral-500 hover:text-red-500 dark:hover:text-red-400 transition-opacity p-1"
+                  className="absolute right-2 top-3 opacity-0 group-hover:opacity-100 text-ink-faint dark:text-night-muted hover:text-red-500 dark:hover:text-red-400 transition-opacity p-1"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -307,9 +307,9 @@ ${historyTextStr}
       </div>
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        <div className="bg-white dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-neutral-800 px-6 py-4 flex-shrink-0 flex items-center justify-between shadow-sm z-10">
-          <h1 className="text-xl font-bold flex items-center gap-2 text-gray-900 dark:text-neutral-100">
-            <Sparkles className="w-5 h-5 text-indigo-500" />
+        <div className="bg-white dark:bg-night border-b border-line dark:border-night-line px-6 py-4 flex-shrink-0 flex items-center justify-between shadow-sm z-10">
+          <h1 className="text-xl font-bold flex items-center gap-2 text-ink dark:text-night-text">
+            <Sparkles className="w-5 h-5 text-brand" />
             AI 语义搜索
           </h1>
 
@@ -317,16 +317,16 @@ ${historyTextStr}
             <button
               type="button"
               onClick={openConfig}
-              className="inline-flex h-9 max-w-52 items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm font-medium text-gray-700 transition-colors hover:border-indigo-300 hover:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-indigo-500 dark:hover:bg-neutral-800 dark:focus:ring-indigo-500/20"
+              className="inline-flex h-9 max-w-52 items-center gap-2 rounded-lg border border-line bg-wash px-3 text-sm font-medium text-ink-soft transition-colors hover:border-brand/40 hover:bg-white focus:outline-none focus:ring-2 focus:ring-brand/20 dark:border-night-line dark:bg-night-card dark:text-night-text dark:hover:border-brand dark:hover:bg-night-line/60 dark:focus:ring-brand/20"
               title="配置 OpenAI 兼容接口"
             >
-              <Settings2 className="h-4 w-4 shrink-0 text-indigo-500" />
+              <Settings2 className="h-4 w-4 shrink-0 text-brand" />
               <span className="truncate">{model || "配置模型"}</span>
             </button>
             <select
               value={searchCount}
               onChange={(e) => setSearchCount(Number(e.target.value))}
-              className="text-sm bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-lg py-1.5 px-2 outline-none text-gray-600 dark:text-neutral-200 focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-500/20"
+              className="text-sm bg-white dark:bg-night-card border border-line dark:border-night-line rounded-lg py-1.5 px-2 outline-none text-ink-soft dark:text-night-text focus:border-brand dark:focus:border-brand focus:ring-2 focus:ring-brand/20 dark:focus:ring-brand/20"
             >
               <option value={500}>最近 500 条</option>
               <option value={1000}>最近 1000 条</option>
@@ -338,13 +338,13 @@ ${historyTextStr}
 
         <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center">
           <div className="w-full max-w-4xl flex flex-col gap-6">
-            <div className="bg-white dark:bg-neutral-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-800 relative">
-              <h2 className="text-lg font-medium text-gray-800 dark:text-neutral-100 mb-4 flex items-center justify-between">
+            <div className="bg-white dark:bg-night-card p-6 rounded-2xl shadow-sm border border-line dark:border-night-line relative">
+              <h2 className="text-lg font-medium text-ink dark:text-night-text mb-4 flex items-center justify-between">
                 <span className="flex items-center gap-2">🤔 你在找什么？</span>
                 {hasStarted && (
                   <button
                     onClick={clearCurrent}
-                    className="text-xs text-gray-500 dark:text-neutral-400 hover:text-indigo-500 dark:hover:text-indigo-400 flex items-center transition-colors"
+                    className="text-xs text-ink-muted dark:text-night-muted hover:text-brand dark:hover:text-brand flex items-center transition-colors"
                   >
                     开启新探索 <ChevronRight className="w-3 h-3 ml-0.5" />
                   </button>
@@ -353,7 +353,7 @@ ${historyTextStr}
               <div className="flex gap-3">
                 <input
                   type="text"
-                  className="flex-1 bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl px-4 py-3 text-sm text-gray-700 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 focus:bg-white dark:focus:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-500/20 focus:border-indigo-400 dark:focus:border-indigo-500 transition-all"
+                  className="flex-1 bg-wash dark:bg-night-line border border-line dark:border-night-line rounded-xl px-4 py-3 text-sm text-ink-soft dark:text-night-text placeholder-ink-faint dark:placeholder-night-muted focus:bg-white dark:focus:bg-night-line/60 focus:outline-none focus:ring-2 focus:ring-brand/20 dark:focus:ring-brand/20 focus:border-brand dark:focus:border-brand transition-all"
                   placeholder="例如：那个讲量子力学把爱情解释得很搞笑的UP主..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -362,7 +362,7 @@ ${historyTextStr}
                 <button
                   onClick={startSearch}
                   disabled={loading || !query}
-                  className="bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-300 dark:disabled:bg-neutral-700 disabled:cursor-not-allowed disabled:text-white dark:disabled:text-neutral-400 text-white px-6 py-3 rounded-xl font-medium flex items-center gap-2 transition-colors shadow-sm"
+                  className="bg-brand hover:bg-brand-strong disabled:bg-ink-faint/40 dark:disabled:bg-night-line disabled:cursor-not-allowed disabled:text-white dark:disabled:text-neutral-400 text-white px-6 py-3 rounded-xl font-medium flex items-center gap-2 transition-colors shadow-sm"
                 >
                   {loading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -383,8 +383,8 @@ ${historyTextStr}
               <div className="flex flex-col lg:flex-row gap-6 items-stretch w-full">
                 {/* 左侧：思考过程卡片 */}
                 {reasoning && (
-                  <div className="flex-1 bg-blue-50/50 dark:bg-blue-500/5 rounded-2xl border border-blue-100 dark:border-blue-500/20 flex flex-col overflow-hidden min-h-[300px]">
-                    <div className="px-5 py-3 bg-blue-50/80 dark:bg-blue-500/10 border-b border-blue-100 dark:border-blue-500/20 font-medium text-blue-800 dark:text-blue-300 flex items-center justify-between gap-2 text-sm shrink-0">
+                  <div className="flex-1 bg-brand-soft/50 dark:bg-brand/5 rounded-2xl border border-brand/20 dark:border-brand/20 flex flex-col overflow-hidden min-h-[300px]">
+                    <div className="px-5 py-3 bg-brand-soft/80 dark:bg-brand/10 border-b border-brand/20 dark:border-brand/20 font-medium text-brand-strong dark:text-brand flex items-center justify-between gap-2 text-sm shrink-0">
                       <div className="flex items-center gap-2">
                         {isAnswering ? (
                           "💡 思考完毕"
@@ -395,7 +395,7 @@ ${historyTextStr}
                         )}
                       </div>
                     </div>
-                    <div className="p-5 text-sm text-gray-600 dark:text-neutral-300 font-serif leading-relaxed whitespace-pre-wrap flex-1 overflow-y-auto max-h-[600px]">
+                    <div className="p-5 text-sm text-ink-soft dark:text-night-muted font-serif leading-relaxed whitespace-pre-wrap flex-1 overflow-y-auto max-h-[600px]">
                       {reasoning}
                     </div>
                   </div>
@@ -404,11 +404,11 @@ ${historyTextStr}
                 {/* 右侧：回复内容卡片 */}
                 <div className="flex-1 flex flex-col gap-4">
                   {(isAnswering || content) && (
-                    <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-sm border border-gray-200 dark:border-neutral-800 flex flex-col overflow-hidden min-h-[300px]">
-                      <div className="px-5 py-3 bg-indigo-50 dark:bg-indigo-500/10 border-b border-indigo-100 dark:border-indigo-500/20 font-medium text-indigo-900 dark:text-indigo-300 text-sm shrink-0">
+                    <div className="bg-white dark:bg-night-card rounded-2xl shadow-sm border border-line dark:border-night-line flex flex-col overflow-hidden min-h-[300px]">
+                      <div className="px-5 py-3 bg-brand-soft dark:bg-brand/10 border-b border-indigo-100 dark:border-brand/20 font-medium text-indigo-900 dark:text-indigo-300 text-sm shrink-0">
                         🎯 搜索结果
                       </div>
-                      <div className="p-5 text-gray-800 dark:text-neutral-100 text-[15px] leading-relaxed whitespace-pre-wrap flex-1 overflow-y-auto max-h-[600px]">
+                      <div className="p-5 text-ink dark:text-night-text text-[15px] leading-relaxed whitespace-pre-wrap flex-1 overflow-y-auto max-h-[600px]">
                         {content}
                       </div>
                     </div>
@@ -444,29 +444,27 @@ ${historyTextStr}
               event.preventDefault();
               void saveConfig();
             }}
-            className="relative w-full max-w-lg rounded-lg border border-gray-200 bg-white p-6 shadow-xl dark:border-neutral-800 dark:bg-neutral-900"
+            className="relative w-full max-w-lg rounded-lg border border-line bg-white p-6 shadow-xl dark:border-night-line dark:bg-night-card"
           >
             <button
               type="button"
               onClick={() => setIsConfigOpen(false)}
-              className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+              className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-wash hover:text-ink-soft dark:text-night-muted dark:hover:bg-night-line/60 dark:hover:text-night-text"
               aria-label="关闭模型配置"
             >
               <X className="h-4 w-4" />
             </button>
 
             <div className="flex items-center gap-3 pr-10">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-indigo-600 dark:bg-brand/10 dark:text-brand">
                 <Settings2 className="h-5 w-5" />
               </div>
-              <h2 className="text-lg font-bold text-gray-900 dark:text-neutral-100">
-                OpenAI 兼容配置
-              </h2>
+              <h2 className="text-lg font-bold text-ink dark:text-night-text">OpenAI 兼容配置</h2>
             </div>
 
             <div className="mt-6 space-y-4">
               <label className="block">
-                <span className="text-sm font-medium text-gray-700 dark:text-neutral-300">
+                <span className="text-sm font-medium text-ink-soft dark:text-night-muted">
                   Base URL
                 </span>
                 <input
@@ -475,28 +473,28 @@ ${historyTextStr}
                   value={draftBaseUrl}
                   onChange={(event) => setDraftBaseUrl(event.target.value)}
                   placeholder={DEFAULT_OPENAI_BASE_URL}
-                  className="mt-2 h-11 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-800 outline-none transition-colors focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:border-indigo-500 dark:focus:bg-neutral-800 dark:focus:ring-indigo-500/20"
+                  className="mt-2 h-11 w-full rounded-lg border border-line bg-wash px-3 text-sm text-ink outline-none transition-colors focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/20 dark:border-night-line dark:bg-night-line dark:text-night-text dark:focus:border-brand dark:focus:bg-night-line/60 dark:focus:ring-brand/20"
                 />
               </label>
 
               <label className="block">
-                <span className="text-sm font-medium text-gray-700 dark:text-neutral-300">
+                <span className="text-sm font-medium text-ink-soft dark:text-night-muted">
                   API Key
                 </span>
                 <span className="relative mt-2 block">
-                  <KeyRound className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-gray-400 dark:text-neutral-500" />
+                  <KeyRound className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-ink-faint dark:text-night-muted" />
                   <input
                     type={showApiKey ? "text" : "password"}
                     required
                     value={draftApiKey}
                     onChange={(event) => setDraftApiKey(event.target.value)}
                     autoComplete="off"
-                    className="h-11 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-11 text-sm text-gray-800 outline-none transition-colors focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:border-indigo-500 dark:focus:bg-neutral-800 dark:focus:ring-indigo-500/20"
+                    className="h-11 w-full rounded-lg border border-line bg-wash pl-10 pr-11 text-sm text-ink outline-none transition-colors focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/20 dark:border-night-line dark:bg-night-line dark:text-night-text dark:focus:border-brand dark:focus:bg-night-line/60 dark:focus:ring-brand/20"
                   />
                   <button
                     type="button"
                     onClick={() => setShowApiKey((visible) => !visible)}
-                    className="absolute right-1.5 top-1.5 inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-neutral-500 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+                    className="absolute right-1.5 top-1.5 inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-wash hover:text-ink-soft dark:text-night-muted dark:hover:bg-night-line/60 dark:hover:text-night-text"
                     aria-label={showApiKey ? "隐藏 API Key" : "显示 API Key"}
                   >
                     {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -505,7 +503,7 @@ ${historyTextStr}
               </label>
 
               <label className="block">
-                <span className="text-sm font-medium text-gray-700 dark:text-neutral-300">
+                <span className="text-sm font-medium text-ink-soft dark:text-night-muted">
                   模型
                 </span>
                 <input
@@ -515,23 +513,23 @@ ${historyTextStr}
                   onChange={(event) => setDraftModel(event.target.value)}
                   placeholder="例如 gpt-4.1-mini"
                   autoComplete="off"
-                  className="mt-2 h-11 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-800 outline-none transition-colors focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:border-indigo-500 dark:focus:bg-neutral-800 dark:focus:ring-indigo-500/20"
+                  className="mt-2 h-11 w-full rounded-lg border border-line bg-wash px-3 text-sm text-ink outline-none transition-colors focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/20 dark:border-night-line dark:bg-night-line dark:text-night-text dark:focus:border-brand dark:focus:bg-night-line/60 dark:focus:ring-brand/20"
                 />
               </label>
             </div>
 
-            <div className="mt-6 flex justify-end gap-3 border-t border-gray-100 pt-5 dark:border-neutral-800">
+            <div className="mt-6 flex justify-end gap-3 border-t border-line pt-5 dark:border-night-line">
               <button
                 type="button"
                 onClick={() => setIsConfigOpen(false)}
-                className="h-10 rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                className="h-10 rounded-lg border border-line bg-white px-4 text-sm font-medium text-ink-soft transition-colors hover:bg-white dark:border-night-line dark:bg-night-card dark:text-night-muted dark:hover:bg-night-line/60"
               >
                 取消
               </button>
               <button
                 type="submit"
                 disabled={!draftApiKey.trim() || !draftBaseUrl.trim() || !draftModel.trim()}
-                className="h-10 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300 dark:bg-indigo-500 dark:hover:bg-indigo-600 dark:disabled:bg-indigo-500/40"
+                className="h-10 rounded-lg bg-brand-strong px-4 text-sm font-medium text-white transition-colors hover:bg-brand-strong disabled:cursor-not-allowed disabled:bg-brand/40 dark:bg-brand dark:hover:bg-brand-strong dark:disabled:bg-brand/40"
               >
                 保存
               </button>

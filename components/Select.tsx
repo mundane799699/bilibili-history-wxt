@@ -54,7 +54,7 @@ export const Select = ({ value, onChange, options, label, disabled = false }: Se
       {label && (
         <span
           id={labelId}
-          className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-neutral-300"
+          className="mb-1.5 block text-sm font-medium text-ink-soft dark:text-night-muted"
         >
           {label}
         </span>
@@ -68,14 +68,14 @@ export const Select = ({ value, onChange, options, label, disabled = false }: Se
         aria-expanded={isOpen}
         aria-controls={listboxId}
         aria-labelledby={label ? labelId : undefined}
-        className={`flex min-h-10 w-full items-center justify-between rounded-lg border bg-white px-3 text-left text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-pink-500/20 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:opacity-60 dark:bg-neutral-950 dark:disabled:bg-neutral-800 ${
+        className={`flex min-h-10 w-full items-center justify-between rounded-lg border bg-white px-3 text-left text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand/20 disabled:cursor-not-allowed disabled:bg-wash disabled:opacity-60 dark:bg-night dark:disabled:bg-neutral-800 ${
           isOpen
-            ? "border-pink-500 ring-2 ring-pink-500/20"
-            : "border-gray-300 hover:border-gray-400 dark:border-neutral-700 dark:hover:border-neutral-600"
+            ? "border-brand ring-2 ring-brand/20"
+            : "border-line hover:border-gray-400 dark:border-night-line dark:hover:border-night-line"
         }`}
       >
         <span
-          className={`truncate ${selectedOption ? "font-medium text-gray-900 dark:text-neutral-100" : "text-gray-500 dark:text-neutral-500"}`}
+          className={`truncate ${selectedOption ? "font-medium text-ink dark:text-night-text" : "text-ink-muted dark:text-night-muted"}`}
         >
           {selectedOption ? selectedOption.label : "请选择"}
         </span>
@@ -83,7 +83,7 @@ export const Select = ({ value, onChange, options, label, disabled = false }: Se
           aria-hidden="true"
           className={`transform transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
         >
-          <ChevronDown className="h-4 w-4 text-gray-500 dark:text-neutral-400" />
+          <ChevronDown className="h-4 w-4 text-ink-muted dark:text-night-muted" />
         </span>
       </button>
 
@@ -92,7 +92,7 @@ export const Select = ({ value, onChange, options, label, disabled = false }: Se
           id={listboxId}
           role="listbox"
           aria-labelledby={label ? labelId : undefined}
-          className="absolute z-50 mt-1.5 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
+          className="absolute z-50 mt-1.5 w-full overflow-hidden rounded-xl border border-line bg-white shadow-lg dark:border-night-line dark:bg-night-card"
         >
           <div className="max-h-60 overflow-auto p-1">
             {options.map((option) => (
@@ -106,10 +106,10 @@ export const Select = ({ value, onChange, options, label, disabled = false }: Se
                   setIsOpen(false);
                   triggerRef.current?.focus();
                 }}
-                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 ${
+                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
                   option.value === value
-                    ? "bg-pink-50 font-medium text-pink-700 dark:bg-pink-500/10 dark:text-pink-300"
-                    : "text-gray-700 hover:bg-gray-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                    ? "bg-brand-soft font-medium text-brand-strong dark:bg-brand/10 dark:text-brand"
+                    : "text-ink-soft hover:bg-wash dark:text-night-muted dark:hover:bg-night-line/60"
                 }`}
               >
                 <span>{option.label}</span>

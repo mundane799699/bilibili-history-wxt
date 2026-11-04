@@ -19,7 +19,7 @@ const OpenSource = () => {
       <p className="text-lg mb-6">开源地址：</p>
       <p className="text-lg mb-6">
         <a
-          className="text-blue-500"
+          className="text-brand"
           href="https://github.com/mundane799699/bilibili-history-wxt"
           target="_blank"
           rel="noopener noreferrer"

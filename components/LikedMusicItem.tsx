@@ -18,28 +18,28 @@ const WaveAnimation = () => {
   return (
     <div className="flex items-center justify-center space-x-1">
       <div
-        className="w-1 h-4 bg-pink-500 rounded-full animate-pulse"
+        className="w-1 h-4 bg-brand rounded-full animate-pulse"
         style={{
           animationDelay: "0ms",
           animationDuration: "800ms",
         }}
       ></div>
       <div
-        className="w-1 h-6 bg-pink-500 rounded-full animate-pulse"
+        className="w-1 h-6 bg-brand rounded-full animate-pulse"
         style={{
           animationDelay: "200ms",
           animationDuration: "800ms",
         }}
       ></div>
       <div
-        className="w-1 h-3 bg-pink-500 rounded-full animate-pulse"
+        className="w-1 h-3 bg-brand rounded-full animate-pulse"
         style={{
           animationDelay: "400ms",
           animationDuration: "800ms",
         }}
       ></div>
       <div
-        className="w-1 h-5 bg-pink-500 rounded-full animate-pulse"
+        className="w-1 h-5 bg-brand rounded-full animate-pulse"
         style={{
           animationDelay: "600ms",
           animationDuration: "800ms",
@@ -82,7 +82,7 @@ const LikedMusicItem = ({
 
   return (
     <div
-      className="bg-white dark:bg-neutral-900 border border-transparent dark:border-neutral-800 rounded-lg shadow-md hover:shadow-lg hover:bg-gray-50 dark:hover:bg-neutral-800 transition-all duration-300 overflow-hidden cursor-pointer"
+      className="bg-white dark:bg-night-card border border-transparent dark:border-night-line rounded-lg shadow-md hover:shadow-lg hover:bg-wash dark:hover:bg-night-line/60 transition-all duration-300 overflow-hidden cursor-pointer"
       onClick={() => onPlay()}
     >
       <div className="flex gap-4 p-4 items-center">
@@ -109,7 +109,7 @@ const LikedMusicItem = ({
               href={`https://www.bilibili.com/video/${music.bvid}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-lg font-semibold text-gray-900 dark:text-neutral-100 mb-2 hover:text-pink-600 dark:hover:text-pink-400 cursor-pointer"
+              className="text-lg font-semibold text-ink dark:text-night-text mb-2 hover:text-brand-strong dark:hover:text-brand cursor-pointer"
               onClick={(e) => e.stopPropagation()}
             >
               {music.title}
@@ -122,12 +122,12 @@ const LikedMusicItem = ({
               href={`https://space.bilibili.com/${music.mid}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-gray-600 dark:text-neutral-300 hover:text-pink-600 dark:hover:text-pink-400 cursor-pointer"
+              className="text-sm text-ink-soft dark:text-night-muted hover:text-brand-strong dark:hover:text-brand cursor-pointer"
               onClick={(e) => e.stopPropagation()}
             >
               {music.author}
             </a>
-            <span className="text-xs text-gray-400 dark:text-neutral-500">
+            <span className="text-xs text-ink-faint dark:text-night-muted">
               收藏于 {formatDate(music.added_at)}
             </span>
           </div>
@@ -144,7 +144,7 @@ const LikedMusicItem = ({
         {/* 操作按钮 */}
         <div className="flex items-center gap-2">
           <button
-            className={`p-2 text-gray-700 dark:text-neutral-300 rounded-full transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-neutral-700 ${
+            className={`p-2 text-ink-soft dark:text-night-muted rounded-full transition-colors duration-200 hover:bg-wash dark:hover:bg-night-line/60 ${
               removing ? "cursor-not-allowed" : "cursor-pointer"
             }`}
             onClick={handleRemove}

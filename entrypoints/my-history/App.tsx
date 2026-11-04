@@ -210,10 +210,10 @@ const MainLayout = ({ children }: MainLayoutProps) => {
   }, []);
 
   return (
-    <div className="flex h-screen dark:bg-[#0a0a0a] dark:text-neutral-100">
+    <div className="flex h-screen bg-paper text-ink dark:bg-night dark:text-night-text">
       {!isWelcome && <Sidebar />}
       {/* 主内容区域 */}
-      <div className={`${!isWelcome ? "ml-48" : ""} w-full transition-all duration-300`}>
+      <div className={`${!isWelcome ? "ml-52" : ""} w-full transition-all duration-300`}>
         {children}
       </div>
       {!isWelcome && isFirstRunGuideReady && !isFirstRunGuideOpen && (

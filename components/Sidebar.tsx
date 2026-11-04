@@ -16,35 +16,49 @@ import {
   LibraryBig,
 } from "lucide-react";
 import ExpandableMenu from "./ExpandableMenu";
-import { UPDATE_HISTORY, HIDDEN_MENUS, THEME_MODE } from "../utils/constants";
-import { getStorageValue } from "../utils/storage";
+import { SubscribePromo } from "./SubscribePromo";
+import {
+  UPDATE_HISTORY,
+  HIDDEN_MENUS,
+  THEME_MODE,
+  SUBSCRIBE_PROMO_DISMISSED,
+} from "../utils/constants";
+import { getStorageValue, setStorageValue } from "../utils/storage";
 import { setTheme, type ThemeMode } from "../utils/theme";
+import { getMembershipStatus } from "../services/membership";
+
+const iconClass = "h-4 w-4";
 
 const menuList = [
   {
     title: "历史记录",
-    icon: <HistoryIcon className="w-4 h-4" />,
+    group: "浏览数据",
+    icon: <HistoryIcon className={iconClass} />,
     to: "/",
     tourId: "history-menu",
   },
   {
     title: "收藏夹",
-    icon: <Star className="w-4 h-4" />,
+    group: "浏览数据",
+    icon: <Star className={iconClass} />,
     to: "/favorites",
   },
   {
     title: "合集",
-    icon: <LibraryBig className="w-4 h-4" />,
+    group: "浏览数据",
+    icon: <LibraryBig className={iconClass} />,
     to: "/collections",
   },
   {
     title: "AI探索",
-    icon: <Sparkles className="w-4 h-4" />,
+    group: "浏览数据",
+    icon: <Sparkles className={iconClass} />,
     to: "/ai-search",
   },
   {
     title: "听歌",
-    icon: <MusicIcon className="w-4 h-4" />,
+    group: "浏览数据",
+    icon: <MusicIcon className={iconClass} />,
     subMenus: [
       {
         title: "搜索",
@@ -58,22 +72,26 @@ const menuList = [
   },
   {
     title: "关于",
-    icon: <InfoIcon className="w-4 h-4" />,
+    group: "更多",
+    icon: <InfoIcon className={iconClass} />,
     to: "/about",
   },
   {
     title: "反馈",
-    icon: <MessageCircleIcon className="w-4 h-4" />,
+    group: "更多",
+    icon: <MessageCircleIcon className={iconClass} />,
     to: "/feedback",
   },
   {
     title: "云同步",
-    icon: <CloudIcon className="w-4 h-4" />,
+    group: "同步与备份",
+    icon: <CloudIcon className={iconClass} />,
     to: "/cloud-sync",
   },
   {
     title: "数据备份",
-    icon: <HardDriveDownload className="w-4 h-4" />,
+    group: "同步与备份",
+    icon: <HardDriveDownload className={iconClass} />,
     tourId: "backup-menu",
     subMenus: [
       {
@@ -92,12 +110,14 @@ const menuList = [
   },
   {
     title: "赞赏",
-    icon: <Heart className="w-4 h-4" />,
+    group: "更多",
+    icon: <Heart className={iconClass} />,
     to: "/reward",
   },
   {
     title: "设置",
-    icon: <SettingsIcon className="w-4 h-4" />,
+    group: "更多",
+    icon: <SettingsIcon className={iconClass} />,
     to: "/settings",
   },
 ];
@@ -108,6 +128,7 @@ export const Sidebar = () => {
   const [version, setVersion] = useState<string>(UPDATE_HISTORY[0]?.version || "");
   const [hiddenMenus, setHiddenMenus] = useState<string[]>([]);
   const [themeMode, setThemeMode] = useState<ThemeMode>("light");
+  const [showSubscribePromo, setShowSubscribePromo] = useState(false);
 
   useEffect(() => {
     getStorageValue<string[]>(HIDDEN_MENUS, []).then((menus) => {
@@ -141,6 +162,29 @@ export const Sidebar = () => {
     };
   }, []);
 
+  // 订阅引导：用户手动关闭过、或已经是会员，都不再展示
+  useEffect(() => {
+    let isActive = true;
+    Promise.all([getStorageValue<boolean>(SUBSCRIBE_PROMO_DISMISSED, false), getMembershipStatus()])
+      .then(([dismissed, membership]) => {
+        if (!isActive) return;
+        setShowSubscribePromo(!dismissed && !membership.active);
+      })
+      .catch((error) => {
+        console.error("读取订阅引导状态失败:", error);
+      });
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const dismissSubscribePromo = () => {
+    setShowSubscribePromo(false);
+    void setStorageValue(SUBSCRIBE_PROMO_DISMISSED, true).catch((error) => {
+      console.error("保存订阅引导状态失败:", error);
+    });
+  };
+
   const handleToggleTheme = () => {
     setTheme(themeMode === "dark" ? "light" : "dark");
   };
@@ -148,17 +192,40 @@ export const Sidebar = () => {
   const isDark = themeMode === "dark";
 
   return (
-    <div className="fixed top-0 left-0 w-48 bg-gray-100 dark:bg-[#141414] dark:text-neutral-100 flex-shrink-0 h-full">
-      <nav className="space-y-2 p-4">
-        {menuList
-          .filter((item) => !hiddenMenus.includes(item.title))
-          .map((item, index) => (
-            <ExpandableMenu key={index} {...item} />
-          ))}
+    <aside className="fixed top-0 left-0 z-40 flex h-full w-52 flex-col border-r border-line bg-paper dark:border-night-line dark:bg-night-card">
+      {/* 品牌区 */}
+      <div className="flex h-14 items-center gap-2.5 border-b border-line px-4 dark:border-night-line">
+        <img src="/icon/32.png" alt="" className="h-6 w-6 rounded-md" />
+        <span className="text-[13.5px] font-semibold tracking-[-0.01em] text-ink dark:text-night-text">
+          无限历史记录
+        </span>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto px-2.5 py-3">
+        {["浏览数据", "同步与备份", "更多"].map((group) => {
+          const items = menuList.filter(
+            (item) => item.group === group && !hiddenMenus.includes(item.title),
+          );
+          if (!items.length) return null;
+          return (
+            <div key={group} className="mb-3 last:mb-0">
+              <p className="px-2.5 pb-1.5 text-[11px] font-medium tracking-[0.08em] text-ink-faint dark:text-night-muted">
+                {group}
+              </p>
+              <div className="space-y-0.5">
+                {items.map((item) => (
+                  <ExpandableMenu key={item.title} {...item} />
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </nav>
 
-      <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
-        <p className="text-gray-600 dark:text-neutral-400 text-base leading-none">
+      {showSubscribePromo && <SubscribePromo variant="sidebar" onDismiss={dismissSubscribePromo} />}
+
+      <div className="flex items-center justify-between border-t border-line px-3 py-2.5 dark:border-night-line">
+        <p className="text-[12px] tabular-nums text-ink-faint dark:text-night-muted">
           {version ? `v${version}` : ""}
         </p>
         <button
@@ -166,11 +233,11 @@ export const Sidebar = () => {
           onClick={handleToggleTheme}
           title={isDark ? "切换到白天模式" : "切换到黑夜模式"}
           aria-label={isDark ? "切换到白天模式" : "切换到黑夜模式"}
-          className="inline-flex items-center justify-center w-8 h-8 rounded-md text-gray-600 hover:bg-gray-200 dark:text-neutral-300 dark:hover:bg-neutral-800 transition-colors"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-wash hover:text-ink-soft dark:text-night-muted dark:hover:bg-night-line/60 dark:hover:text-night-text"
         >
-          {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
         </button>
       </div>
-    </div>
+    </aside>
   );
 };

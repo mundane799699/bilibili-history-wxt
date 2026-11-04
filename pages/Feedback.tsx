@@ -8,10 +8,10 @@ const Feedback = () => {
       <section className="mt-10">
         <h2 className="text-xl mb-3">交流群</h2>
         <img src="/qrcode.jpg" alt="交流群" className="w-48 h-48 mx-auto" />
-        <p className="text-center text-gray-600 text-sm mt-2">
+        <p className="text-center text-ink-soft text-sm mt-2">
           添加我们的微信，备注"Bilibili 无限历史记录", 拉你进群。
         </p>
-        <p className="text-center text-gray-600 text-sm mt-2">
+        <p className="text-center text-ink-soft text-sm mt-2">
           有任何建议和反馈都可以在群里提出, 反馈更迅速。
         </p>
       </section>

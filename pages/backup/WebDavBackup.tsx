@@ -487,23 +487,23 @@ const WebDavBackup = () => {
 
       <article
         data-tour="backup-webdav"
-        className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900"
+        className="overflow-hidden rounded-2xl border border-line bg-white dark:border-night-line dark:bg-night-card"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4 dark:border-neutral-800">
+        <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4 dark:border-night-line">
           <div className="flex min-w-0 items-start gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-500/10 dark:text-pink-400">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand-strong dark:bg-brand/10 dark:text-brand">
               <Server className="h-[18px] w-[18px]" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-950 dark:text-neutral-100">WebDAV 同步</h3>
-              <p className="mt-1 text-sm text-gray-600 dark:text-neutral-400">
+              <h3 className="font-semibold text-ink dark:text-night-text">WebDAV 同步</h3>
+              <p className="mt-1 text-sm text-ink-soft dark:text-night-muted">
                 {lastSync ? `上次同步：${new Date(lastSync).toLocaleString()}` : "尚未同步过"}
               </p>
             </div>
           </div>
           <button
             type="button"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-pink-600 transition-colors hover:bg-pink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 dark:text-pink-400 dark:hover:bg-pink-500/10 dark:focus-visible:ring-offset-neutral-900"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-brand-strong transition-colors hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 dark:text-brand dark:hover:bg-brand/10 dark:focus-visible:ring-offset-neutral-900"
             onClick={() => {
               const url = browser.runtime.getURL("/webdav-tutorial.html");
               browser.tabs.create({ url });
@@ -515,11 +515,11 @@ const WebDavBackup = () => {
         </div>
 
         <div className="space-y-6 p-5">
-          <section className="space-y-4 rounded-xl bg-gray-50 p-4 dark:bg-neutral-800/60">
+          <section className="space-y-4 rounded-xl bg-wash p-4 dark:bg-night-line/60">
             <div>
               <label
                 htmlFor="webdav-server-url"
-                className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-neutral-300"
+                className="mb-1.5 block text-sm font-medium text-ink-soft dark:text-night-muted"
               >
                 服务器地址
               </label>
@@ -530,7 +530,7 @@ const WebDavBackup = () => {
                 placeholder="例如：https://dav.jianguoyun.com/dav"
                 value={config.serverUrl}
                 onChange={(e) => setConfig({ ...config, serverUrl: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-500 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-500"
+                className="w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-night-line dark:bg-night dark:text-night-text dark:placeholder:text-neutral-500"
               />
             </div>
 
@@ -538,7 +538,7 @@ const WebDavBackup = () => {
               <div>
                 <label
                   htmlFor="webdav-username"
-                  className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-neutral-300"
+                  className="mb-1.5 block text-sm font-medium text-ink-soft dark:text-night-muted"
                 >
                   用户名
                 </label>
@@ -549,13 +549,13 @@ const WebDavBackup = () => {
                   placeholder="WebDAV 用户名"
                   value={config.username}
                   onChange={(e) => setConfig({ ...config, username: e.target.value })}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-500 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-500"
+                  className="w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-night-line dark:bg-night dark:text-night-text dark:placeholder:text-neutral-500"
                 />
               </div>
               <div>
                 <label
                   htmlFor="webdav-password"
-                  className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-neutral-300"
+                  className="mb-1.5 block text-sm font-medium text-ink-soft dark:text-night-muted"
                 >
                   密码
                 </label>
@@ -567,12 +567,12 @@ const WebDavBackup = () => {
                     placeholder="密码 / 应用密码"
                     value={config.password}
                     onChange={(e) => setConfig({ ...config, password: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 pr-11 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-500 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-500"
+                    className="w-full rounded-lg border border-line bg-white px-3 py-2.5 pr-11 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-night-line dark:bg-night dark:text-night-text dark:placeholder:text-neutral-500"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                    className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-wash hover:text-ink-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-night-muted dark:hover:bg-night-line/60 dark:hover:text-night-text"
                     aria-label={showPassword ? "隐藏密码" : "显示密码"}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -584,7 +584,7 @@ const WebDavBackup = () => {
             <div>
               <label
                 htmlFor="webdav-base-path"
-                className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-neutral-300"
+                className="mb-1.5 block text-sm font-medium text-ink-soft dark:text-night-muted"
               >
                 远程路径
               </label>
@@ -594,12 +594,12 @@ const WebDavBackup = () => {
                 placeholder="/bilibili-history/"
                 value={config.basePath}
                 onChange={(e) => setConfig({ ...config, basePath: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-500 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-500"
+                className="w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-night-line dark:bg-night dark:text-night-text dark:placeholder:text-neutral-500"
               />
             </div>
 
-            <p className="flex items-start gap-2 text-xs leading-5 text-gray-600 dark:text-neutral-400">
-              <LockKeyhole className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-500 dark:text-neutral-500" />
+            <p className="flex items-start gap-2 text-xs leading-5 text-ink-soft dark:text-night-muted">
+              <LockKeyhole className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-muted dark:text-night-muted" />
               凭证仅保存在本地浏览器存储中，密码会加密，不会发送给第三方。
             </p>
 
@@ -608,7 +608,7 @@ const WebDavBackup = () => {
                 type="button"
                 onClick={handleTestConnection}
                 disabled={isTesting || !config.serverUrl}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800 dark:focus-visible:ring-offset-neutral-900"
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-line bg-white px-4 text-sm font-medium text-ink-soft transition-colors hover:bg-wash focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-night-line dark:bg-night-card dark:text-night-text dark:hover:bg-night-line/60 dark:focus-visible:ring-offset-neutral-900"
               >
                 {isTesting ? (
                   <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -621,7 +621,7 @@ const WebDavBackup = () => {
                 type="button"
                 onClick={handleSaveConfig}
                 disabled={isSaving || !config.serverUrl}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-pink-600 px-4 text-sm font-medium text-white transition-colors hover:bg-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-pink-500 dark:hover:bg-pink-600 dark:focus-visible:ring-offset-neutral-900"
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-brand-strong px-4 text-sm font-medium text-white transition-colors hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-brand dark:hover:bg-brand-strong dark:focus-visible:ring-offset-neutral-900"
               >
                 {isSaving ? (
                   <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -634,7 +634,7 @@ const WebDavBackup = () => {
           </section>
 
           {!config.serverUrl && (
-            <div className="flex items-start gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-xs leading-5 text-gray-600 dark:bg-neutral-800 dark:text-neutral-400">
+            <div className="flex items-start gap-2 rounded-lg bg-wash px-3 py-2.5 text-xs leading-5 text-ink-soft dark:bg-night-line dark:text-night-muted">
               <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               请先填写并保存服务器配置，再使用自动同步和手动备份。
             </div>
@@ -642,14 +642,12 @@ const WebDavBackup = () => {
 
           <div
             data-tour="backup-webdav-auto"
-            className="space-y-4 border-t border-gray-100 pt-6 dark:border-neutral-800"
+            className="space-y-4 border-t border-line pt-6 dark:border-night-line"
           >
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-gray-800 dark:text-neutral-200">
-                  启用自动同步
-                </p>
-                <p className="mt-1 text-xs text-gray-600 dark:text-neutral-400">
+                <p className="text-sm font-medium text-ink dark:text-night-text">启用自动同步</p>
+                <p className="mt-1 text-xs text-ink-soft dark:text-night-muted">
                   开启后在后台定时同步下方勾选的数据，只传输有变化的文件；关闭后仍可手动同步。
                 </p>
               </div>
@@ -660,10 +658,10 @@ const WebDavBackup = () => {
                 aria-label="启用 WebDAV 自动同步"
                 onClick={() => handleAutoSyncToggle(!autoSyncEnabled)}
                 disabled={!config.serverUrl}
-                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-neutral-900 ${
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-neutral-900 ${
                   autoSyncEnabled
-                    ? "bg-pink-600 dark:bg-pink-500"
-                    : "bg-gray-300 dark:bg-neutral-700"
+                    ? "bg-brand-strong dark:bg-brand"
+                    : "bg-gray-300 dark:bg-night-line"
                 }`}
               >
                 <span
@@ -683,13 +681,10 @@ const WebDavBackup = () => {
             )}
           </div>
 
-          <div
-            data-tour="backup-sync"
-            className="border-t border-gray-100 pt-6 dark:border-neutral-800"
-          >
+          <div data-tour="backup-sync" className="border-t border-line pt-6 dark:border-night-line">
             {syncProgress && (
               <div
-                className="mb-5 rounded-xl bg-pink-50 p-4 text-pink-800 dark:bg-pink-500/10 dark:text-pink-200"
+                className="mb-5 rounded-xl bg-brand-soft p-4 text-brand-strong dark:bg-brand/10 dark:text-brand"
                 role="status"
                 aria-live="polite"
               >
@@ -698,7 +693,7 @@ const WebDavBackup = () => {
                   <span className="tabular-nums">{progressPercent}%</span>
                 </div>
                 <div
-                  className="h-2 w-full overflow-hidden rounded-full bg-pink-200 dark:bg-pink-500/20"
+                  className="h-2 w-full overflow-hidden rounded-full bg-pink-200 dark:bg-brand/20"
                   role="progressbar"
                   aria-label="WebDAV 同步进度"
                   aria-valuemin={0}
@@ -706,7 +701,7 @@ const WebDavBackup = () => {
                   aria-valuenow={progressPercent}
                 >
                   <div
-                    className="h-full rounded-full bg-pink-600 transition-[width] duration-500 dark:bg-pink-400"
+                    className="h-full rounded-full bg-brand-strong transition-[width] duration-500 dark:bg-brand"
                     style={{ width: `${progressPercent}%` }}
                   />
                 </div>
@@ -714,9 +709,9 @@ const WebDavBackup = () => {
             )}
 
             <fieldset className="mb-5">
-              <legend className="mb-2 text-sm font-medium text-gray-700 dark:text-neutral-300">
+              <legend className="mb-2 text-sm font-medium text-ink-soft dark:text-night-muted">
                 同步内容
-                <span className="ml-2 text-xs font-normal text-gray-500 dark:text-neutral-400">
+                <span className="ml-2 text-xs font-normal text-ink-muted dark:text-night-muted">
                   自动同步与手动操作共用
                 </span>
               </legend>
@@ -726,15 +721,15 @@ const WebDavBackup = () => {
                     key={item.key}
                     className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
                       selectedKeys[item.key]
-                        ? "border-pink-200 bg-pink-50 text-pink-800 dark:border-pink-500/30 dark:bg-pink-500/10 dark:text-pink-200"
-                        : "border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                        ? "border-brand/25 bg-brand-soft text-brand-strong dark:border-brand/30 dark:bg-brand/10 dark:text-brand"
+                        : "border-line text-ink-soft hover:bg-wash dark:border-night-line dark:text-night-muted dark:hover:bg-night-line/60"
                     }`}
                   >
                     <input
                       type="checkbox"
                       checked={selectedKeys[item.key]}
                       onChange={() => toggleSelected(item.key)}
-                      className="h-4 w-4 accent-pink-600 focus:ring-2 focus:ring-pink-500 focus:ring-offset-1 dark:accent-pink-500"
+                      className="h-4 w-4 accent-pink-600 focus:ring-2 focus:ring-brand focus:ring-offset-1 dark:accent-pink-500"
                     />
                     <span>{item.label}</span>
                   </label>
@@ -747,7 +742,7 @@ const WebDavBackup = () => {
                 type="button"
                 onClick={() => setShowBackupDialog(true)}
                 disabled={isBackingUp || isRestoring || !config.serverUrl}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-pink-600 px-4 text-sm font-medium text-white transition-colors hover:bg-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-pink-500 dark:hover:bg-pink-600 dark:focus-visible:ring-offset-neutral-900"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand-strong px-4 text-sm font-medium text-white transition-colors hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-brand dark:hover:bg-brand-strong dark:focus-visible:ring-offset-neutral-900"
               >
                 {isBackingUp ? (
                   <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -761,7 +756,7 @@ const WebDavBackup = () => {
                 type="button"
                 onClick={handleRestore}
                 disabled={isBackingUp || isRestoring || !config.serverUrl}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800 dark:focus-visible:ring-offset-neutral-900"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line bg-white px-4 text-sm font-medium text-ink-soft transition-colors hover:bg-wash focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-night-line dark:bg-night-card dark:text-night-text dark:hover:bg-night-line/60 dark:focus-visible:ring-offset-neutral-900"
               >
                 {isRestoring ? (
                   <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -793,19 +788,19 @@ const WebDavBackup = () => {
             aria-modal="true"
             aria-labelledby="backup-mode-title"
             aria-describedby="backup-mode-description"
-            className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-neutral-900"
+            className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-night-card"
           >
-            <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4 dark:border-neutral-800">
+            <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4 dark:border-night-line">
               <div>
                 <h3
                   id="backup-mode-title"
-                  className="text-lg font-semibold text-gray-950 dark:text-neutral-100"
+                  className="text-lg font-semibold text-ink dark:text-night-text"
                 >
                   选择备份模式
                 </h3>
                 <p
                   id="backup-mode-description"
-                  className="mt-1 text-sm leading-6 text-gray-600 dark:text-neutral-400"
+                  className="mt-1 text-sm leading-6 text-ink-soft dark:text-night-muted"
                 >
                   多设备使用推荐双向同步；强制覆盖会替换远端文件。
                 </p>
@@ -815,7 +810,7 @@ const WebDavBackup = () => {
                 type="button"
                 onClick={() => setShowBackupDialog(false)}
                 aria-label="关闭备份模式选择"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-wash hover:text-ink-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-night-muted dark:hover:bg-night-line/60 dark:hover:text-night-text"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -828,17 +823,17 @@ const WebDavBackup = () => {
                   setShowBackupDialog(false);
                   handleBidirectionalSync();
                 }}
-                className="flex w-full items-start gap-3 rounded-xl border border-pink-200 bg-pink-50 p-4 text-left transition-colors hover:border-pink-300 hover:bg-pink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 dark:border-pink-500/30 dark:bg-pink-500/10 dark:hover:bg-pink-500/15 dark:focus-visible:ring-offset-neutral-900"
+                className="flex w-full items-start gap-3 rounded-xl border border-brand/25 bg-brand-soft p-4 text-left transition-colors hover:border-brand/30 hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 dark:border-brand/30 dark:bg-brand/10 dark:hover:bg-brand/15 dark:focus-visible:ring-offset-neutral-900"
               >
-                <ArrowLeftRight className="mt-0.5 h-5 w-5 shrink-0 text-pink-600 dark:text-pink-400" />
+                <ArrowLeftRight className="mt-0.5 h-5 w-5 shrink-0 text-brand-strong dark:text-brand" />
                 <span>
-                  <span className="block font-semibold text-pink-900 dark:text-pink-200">
+                  <span className="block font-semibold text-pink-900 dark:text-brand">
                     双向同步
-                    <span className="ml-2 rounded-full bg-pink-600 px-2 py-0.5 text-[11px] font-medium text-white dark:bg-pink-500">
+                    <span className="ml-2 rounded-full bg-brand-strong px-2 py-0.5 text-[11px] font-medium text-white dark:bg-brand">
                       推荐
                     </span>
                   </span>
-                  <span className="mt-1 block text-xs leading-5 text-pink-800 dark:text-pink-200">
+                  <span className="mt-1 block text-xs leading-5 text-brand-strong dark:text-brand">
                     先拉取远端数据并智能合并，再将最新数据推送回去，适合多设备使用。
                   </span>
                 </span>

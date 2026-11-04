@@ -26,71 +26,70 @@ const ExpandableMenu = ({
   const [isOpen, setIsOpen] = useState(initialIsOpen);
   const location = useLocation();
   const isSubMenuActive = !!subMenus?.some((item) => item.to === location.pathname);
+  const isActive = subMenus?.length ? isSubMenuActive : location.pathname === to;
 
   // 进入某个子菜单页面时（例如新手引导跳转），自动展开所属菜单
   useEffect(() => {
     if (isSubMenuActive) setIsOpen(true);
   }, [isSubMenuActive]);
 
-  const handleClick = (to: string | undefined, e: React.MouseEvent, isSubMenu: boolean) => {
-    // 阻止事件冒泡，避免影响其他点击事件
+  const handleClick = (target: string | undefined, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
-    // 导航到指定路径
-    if (to) {
-      navigate(to);
-    }
+    if (target) navigate(target);
   };
 
   return (
-    <div className="cursor-pointer">
-      <div
+    <div>
+      <button
+        type="button"
         data-tour={tourId}
-        className={`py-4 flex items-center pl-6 pr-3 hover:text-pink-500 text-sm whitespace-nowrap ${
-          location.pathname === to ? "text-pink-500" : "text-slate-600 dark:text-neutral-300"
-        }`}
         onClick={(e) => {
-          // 如果有子菜单，切换展开状态
-          if (subMenus && subMenus.length > 0) {
-            setIsOpen(!isOpen);
-          }
-          // 如果有跳转路径，执行跳转
-          handleClick(to, e, false);
+          if (subMenus && subMenus.length > 0) setIsOpen(!isOpen);
+          handleClick(to, e);
         }}
+        className={`group flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[13px] transition-colors ${
+          isActive
+            ? "bg-brand-soft font-medium text-brand-strong dark:bg-brand/10 dark:text-brand"
+            : "text-ink-soft hover:bg-wash dark:text-night-muted dark:hover:bg-night-line/60"
+        }`}
       >
-        {icon}
-        <span className="ml-2 text-xs">{title}</span>
+        <span className={isActive ? "text-brand-strong dark:text-brand" : "text-ink-muted"}>
+          {icon}
+        </span>
+        <span className="truncate">{title}</span>
         {subMenus && (
           <ChevronRight
-            className={`
-                ml-auto w-4 h-4 flex-shrink-0
-                transition-transform duration-300 ease-in-out
-                ${isOpen ? "rotate-90" : "rotate-0"}
-              `}
+            className={`ml-auto h-3.5 w-3.5 flex-shrink-0 text-ink-faint transition-transform duration-200 ${
+              isOpen ? "rotate-90" : ""
+            }`}
           />
         )}
-      </div>
+      </button>
+
       {subMenus && (
         <ul
           className={`${
-            isOpen ? "max-h-96" : "max-h-0"
-          } overflow-hidden transition-all duration-300 ease-in-out`}
+            isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+          } overflow-hidden transition-all duration-200 ease-in-out`}
         >
-          {subMenus.map((item, index) => (
-            <li key={index}>
-              <Link
-                to={item.to}
-                className={`py-4 flex items-center pl-6 hover:text-pink-500 text-sm whitespace-nowrap ${
-                  location.pathname === item.to
-                    ? "text-pink-500"
-                    : "text-slate-600 dark:text-neutral-400"
-                }`}
-              >
-                <span className="ml-6 text-xs">{item.title}</span>
-              </Link>
-            </li>
-          ))}
+          {subMenus.map((item) => {
+            const active = location.pathname === item.to;
+            return (
+              <li key={item.to}>
+                <Link
+                  to={item.to}
+                  className={`ml-4 flex h-8 items-center rounded-lg border-l pl-3 text-[12.5px] transition-colors ${
+                    active
+                      ? "border-brand text-brand-strong dark:border-brand dark:text-brand"
+                      : "border-line text-ink-muted hover:border-ink-faint hover:text-ink-soft dark:border-night-line dark:text-night-muted dark:hover:text-night-text"
+                  }`}
+                >
+                  {item.title}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

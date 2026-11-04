@@ -100,7 +100,7 @@ const SontItem = ({ item, isPlaying, isLoading, error, onPlay, onStop }: SongIte
   };
 
   return (
-    <div className="bg-white dark:bg-neutral-900 border border-transparent dark:border-neutral-800 rounded-lg shadow-md hover:shadow-lg hover:bg-gray-50 dark:hover:bg-neutral-800 transition-all duration-300 overflow-hidden">
+    <div className="bg-white dark:bg-night-card border border-transparent dark:border-night-line rounded-lg shadow-md hover:shadow-lg hover:bg-wash dark:hover:bg-night-line/60 transition-all duration-300 overflow-hidden">
       <div className="flex gap-4 p-4 items-center">
         {/* 视频封面 */}
         <div className="flex-shrink-0 w-40 h-24 relative">
@@ -122,7 +122,7 @@ const SontItem = ({ item, isPlaying, isLoading, error, onPlay, onStop }: SongIte
               href={item.arcurl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-lg font-semibold text-gray-900 dark:text-neutral-100 mb-2 hover:text-pink-600 dark:hover:text-pink-400 cursor-pointer"
+              className="text-lg font-semibold text-ink dark:text-night-text mb-2 hover:text-brand-strong dark:hover:text-brand cursor-pointer"
               dangerouslySetInnerHTML={{ __html: item.title }}
             />
           </div>
@@ -133,17 +133,17 @@ const SontItem = ({ item, isPlaying, isLoading, error, onPlay, onStop }: SongIte
               href={`https://space.bilibili.com/${item.mid}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-gray-600 dark:text-neutral-300 hover:text-pink-600 dark:hover:text-pink-400 cursor-pointer"
+              className="text-sm text-ink-soft dark:text-night-muted hover:text-brand-strong dark:hover:text-brand cursor-pointer"
             >
               {item.author}
             </a>
-            <span className="text-xs text-gray-400 dark:text-neutral-500">
+            <span className="text-xs text-ink-faint dark:text-night-muted">
               {formatDate(item.pubdate)}
             </span>
           </div>
 
           {/* 描述 */}
-          <p className="text-sm text-gray-600 dark:text-neutral-400 mb-3 truncate">
+          <p className="text-sm text-ink-soft dark:text-night-muted mb-3 truncate">
             {item.description}
           </p>
 
@@ -159,7 +159,7 @@ const SontItem = ({ item, isPlaying, isLoading, error, onPlay, onStop }: SongIte
         {/* 操作按钮 */}
         <div className="flex items-center gap-2">
           <button
-            className="p-2 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-full transition-colors duration-200"
+            className="p-2 text-ink-soft dark:text-night-muted hover:bg-wash dark:hover:bg-night-line/60 rounded-full transition-colors duration-200"
             onClick={onStop}
             title="停止"
           >
@@ -168,8 +168,8 @@ const SontItem = ({ item, isPlaying, isLoading, error, onPlay, onStop }: SongIte
           <button
             className={`p-2 rounded-full transition-colors duration-200 ${
               isPlaying
-                ? "bg-pink-500 text-white hover:bg-pink-600"
-                : "text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700"
+                ? "bg-brand text-white hover:bg-brand-strong"
+                : "text-ink-soft dark:text-night-muted hover:bg-wash dark:hover:bg-night-line/60"
             } ${isLoading ? "cursor-not-allowed" : "cursor-pointer"}`}
             onClick={() => onPlay(item)}
             disabled={isLoading}
@@ -186,8 +186,8 @@ const SontItem = ({ item, isPlaying, isLoading, error, onPlay, onStop }: SongIte
           <button
             className={`p-2 rounded-full transition-colors duration-200 ${
               isLiked
-                ? "bg-pink-500 text-white hover:bg-pink-600"
-                : "text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700"
+                ? "bg-brand text-white hover:bg-brand-strong"
+                : "text-ink-soft dark:text-night-muted hover:bg-wash dark:hover:bg-night-line/60"
             } ${likeLoading ? "cursor-not-allowed" : "cursor-pointer"}`}
             onClick={handleLike}
             disabled={likeLoading}

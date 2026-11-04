@@ -36,18 +36,18 @@ const Reward = () => {
       <h2 className="text-3xl font-semibold mb-3">赞赏支持</h2>
 
       <section className="mt-10">
-        <p className="text-center text-gray-600 dark:text-neutral-400 text-base mb-6">
+        <p className="text-center text-ink-soft dark:text-night-muted text-base mb-6">
           如果这个插件对你有帮助，欢迎扫码赞赏，感谢你的支持，这是我持续维护的动力。
         </p>
         <img src="/reward.jpg" alt="微信赞赏码" className="w-64 h-64 mx-auto object-contain" />
-        <p className="text-center text-gray-600 dark:text-neutral-400 text-sm mt-4">
+        <p className="text-center text-ink-soft dark:text-night-muted text-sm mt-4">
           使用微信扫一扫，对作者进行赞赏
         </p>
       </section>
 
       <section className="mt-12">
         <h2 className="text-3xl font-semibold mb-3">为什么要赞赏？</h2>
-        <ol className="list-decimal list-outside pl-6 mt-4 space-y-3 text-base text-gray-600 dark:text-neutral-400">
+        <ol className="list-decimal list-outside pl-6 mt-4 space-y-3 text-base text-ink-soft dark:text-night-muted">
           <li>
             目前我们主要使用 Claude
             Code、Codex等AI编程工具进行开发，这些都需要付费订阅，每个月都是不小的开销。
@@ -60,23 +60,23 @@ const Reward = () => {
 
       <section className="mt-12">
         <h2 className="text-3xl font-semibold mb-3">赞赏名单</h2>
-        <p className="text-gray-600 dark:text-neutral-400 text-base mb-4">
+        <p className="text-ink-soft dark:text-night-muted text-base mb-4">
           赞赏后您的名字将在下个版本更新后出现在名单中
         </p>
-        <ul className="divide-y divide-gray-200 dark:divide-neutral-700 border border-gray-200 dark:border-neutral-700 rounded-lg">
+        <ul className="divide-y divide-line dark:divide-neutral-700 border border-line dark:border-night-line rounded-lg">
           {REWARD_LIST.map((item, index) => (
             <li key={index} className="flex items-center justify-between px-4 py-3">
               <div>
                 <span className="font-medium text-base">{item.name}</span>
                 {item.message && (
-                  <p className="text-base text-gray-500 dark:text-neutral-400 mt-1">
+                  <p className="text-base text-ink-muted dark:text-night-muted mt-1">
                     {item.message}
                   </p>
                 )}
               </div>
               <div className="text-right shrink-0 ml-4">
                 <span className="text-orange-500 font-semibold text-base">¥{item.amount}</span>
-                <p className="text-xs text-gray-400 dark:text-neutral-500 mt-1">{item.date}</p>
+                <p className="text-xs text-ink-faint dark:text-night-muted mt-1">{item.date}</p>
               </div>
             </li>
           ))}

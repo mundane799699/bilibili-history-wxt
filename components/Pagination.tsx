@@ -79,7 +79,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         return (
           <span
             key={`ellipsis-${index}`}
-            className="w-8 h-8 flex items-center justify-center text-gray-400 dark:text-neutral-500"
+            className="w-8 h-8 flex items-center justify-center text-ink-faint dark:text-night-muted"
           >
             ...
           </span>
@@ -97,11 +97,11 @@ export const Pagination: React.FC<PaginationProps> = ({
           aria-label={`第 ${pageNum} 页`}
           aria-current={isActive ? "page" : undefined}
           className={`
-            flex h-9 min-w-9 items-center justify-center rounded-lg px-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0a0a0a]
+            flex h-9 min-w-9 items-center justify-center rounded-lg px-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 dark:focus-visible:ring-offset-night
             ${
               isActive
-                ? "bg-pink-500 text-white"
-                : "border border-gray-200 bg-white text-gray-600 hover:border-pink-200 hover:bg-pink-50 hover:text-pink-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-pink-500/40 dark:hover:bg-pink-500/10 dark:hover:text-pink-300"
+                ? "bg-brand text-white"
+                : "border border-line bg-white text-ink-soft hover:border-brand/25 hover:bg-brand-soft hover:text-brand-strong dark:border-night-line dark:bg-night-card dark:text-night-muted dark:hover:border-brand/40 dark:hover:bg-brand/10 dark:hover:text-brand"
             }
           `}
         >
@@ -123,7 +123,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         type="button"
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="hidden h-9 items-center rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-600 transition-colors hover:border-pink-200 hover:bg-pink-50 hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-200 disabled:hover:bg-white disabled:hover:text-gray-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-pink-500/40 dark:hover:bg-pink-500/10 dark:hover:text-pink-300 dark:disabled:hover:border-neutral-700 dark:disabled:hover:bg-neutral-900 dark:disabled:hover:text-neutral-300 dark:focus-visible:ring-offset-[#0a0a0a] sm:flex"
+        className="hidden h-9 items-center rounded-lg border border-line bg-white px-3 text-sm text-ink-soft transition-colors hover:border-brand/25 hover:bg-brand-soft hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line disabled:hover:bg-white disabled:hover:text-ink-soft dark:border-night-line dark:bg-night-card dark:text-night-muted dark:hover:border-brand/40 dark:hover:bg-brand/10 dark:hover:text-brand dark:disabled:hover:border-neutral-700 dark:disabled:hover:bg-night-card dark:disabled:hover:text-night-muted dark:focus-visible:ring-offset-night sm:flex"
         aria-label="上一页"
       >
         <ChevronLeft className="mr-1 h-4 w-4" />
@@ -138,7 +138,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         type="button"
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="flex h-9 items-center rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-600 transition-colors hover:border-pink-200 hover:bg-pink-50 hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-200 disabled:hover:bg-white disabled:hover:text-gray-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-pink-500/40 dark:hover:bg-pink-500/10 dark:hover:text-pink-300 dark:disabled:hover:border-neutral-700 dark:disabled:hover:bg-neutral-900 dark:disabled:hover:text-neutral-300 dark:focus-visible:ring-offset-[#0a0a0a]"
+        className="flex h-9 items-center rounded-lg border border-line bg-white px-3 text-sm text-ink-soft transition-colors hover:border-brand/25 hover:bg-brand-soft hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line disabled:hover:bg-white disabled:hover:text-ink-soft dark:border-night-line dark:bg-night-card dark:text-night-muted dark:hover:border-brand/40 dark:hover:bg-brand/10 dark:hover:text-brand dark:disabled:hover:border-neutral-700 dark:disabled:hover:bg-night-card dark:disabled:hover:text-night-muted dark:focus-visible:ring-offset-night"
         aria-label="下一页"
       >
         下一页
@@ -146,7 +146,7 @@ export const Pagination: React.FC<PaginationProps> = ({
       </button>
 
       {/* 统计信息 */}
-      <span className="ml-2 text-sm tabular-nums text-gray-500 dark:text-neutral-400">
+      <span className="ml-2 text-sm tabular-nums text-ink-muted dark:text-night-muted">
         共 {totalPages} 页 / {totalItems} 个
       </span>
 
@@ -156,7 +156,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           aria-label="每页显示条数"
           value={pageSize}
           onChange={(e) => onPageSizeChange(Number(e.target.value))}
-          className="ml-2 h-9 cursor-pointer rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-600 outline-none transition-colors focus:border-pink-500 focus:ring-2 focus:ring-pink-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:focus:border-pink-500 dark:focus:ring-pink-500/20"
+          className="ml-2 h-9 cursor-pointer rounded-lg border border-line bg-white px-2 text-sm text-ink-soft outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-night-line dark:bg-night-card dark:text-night-muted dark:focus:border-brand dark:focus:ring-brand/20"
         >
           {pageSizeOptions.map((size) => (
             <option key={size} value={size}>
@@ -168,7 +168,7 @@ export const Pagination: React.FC<PaginationProps> = ({
 
       {/* 跳转 */}
       <div className="ml-2 hidden items-center gap-2 md:flex">
-        <span className="text-sm text-gray-500 dark:text-neutral-400">跳至</span>
+        <span className="text-sm text-ink-muted dark:text-night-muted">跳至</span>
         <input
           type="number"
           min={1}
@@ -183,9 +183,9 @@ export const Pagination: React.FC<PaginationProps> = ({
             }
           }}
           aria-label="跳转页码"
-          className="h-9 w-14 rounded-lg border border-gray-200 bg-white text-center text-sm tabular-nums text-gray-700 outline-none transition-colors focus:border-pink-500 focus:ring-2 focus:ring-pink-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:focus:border-pink-500 dark:focus:ring-pink-500/20"
+          className="h-9 w-14 rounded-lg border border-line bg-white text-center text-sm tabular-nums text-ink-soft outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-night-line dark:bg-night-card dark:text-night-text dark:focus:border-brand dark:focus:ring-brand/20"
         />
-        <span className="text-sm text-gray-500 dark:text-neutral-400">页</span>
+        <span className="text-sm text-ink-muted dark:text-night-muted">页</span>
       </div>
     </nav>
   );

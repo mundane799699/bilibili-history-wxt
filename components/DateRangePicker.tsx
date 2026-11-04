@@ -104,21 +104,21 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
   return (
     <div className="relative" ref={containerRef}>
-      <div className="group relative flex h-10 items-center rounded-lg border border-gray-200 bg-white transition-colors hover:border-pink-200 hover:bg-pink-50 focus-within:ring-2 focus-within:ring-pink-500 focus-within:ring-offset-2 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-pink-500/40 dark:hover:bg-pink-500/10 dark:focus-within:ring-offset-[#0a0a0a]">
+      <div className="group relative flex h-10 items-center rounded-lg border border-line bg-white transition-colors hover:border-brand/25 hover:bg-brand-soft focus-within:ring-2 focus-within:ring-brand focus-within:ring-offset-2 dark:border-night-line dark:bg-night-card dark:hover:border-brand/40 dark:hover:bg-brand/10 dark:focus-within:ring-offset-night">
         <button
           type="button"
-          className="flex h-full min-w-0 items-center gap-2 px-3 text-sm text-gray-700 focus-visible:outline-none dark:text-neutral-300"
+          className="flex h-full min-w-0 items-center gap-2 px-3 text-sm text-ink-soft focus-visible:outline-none dark:text-night-muted"
           onClick={() => setIsOpen(!isOpen)}
           aria-expanded={isOpen}
           aria-haspopup="dialog"
           aria-label={displayText ? `已选日期：${displayText}` : "选择日期"}
         >
-          <CalendarIcon className="h-4 w-4 shrink-0 text-gray-500 transition-colors group-hover:text-pink-600 dark:text-neutral-400 dark:group-hover:text-pink-300" />
+          <CalendarIcon className="h-4 w-4 shrink-0 text-ink-muted transition-colors group-hover:text-brand-strong dark:text-night-muted dark:group-hover:text-brand" />
           <span
             className={`max-w-[180px] truncate whitespace-nowrap ${
               displayText
-                ? "text-gray-700 dark:text-neutral-200"
-                : "text-gray-500 dark:text-neutral-500"
+                ? "text-ink-soft dark:text-night-text"
+                : "text-ink-muted dark:text-night-muted"
             }`}
           >
             {displayText || "选择日期"}
@@ -130,7 +130,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             onClick={() => {
               onChange("", "");
             }}
-            className="flex h-full w-9 shrink-0 items-center justify-center rounded-r-lg text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-500 dark:text-neutral-400 dark:hover:bg-red-500/10 dark:hover:text-red-300"
+            className="flex h-full w-9 shrink-0 items-center justify-center rounded-r-lg text-ink-muted transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-500 dark:text-night-muted dark:hover:bg-red-500/10 dark:hover:text-red-300"
             title="清除日期"
             aria-label="清除日期"
           >
@@ -141,19 +141,19 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
       {isOpen && (
         <div
-          className="absolute right-0 top-full z-50 mt-2 w-[min(320px,calc(100vw-2rem))] select-none rounded-xl border border-gray-200 bg-white p-4 shadow-[0_14px_36px_rgba(15,23,42,0.16)] dark:border-neutral-700 dark:bg-neutral-900"
+          className="absolute right-0 top-full z-50 mt-2 w-[min(320px,calc(100vw-2rem))] select-none rounded-xl border border-line bg-white p-4 shadow-[0_14px_36px_rgba(15,23,42,0.16)] dark:border-night-line dark:bg-night-card"
           role="dialog"
           aria-label="选择历史记录日期"
         >
           <div className="flex justify-between items-center mb-4">
-            <span className="font-medium text-gray-700 dark:text-neutral-200">
+            <span className="font-medium text-ink-soft dark:text-night-text">
               {currentMonth.format("YYYY年MM月")}
             </span>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={prevMonth}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-wash hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-night-muted dark:hover:bg-night-line/60 dark:hover:text-white"
                 aria-label="上个月"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -161,7 +161,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               <button
                 type="button"
                 onClick={nextMonth}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-wash hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-night-muted dark:hover:bg-night-line/60 dark:hover:text-white"
                 aria-label="下个月"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -171,7 +171,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
           <div className="grid grid-cols-7 mb-2">
             {weekDays.map((d) => (
-              <div key={d} className="text-center text-xs text-gray-400 dark:text-neutral-500 py-1">
+              <div
+                key={d}
+                className="text-center text-xs text-ink-faint dark:text-night-muted py-1"
+              >
                 {d}
               </div>
             ))}
@@ -191,10 +194,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               const isInRange = startDate && endDate && dateStr > startDate && dateStr < endDate;
 
               let bgClass =
-                "hover:bg-pink-50 dark:hover:bg-pink-500/10 text-gray-700 dark:text-neutral-200";
-              if (isStart || isEnd) bgClass = "bg-pink-500 text-white hover:bg-pink-600";
+                "hover:bg-brand-soft dark:hover:bg-brand/10 text-ink-soft dark:text-night-text";
+              if (isStart || isEnd) bgClass = "bg-brand text-white hover:bg-brand-strong";
               else if (isInRange)
-                bgClass = "bg-pink-50 dark:bg-pink-500/15 text-pink-600 dark:text-pink-400";
+                bgClass = "bg-brand-soft dark:bg-brand/15 text-brand-strong dark:text-brand";
 
               // Handle "picking" state visual cue (optional, kept simple for now)
 
@@ -206,7 +209,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                   aria-label={date.format("YYYY年MM月DD日")}
                   aria-pressed={Boolean(isSelected)}
                   className={`
-                    flex aspect-square items-center justify-center rounded-md text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500
+                    flex aspect-square items-center justify-center rounded-md text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand
                     ${bgClass}
                   `}
                 >
@@ -216,11 +219,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             })}
           </div>
 
-          <div className="flex justify-between mt-4 border-t border-gray-200 dark:border-neutral-800 pt-3">
+          <div className="flex justify-between mt-4 border-t border-line dark:border-night-line pt-3">
             <button
               type="button"
               onClick={() => onChange("", "")}
-              className="rounded text-xs text-gray-600 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-neutral-400 dark:hover:text-red-300"
+              className="rounded text-xs text-ink-soft hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-night-muted dark:hover:text-red-300"
             >
               清除
             </button>
@@ -231,7 +234,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 onChange(today, today);
                 setIsOpen(false);
               }}
-              className="rounded text-xs font-medium text-pink-700 hover:text-pink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 dark:text-pink-300 dark:hover:text-pink-200"
+              className="rounded text-xs font-medium text-brand-strong hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-brand dark:hover:text-brand"
             >
               今天
             </button>

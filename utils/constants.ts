@@ -100,6 +100,9 @@ export const DELETED_HISTORY_IDS = "deletedHistoryIds";
 // "light" | "dark"
 export const THEME_MODE = "themeMode";
 
+/** 侧边栏订阅引导是否已被用户关闭 */
+export const SUBSCRIBE_PROMO_DISMISSED = "subscribePromoDismissed";
+
 export const UPDATE_HISTORY = [
   {
     date: "2026-10-29",
