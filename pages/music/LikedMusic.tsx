@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Howl } from "howler";
+import { getAudioUrl } from "@/utils/biliAudio";
+import { VolumeControl } from "@/components/VolumeControl";
 import {
   SkipBack,
   Play,
@@ -45,16 +47,6 @@ const LikedMusic = () => {
       }
     };
   }, []);
-
-  const getUpUrl = (obj: any) => {
-    const url1 = obj.baseUrl || "";
-    const url2 = obj.backup_url?.[0] || "";
-    const url3 = obj.backup_url?.[1] || "";
-
-    // 找到第一个不是https://xy 开头的url
-    const urlList = [url1, url2, url3].filter((url) => !url.startsWith("https://xy"));
-    return urlList[0] || url1;
-  };
 
   // 处理歌曲播放结束后的自动切换逻辑
   const handleMusicEnd = (endedBvid: string) => {
@@ -179,7 +171,7 @@ const LikedMusic = () => {
         throw new Error("未找到音频流");
       }
 
-      const url = getUpUrl(dash.audio[0]);
+      const url = getAudioUrl(dash.audio[0]);
 
       // 创建新的Howl实例
       howlRef.current = new Howl({
@@ -480,6 +472,10 @@ const LikedMusic = () => {
               >
                 {getPlayModeIcon()}
               </button>
+
+              <div className="ml-2 border-l border-line pl-2 dark:border-night-line">
+                <VolumeControl />
+              </div>
             </div>
           </div>
 

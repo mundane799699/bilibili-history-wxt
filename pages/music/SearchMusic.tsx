@@ -2,6 +2,8 @@ import { Search } from "lucide-react";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import SongItem from "../../components/SongItem";
 import { Howl } from "howler";
+import { getAudioUrl } from "@/utils/biliAudio";
+import { useMusicVolume } from "@/components/VolumeControl";
 
 // 定义搜索结果项的类型
 export interface SearchResultItem {
@@ -32,6 +34,8 @@ export interface SearchResultItem {
 }
 
 const SearchMusic = () => {
+  // 应用已保存的音量（与「我喜欢的音乐」页共用）
+  useMusicVolume();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -56,16 +60,6 @@ const SearchMusic = () => {
       }
     };
   }, []);
-
-  const getUpUrl = (obj: any) => {
-    const url1 = obj.baseUrl || "";
-    const url2 = obj.backup_url?.[0] || "";
-    const url3 = obj.backup_url?.[1] || "";
-
-    // 找到第一个不是https://xy 开头的url
-    const urlList = [url1, url2, url3].filter((url) => !url.startsWith("https://xy"));
-    return urlList[0] || url1;
-  };
 
   // 音频播放控制函数
   const handlePlay = async (item: SearchResultItem) => {
@@ -122,7 +116,7 @@ const SearchMusic = () => {
         throw new Error("未找到音频流");
       }
 
-      const url = getUpUrl(dash.audio[0]);
+      const url = getAudioUrl(dash.audio[0]);
 
       // 创建新的Howl实例
       howlRef.current = new Howl({

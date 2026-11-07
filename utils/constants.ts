@@ -99,6 +99,10 @@ export const DELETED_HISTORY_IDS = "deletedHistoryIds";
 
 // "light" | "dark"
 export const THEME_MODE = "themeMode";
+// 音乐播放器音量（0-1），两个音乐页面共用
+export const MUSIC_VOLUME = "musicVolume";
+// 静音前的音量，用于取消静音时恢复
+export const MUSIC_VOLUME_BEFORE_MUTE = "musicVolumeBeforeMute";
 
 /**
  * 侧边栏订阅引导被关闭时所处的登录会话标识。
