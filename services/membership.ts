@@ -5,6 +5,8 @@ export interface MembershipStatus {
   active: boolean;
   plan: string | null;
   expiresAt: string | null;
+  /** 后端会员记录状态：active / expired / cancelled，无记录时为 null */
+  status: string | null;
 }
 
 const INACTIVE: MembershipStatus = {
@@ -12,6 +14,7 @@ const INACTIVE: MembershipStatus = {
   active: false,
   plan: null,
   expiresAt: null,
+  status: null,
 };
 
 /**
@@ -26,6 +29,7 @@ export const getMembershipStatus = async (): Promise<MembershipStatus> => {
       active: Boolean(res?.active),
       plan: res?.plan ?? null,
       expiresAt: res?.expiresAt ?? null,
+      status: res?.status ?? null,
     };
   } catch (error) {
     console.warn("读取会员状态失败，按非会员处理:", error);

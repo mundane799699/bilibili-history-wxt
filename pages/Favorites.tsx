@@ -513,7 +513,7 @@ export const Favorites = () => {
               key={folder.id}
               className={`relative mb-1 cursor-pointer rounded-lg p-3 pr-10 transition-colors ${
                 selectedFolderId === folder.id
-                  ? "bg-brand-soft dark:bg-brand/10 text-brand-strong dark:text-brand"
+                  ? "bg-brand text-white shadow-sm shadow-brand/30"
                   : "hover:bg-wash dark:hover:bg-night-line/60"
               }`}
               onClick={() => setSelectedFolderId(folder.id)}
@@ -522,7 +522,13 @@ export const Favorites = () => {
                 <div className="truncate font-medium" title={folder.title}>
                   {folder.title}
                 </div>
-                <div className="mt-1 text-xs text-ink-faint dark:text-night-muted">
+                <div
+                  className={`mt-1 text-xs ${
+                    selectedFolderId === folder.id
+                      ? "text-white/80"
+                      : "text-ink-faint dark:text-night-muted"
+                  }`}
+                >
                   {folder.media_count}个内容
                 </div>
               </div>
@@ -533,7 +539,11 @@ export const Favorites = () => {
                   event.stopPropagation();
                   setOpenFolderMenuId((current) => (current === folder.id ? null : folder.id));
                 }}
-                className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-white hover:text-ink-soft dark:text-night-muted dark:hover:bg-night-line/60 dark:hover:text-night-text"
+                className={`absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
+                  selectedFolderId === folder.id
+                    ? "text-white/80 hover:bg-white/20 hover:text-white"
+                    : "text-ink-faint hover:bg-white hover:text-ink-soft dark:text-night-muted dark:hover:bg-night-line/60 dark:hover:text-night-text"
+                }`}
                 title={`更多操作：${folder.title}`}
                 aria-label={`更多操作：${folder.title}`}
                 aria-haspopup="menu"

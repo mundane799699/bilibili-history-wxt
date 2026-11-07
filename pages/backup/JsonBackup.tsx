@@ -303,7 +303,7 @@ const JsonBackup = () => {
                         setManualBackupItems(next);
                         void setStorageValue(MANUAL_BACKUP_ITEMS, next);
                       }}
-                      className="h-4 w-4 accent-pink-600 focus:ring-2 focus:ring-brand focus:ring-offset-1 dark:accent-pink-500"
+                      className="h-4 w-4"
                     />
                     <span>{item.label}</span>
                   </label>

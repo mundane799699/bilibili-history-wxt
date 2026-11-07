@@ -9,10 +9,92 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* 原生单选 / 复选框统一为品牌粉 */
-input[type="checkbox"],
+/*
+ * 单选 / 复选框不能只靠 accent-color：#fb7299 偏亮，Chrome 会为了对比度
+ * 把对勾和单选圆圈画成黑色。这里统一自绘成品牌粉。
+ */
 input[type="radio"] {
-  accent-color: #fb7299;
+  appearance: none;
+  -webkit-appearance: none;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 1.5px solid #bcbec0;
+  border-radius: 9999px;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+input[type="radio"]:hover:not(:disabled) {
+  border-color: #fb7299;
+}
+
+input[type="radio"]:checked {
+  border: 5px solid #fb7299;
+  background-color: #ffffff;
+}
+
+input[type="radio"]:focus-visible {
+  outline: 2px solid #fb7299;
+  outline-offset: 2px;
+}
+
+input[type="radio"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+html.dark input[type="radio"]:not(:checked) {
+  border-color: #3a3d41;
+  background-color: #17191a;
+}
+
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  place-content: center;
+  flex-shrink: 0;
+  margin: 0;
+  border: 1.5px solid #bcbec0;
+  border-radius: 4px;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+}
+
+input[type="checkbox"]:hover:not(:disabled) {
+  border-color: #fb7299;
+}
+
+input[type="checkbox"]:checked {
+  border-color: #fb7299;
+  background-color: #fb7299;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-6.5'/%3E%3C/svg%3E");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+input[type="checkbox"]:focus-visible {
+  outline: 2px solid #fb7299;
+  outline-offset: 2px;
+}
+
+input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+html.dark input[type="checkbox"]:not(:checked) {
+  border-color: #3a3d41;
+  background-color: #17191a;
 }
 
 [data-tour-active="true"] {
@@ -29,6 +111,61 @@ html.dark body {
 
 ::selection {
   background-color: rgb(251 114 153 / 22%);
+}
+
+/* 音乐播放器音量条：已填充部分为品牌粉 */
+.volume-slider {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 4px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    #fb7299 0%,
+    #fb7299 var(--volume-percent, 0%),
+    #e4e5e6 var(--volume-percent, 0%),
+    #e4e5e6 100%
+  );
+  cursor: pointer;
+  outline: none;
+}
+
+html.dark .volume-slider {
+  background: linear-gradient(
+    to right,
+    #fb7299 0%,
+    #fb7299 var(--volume-percent, 0%),
+    #3a3d41 var(--volume-percent, 0%),
+    #3a3d41 100%
+  );
+}
+
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 2px solid #fb7299;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.15);
+  transition: transform 0.15s;
+}
+
+.volume-slider:hover::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+
+.volume-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 2px solid #fb7299;
+}
+
+.volume-slider:focus-visible {
+  outline: 2px solid #fb7299;
+  outline-offset: 4px;
 }
 
 .history-card {

@@ -10,7 +10,7 @@ import { useUserStore } from "@/utils/store";
 import { LoginModal } from "@/components/LoginModal";
 import { UserInfo } from "@/components/UserInfo";
 import { SubscribePromo } from "@/components/SubscribePromo";
-import { getMembershipStatus } from "@/services/membership";
+import { getMembershipStatus, type MembershipStatus } from "@/services/membership";
 import { Card, CardTitle, PageHeader, Button } from "@/components/ui/Primitives";
 import {
   CheckCircle2,
@@ -28,20 +28,22 @@ const EXPIRED_MESSAGE = "您的会员已过期，无法上传更多记录";
 const CloudSync = () => {
   const { userInfo } = useUserStore();
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [isMember, setIsMember] = useState(false);
+  const [membership, setMembership] = useState<MembershipStatus | null>(null);
+  const isMember = Boolean(membership?.active);
 
-  // 已是会员就不再展示订阅引导
+  // 登录状态变化（例如在官网登录后切回插件）时重新拉取会员信息
   useEffect(() => {
     let isActive = true;
+    setMembership(null);
     getMembershipStatus()
-      .then((membership) => {
-        if (isActive) setIsMember(membership.active);
+      .then((status) => {
+        if (isActive) setMembership(status);
       })
       .catch(() => {});
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [userInfo?.id]);
   const [uploadInfo, setUploadInfo] = useState({
     isUploading: false,
     isOpen: false,
@@ -154,7 +156,7 @@ const CloudSync = () => {
         description="把浏览器里的历史记录同步到云端，换设备也能接着找。免费用户最多上传 500 条，会员不限量。"
       />
 
-      <UserInfo />
+      <UserInfo membership={membership} />
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         <Card className="flex flex-col">
@@ -171,20 +173,20 @@ const CloudSync = () => {
         </Card>
 
         <Card className="flex flex-col">
-          <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-wash text-ink-soft dark:bg-night-line dark:text-night-text">
+          <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-brand-soft text-brand-strong dark:bg-brand/10 dark:text-brand">
             <ExternalLink className="h-4 w-4" />
           </div>
           <h3 className="text-[14px] font-semibold text-ink dark:text-night-text">查看云端数据</h3>
           <p className="mt-1 flex-1 text-[12.5px] leading-relaxed text-ink-muted dark:text-night-muted">
             在网页端仪表盘浏览已经同步的记录，支持搜索与筛选。
           </p>
-          <Button variant="secondary" className="mt-4 w-full" onClick={handleViewCloudData}>
+          <Button className="mt-4 w-full" onClick={handleViewCloudData}>
             打开仪表盘
           </Button>
         </Card>
 
         <Card className="flex flex-col">
-          <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-wash text-ink-soft dark:bg-night-line dark:text-night-text">
+          <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-brand-soft text-brand-strong dark:bg-brand/10 dark:text-brand">
             <DownloadCloud className="h-4 w-4" />
           </div>
           <h3 className="flex items-center gap-2 text-[14px] font-semibold text-ink dark:text-night-text">
@@ -196,20 +198,20 @@ const CloudSync = () => {
           <p className="mt-1 flex-1 text-[12.5px] leading-relaxed text-ink-muted dark:text-night-muted">
             把云端记录拉回本地。目前请先用 JSON 或 WebDAV 备份恢复数据。
           </p>
-          <Button variant="secondary" className="mt-4 w-full" disabled>
+          <Button className="mt-4 w-full" disabled>
             暂不可用
           </Button>
         </Card>
 
         <Card className="flex flex-col">
-          <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-wash text-ink-soft dark:bg-night-line dark:text-night-text">
+          <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-brand-soft text-brand-strong dark:bg-brand/10 dark:text-brand">
             <RotateCcw className="h-4 w-4" />
           </div>
           <h3 className="text-[14px] font-semibold text-ink dark:text-night-text">重置上传标记</h3>
           <p className="mt-1 flex-1 text-[12.5px] leading-relaxed text-ink-muted dark:text-night-muted">
             把所有本地记录改回未上传，下次上传会重新同步一遍。
           </p>
-          <Button variant="ghost" className="mt-4 w-full" onClick={handleResetHistory}>
+          <Button className="mt-4 w-full" onClick={handleResetHistory}>
             标记为未上传
           </Button>
         </Card>

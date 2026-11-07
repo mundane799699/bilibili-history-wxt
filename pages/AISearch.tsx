@@ -405,7 +405,7 @@ ${historyTextStr}
                 <div className="flex-1 flex flex-col gap-4">
                   {(isAnswering || content) && (
                     <div className="bg-white dark:bg-night-card rounded-2xl shadow-sm border border-line dark:border-night-line flex flex-col overflow-hidden min-h-[300px]">
-                      <div className="px-5 py-3 bg-brand-soft dark:bg-brand/10 border-b border-indigo-100 dark:border-brand/20 font-medium text-indigo-900 dark:text-indigo-300 text-sm shrink-0">
+                      <div className="px-5 py-3 bg-brand-soft dark:bg-brand/10 border-b border-brand/20 dark:border-brand/20 font-medium text-brand-strong dark:text-brand text-sm shrink-0">
                         🎯 搜索结果
                       </div>
                       <div className="p-5 text-ink dark:text-night-text text-[15px] leading-relaxed whitespace-pre-wrap flex-1 overflow-y-auto max-h-[600px]">
@@ -456,7 +456,7 @@ ${historyTextStr}
             </button>
 
             <div className="flex items-center gap-3 pr-10">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-indigo-600 dark:bg-brand/10 dark:text-brand">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand-strong dark:bg-brand/10 dark:text-brand">
                 <Settings2 className="h-5 w-5" />
               </div>
               <h2 className="text-lg font-bold text-ink dark:text-night-text">OpenAI 兼容配置</h2>

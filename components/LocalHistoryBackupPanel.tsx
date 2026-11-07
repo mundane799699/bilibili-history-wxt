@@ -363,9 +363,6 @@ export const LocalHistoryBackupPanel = () => {
                 <p className="text-sm font-medium text-ink dark:text-night-text">
                   启用本地自动备份
                 </p>
-                <p className="mt-1 text-xs text-ink-muted dark:text-night-muted">
-                  关闭后仍可立即备份
-                </p>
               </div>
               <label
                 className={directoryConfigured ? "cursor-pointer" : "cursor-not-allowed"}
@@ -378,7 +375,7 @@ export const LocalHistoryBackupPanel = () => {
                   disabled={!directoryConfigured || isRunning || isSelectingDirectory}
                   onChange={(event) => void toggleEnabled(event.target.checked)}
                 />
-                <span className="relative block h-6 w-11 rounded-full bg-gray-300 ring-offset-2 after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:bg-brand-strong dark:peer-checked:bg-brand peer-checked:after:translate-x-5 peer-focus-visible:ring-2 peer-focus-visible:ring-brand peer-disabled:opacity-50 dark:bg-night-line dark:ring-offset-neutral-900" />
+                <span className="relative block h-6 w-11 rounded-full bg-ink-faint/40 ring-offset-2 after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:bg-brand peer-checked:after:translate-x-5 peer-focus-visible:ring-2 peer-focus-visible:ring-brand peer-disabled:opacity-50 dark:bg-night-line dark:ring-offset-neutral-900" />
               </label>
             </div>
 
@@ -413,7 +410,7 @@ export const LocalHistoryBackupPanel = () => {
                       type="checkbox"
                       checked={backupItems[item.key]}
                       onChange={() => void toggleBackupItem(item.key)}
-                      className="h-4 w-4 accent-pink-600 focus:ring-2 focus:ring-brand focus:ring-offset-1 dark:accent-pink-500"
+                      className="h-4 w-4"
                     />
                     <span>{item.label}</span>
                   </label>

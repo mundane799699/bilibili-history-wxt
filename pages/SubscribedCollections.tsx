@@ -161,12 +161,18 @@ export const SubscribedCollections = () => {
               onClick={() => setSelectedCollectionId(collection.id)}
               className={`w-full p-3 rounded-lg text-left mb-1 transition-colors ${
                 selectedCollectionId === collection.id
-                  ? "bg-brand-soft dark:bg-brand/10 text-brand-strong dark:text-brand"
+                  ? "bg-brand text-white shadow-sm shadow-brand/30"
                   : "hover:bg-wash dark:hover:bg-night-line/60"
               }`}
             >
               <div className="font-medium truncate">{collection.title}</div>
-              <div className="text-xs text-ink-faint dark:text-night-muted mt-1 truncate">
+              <div
+                className={`text-xs mt-1 truncate ${
+                  selectedCollectionId === collection.id
+                    ? "text-white/80"
+                    : "text-ink-faint dark:text-night-muted"
+                }`}
+              >
                 {collection.upper?.name || "未知 UP 主"} · {collection.media_count} 个视频
               </div>
             </button>

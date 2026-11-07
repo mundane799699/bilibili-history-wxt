@@ -14,7 +14,7 @@ export const Checkbox = ({ checked, onChange, label }: CheckboxProps) => {
           className={`w-5 h-5 rounded-[4px] border transition-all duration-200 flex items-center justify-center
             ${
               checked
-                ? "bg-brand border-blue-600 shadow-sm"
+                ? "bg-brand border-brand shadow-sm"
                 : "bg-white dark:bg-night-card border-line dark:border-night-line group-hover:border-brand/40 dark:group-hover:border-brand shadow-sm"
             }
           `}

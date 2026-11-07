@@ -659,9 +659,7 @@ const WebDavBackup = () => {
                 onClick={() => handleAutoSyncToggle(!autoSyncEnabled)}
                 disabled={!config.serverUrl}
                 className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-neutral-900 ${
-                  autoSyncEnabled
-                    ? "bg-brand-strong dark:bg-brand"
-                    : "bg-gray-300 dark:bg-night-line"
+                  autoSyncEnabled ? "bg-brand" : "bg-ink-faint/40 dark:bg-night-line"
                 }`}
               >
                 <span
@@ -729,7 +727,7 @@ const WebDavBackup = () => {
                       type="checkbox"
                       checked={selectedKeys[item.key]}
                       onChange={() => toggleSelected(item.key)}
-                      className="h-4 w-4 accent-pink-600 focus:ring-2 focus:ring-brand focus:ring-offset-1 dark:accent-pink-500"
+                      className="h-4 w-4"
                     />
                     <span>{item.label}</span>
                   </label>
