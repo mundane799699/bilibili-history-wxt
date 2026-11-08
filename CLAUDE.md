@@ -33,7 +33,7 @@ WXT 按目录约定生成多入口 manifest，所有入口共享同一份 Indexe
 
 | 入口                                                                           | 类型                                                | 作用                                                                                                                                                        |
 | ------------------------------------------------------------------------------ | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [background.ts](entrypoints/background.ts)                                     | service worker                                      | 全部同步逻辑：B 站历史/收藏夹增量+全量同步、`browser.alarms` 定时调度、WebDAV 自动双向同步、与 content script / 页面通过 `browser.runtime.sendMessage` 通信 |
+| [background/](entrypoints/background/)                                         | service worker                                      | 全部同步逻辑：B 站历史/收藏夹增量+全量同步、`browser.alarms` 定时调度、WebDAV 自动双向同步、与 content script / 页面通过 `browser.runtime.sendMessage` 通信 |
 | [content.ts](entrypoints/content.ts)                                           | content script (`*.bilibili.com`, `document_start`) | 注入 `injected.js`、转发 `window.postMessage` 到 background、为 history 页面提供 `deleteHistory` RPC（需要 `bili_jct` + `SESSDATA`）                        |
 | [injected.ts](entrypoints/injected.ts)                                         | unlisted page script                                | 重写 `window.fetch` 拦截 `api.bilibili.com/x/v2/history/delete`，把删除事件 `postMessage` 给 content script，从而实现 "B 站网页端删除 → 同步删除插件历史"   |
 | [my-history/](entrypoints/my-history/)                                         | extension page                                      | 主 UI（`my-history.html`），用 `HashRouter` 承载 [pages/](pages/) 下所有页面（详见下方路由表）                                                              |
@@ -44,13 +44,15 @@ manifest 在 [wxt.config.ts](wxt.config.ts) 声明，关键权限：`storage / t
 
 ### Background 三大同步循环
 
-`browser.alarms` 每分钟触发，但内部用 `*_TIME_REMAIN` 计数器实现"X 分钟跑一次"，避免 alarm 抖动：
+后台按模块拆在 [entrypoints/background/](entrypoints/background/) 下，`index.ts` 只注册监听（模块清单见其文件头注释）。B 站接口统一走 `shared/bilibiliApi.ts` 的 `requestBiliApi`，它把 HTTP 状态码与业务 code 映射成带 `kind` 的 `BiliRequestError`。
+
+`browser.alarms` 每分钟触发，各任务按"距上次成功执行的时间"判断是否到期：
 
 1. `syncHistory` — 调 `x/web-interface/history/cursor` 游标分页；增量同步按上次成功的 `view_at` 水位重叠扫描，统一写入最近投影和观看事件。`SYNC_INTERVAL` 单位分钟。
-2. `syncFavorites` — 先取 `nav` 拿 mid，再取收藏夹列表，逐夹翻页。**全量**同步会用 `onlineResourceIds` 集合 diff 本地记录、删除已取消收藏的项；**增量**从第一页开始，保存当前页后在页首和页尾资源都已存在于同步前本地数据时停止（`AbortController` 30s 超时 + 最多 2 次重试）。
+2. 收藏夹（`favorites/`，单个 / 全部收藏夹两种任务，带断点续传与风控冷却，由 `lock.ts` 互斥）— 先取 `nav` 拿 mid，再取收藏夹列表，逐夹翻页。**全量**同步会用 `onlineResourceIds` 集合 diff 本地记录、删除已取消收藏的项；**增量**从第一页开始，保存当前页后在页首和页尾资源都已存在于同步前本地数据时停止（`AbortController` 30s 超时 + 最多 2 次重试）。
 3. `syncWebDav` — 当 `WEBDAV_AUTO_SYNC_ENABLED=true` 时按 `WEBDAV_LAST_SYNC` 间隔触发 `autoSyncWebDav`：**先 download → smartMerge\*（在 [utils/db.ts](utils/db.ts)）→ upload**，避免单向覆盖丢数据。
 
-新增 alarm 类型时记得在 `onInstalled` 里 `alarms.create` 并在 `onAlarm` 里分支处理。
+新增 alarm 只需在 `alarms.ts` 的 `SCHEDULED_TASKS` 里加一项（启动时会自动 `ensureAlarms`）；新增消息只需在对应模块的 `*MessageHandlers` 里加一项，处理函数 return 响应或 throw 异常即可，`messageRouter.ts` 统一兜底错误。
 
 ### 数据层（[utils/db.ts](utils/db.ts)）
 
