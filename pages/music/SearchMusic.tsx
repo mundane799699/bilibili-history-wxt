@@ -1,9 +1,8 @@
 import { Search } from "lucide-react";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import SongItem from "../../components/SongItem";
-import { Howl } from "howler";
-import { getAudioUrl } from "@/utils/biliAudio";
 import { useMusicVolume } from "@/components/VolumeControl";
+import { PlayerTrack, useMusicPlayer } from "@/utils/musicPlayer";
 
 // 定义搜索结果项的类型
 export interface SearchResultItem {
@@ -33,6 +32,15 @@ export interface SearchResultItem {
   [key: string]: any;
 }
 
+/** 搜索结果转成播放器曲目：标题去掉高亮标签，封面补全协议 */
+const toPlayerTrack = (item: SearchResultItem): PlayerTrack => ({
+  bvid: item.bvid,
+  title: item.title.replace(/<[^>]*>/g, ""),
+  author: item.author,
+  mid: item.mid,
+  pic: item.pic.startsWith("//") ? `https:${item.pic}` : item.pic,
+});
+
 const SearchMusic = () => {
   // 应用已保存的音量（与「我喜欢的音乐」页共用）
   useMusicVolume();
@@ -43,141 +51,23 @@ const SearchMusic = () => {
   const pageRef = useRef(1);
   const numPagesRef = useRef(0);
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const howlRef = useRef<Howl | null>(null);
 
-  // 音频播放状态管理
-  const [currentPlayingItem, setCurrentPlayingItem] = useState<SearchResultItem | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [audioError, setAudioError] = useState<string | null>(null);
+  // 播放器在全局 store 中，切换到其他菜单也不会中断播放
+  const current = useMusicPlayer((s) => s.current);
+  const isPlaying = useMusicPlayer((s) => s.isPlaying);
+  const isLoading = useMusicPlayer((s) => s.isLoading);
+  const playError = useMusicPlayer((s) => s.error);
+  const play = useMusicPlayer((s) => s.play);
+  const togglePlay = useMusicPlayer((s) => s.togglePlay);
+  const stop = useMusicPlayer((s) => s.stop);
 
-  // 组件卸载时清理音频资源
-  useEffect(() => {
-    return () => {
-      if (howlRef.current) {
-        howlRef.current.stop();
-        howlRef.current.unload();
-      }
-    };
-  }, []);
-
-  // 音频播放控制函数
-  const handlePlay = async (item: SearchResultItem) => {
-    try {
-      setAudioError(null);
-
-      // 如果点击的是正在播放的项目
-      if (currentPlayingItem?.bvid === item.bvid) {
-        if (isPlaying && howlRef.current) {
-          howlRef.current.pause();
-          setIsPlaying(false);
-          return;
-        }
-
-        if (howlRef.current && !isPlaying) {
-          howlRef.current.play();
-          return;
-        }
-      }
-
-      // 停止当前播放的音频
-      if (howlRef.current) {
-        howlRef.current.stop();
-        howlRef.current.unload();
-        howlRef.current = null;
-      }
-
-      // 设置新的播放项目
-      setCurrentPlayingItem(item);
-      setIsLoading(true);
-
-      // 获取音频URL
-      const response = await fetch(
-        `https://api.bilibili.com/x/web-interface/view?bvid=${item.bvid}`,
-        { credentials: "include" },
-      );
-      const { data, code, message } = await response.json();
-      if (code !== 0) {
-        throw new Error(message || "获取视频信息失败");
-      }
-      const { cid } = data;
-
-      const response2 = await fetch(
-        `https://api.bilibili.com/x/player/playurl?fnval=16&bvid=${item.bvid}&cid=${cid}`,
-        { credentials: "include" },
-      );
-      const { data: data2, code: code2, message: message2 } = await response2.json();
-      if (code2 !== 0) {
-        throw new Error(message2 || "获取播放地址失败");
-      }
-
-      const { dash } = data2;
-      if (!dash || !dash.audio || dash.audio.length === 0) {
-        throw new Error("未找到音频流");
-      }
-
-      const url = getAudioUrl(dash.audio[0]);
-
-      // 创建新的Howl实例
-      howlRef.current = new Howl({
-        src: [url],
-        format: ["m4a", "mp3"],
-        html5: true,
-        onload: () => {
-          setIsLoading(false);
-          console.log("音频加载完成");
-        },
-        onplay: () => {
-          setIsPlaying(true);
-          setIsLoading(false);
-          console.log("开始播放");
-        },
-        onpause: () => {
-          setIsPlaying(false);
-          console.log("暂停播放");
-        },
-        onend: () => {
-          setIsPlaying(false);
-          setIsLoading(false);
-          setCurrentPlayingItem(null);
-          console.log("播放结束");
-        },
-        onplayerror: (id: any, error: any) => {
-          console.error("播放错误:", error);
-          setAudioError("音频播放失败");
-          setIsPlaying(false);
-          setIsLoading(false);
-          setCurrentPlayingItem(null);
-        },
-        onloaderror: (id: any, error: any) => {
-          console.error("加载错误:", error);
-          setAudioError("音频加载失败");
-          setIsPlaying(false);
-          setIsLoading(false);
-          setCurrentPlayingItem(null);
-        },
-      });
-
-      howlRef.current.play();
-    } catch (error) {
-      console.error("播放失败:", error);
-      setAudioError(error instanceof Error ? error.message : "播放失败");
-      setIsPlaying(false);
-      setIsLoading(false);
-      setCurrentPlayingItem(null);
+  const handlePlay = (item: SearchResultItem) => {
+    if (current?.bvid === item.bvid) {
+      togglePlay();
+      return;
     }
-  };
-
-  const handleStop = () => {
-    if (howlRef.current) {
-      howlRef.current.stop();
-      howlRef.current.unload();
-      howlRef.current = null;
-    }
-    setIsPlaying(false);
-    setIsLoading(false);
-    setAudioError(null);
-    setCurrentPlayingItem(null);
+    const track = toPlayerTrack(item);
+    void play(track, [track], "search");
   };
 
   const getLoadMoreText = () => {
@@ -337,11 +227,11 @@ const SearchMusic = () => {
               <SongItem
                 key={item.id}
                 item={item}
-                isPlaying={currentPlayingItem?.bvid === item.bvid && isPlaying}
-                isLoading={currentPlayingItem?.bvid === item.bvid && isLoading}
-                error={currentPlayingItem?.bvid === item.bvid ? audioError : null}
+                isPlaying={current?.bvid === item.bvid && isPlaying}
+                isLoading={current?.bvid === item.bvid && isLoading}
+                error={playError?.bvid === item.bvid ? playError.message : null}
                 onPlay={handlePlay}
-                onStop={handleStop}
+                onStop={stop}
               />
             ))}
           </div>

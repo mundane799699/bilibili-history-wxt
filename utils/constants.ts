@@ -109,6 +109,8 @@ export const THEME_MODE = "themeMode";
 export const MUSIC_VOLUME = "musicVolume";
 // 静音前的音量，用于取消静音时恢复
 export const MUSIC_VOLUME_BEFORE_MUTE = "musicVolumeBeforeMute";
+// 迷你播放条被拖拽后的位置 { x, y }（视口像素坐标），null 表示默认的底部居中
+export const MINI_PLAYER_POSITION = "miniPlayerPosition";
 
 /**
  * 侧边栏订阅引导被关闭时所处的登录会话标识。

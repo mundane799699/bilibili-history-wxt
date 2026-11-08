@@ -1,6 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { Howl } from "howler";
-import { getAudioUrl } from "@/utils/biliAudio";
+import { useState, useEffect } from "react";
+import { useMusicPlayer } from "@/utils/musicPlayer";
 import { VolumeControl } from "@/components/VolumeControl";
 import {
   SkipBack,
@@ -15,315 +14,40 @@ import {
 import { getAllLikedMusic } from "../../utils/db";
 import { LikedMusic as LikedMusicType } from "../../utils/types";
 import LikedMusicItem from "../../components/LikedMusicItem";
-import { getStorageValue, setStorageValue } from "../../utils/storage";
-
-type PlayMode = "order" | "loop" | "random";
 
 const LikedMusic = () => {
   const [likedMusic, setLikedMusic] = useState<LikedMusicType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 音频播放状态管理
-  const [currentPlaying, setCurrentPlaying] = useState<string | null>(null);
-  const [playingStates, setPlayingStates] = useState<
-    Record<string, { isPlaying: boolean; isLoading: boolean; error?: string }>
-  >({});
-  const [playMode, setPlayMode] = useState<PlayMode>("order"); // 播放模式：顺序、单曲循环、随机
-  const playModeRef = useRef<PlayMode>(playMode); // 用于存储最新的播放模式，避免闭包问题
-  const howlRef = useRef<Howl | null>(null);
+  // 播放器在全局 store 中，切换到其他菜单也不会中断播放
+  const current = useMusicPlayer((s) => s.current);
+  const isPlaying = useMusicPlayer((s) => s.isPlaying);
+  const isLoading = useMusicPlayer((s) => s.isLoading);
+  const playError = useMusicPlayer((s) => s.error);
+  const playMode = useMusicPlayer((s) => s.playMode);
+  const play = useMusicPlayer((s) => s.play);
+  const togglePlay = useMusicPlayer((s) => s.togglePlay);
+  const next = useMusicPlayer((s) => s.next);
+  const previous = useMusicPlayer((s) => s.previous);
+  const cyclePlayMode = useMusicPlayer((s) => s.cyclePlayMode);
+  const syncPlaylist = useMusicPlayer((s) => s.syncPlaylist);
 
-  // 同步 playMode 到 ref，确保始终获取最新值
+  // 列表变化（如取消收藏）时同步到正在使用的播放列表
   useEffect(() => {
-    playModeRef.current = playMode;
-  }, [playMode]);
+    syncPlaylist("liked", likedMusic);
+  }, [likedMusic, syncPlaylist]);
 
-  // 组件卸载时清理音频资源
-  useEffect(() => {
-    return () => {
-      if (howlRef.current) {
-        howlRef.current.stop();
-        howlRef.current.unload();
-      }
-    };
-  }, []);
-
-  // 处理歌曲播放结束后的自动切换逻辑
-  const handleMusicEnd = (endedBvid: string) => {
-    console.log("endedBvid:", endedBvid);
-    setPlayingStates((prev) => ({
-      ...prev,
-      [endedBvid]: { isPlaying: false, isLoading: false },
-    }));
-
-    console.log("当前播放模式:", playModeRef.current);
-    // 单曲循环模式：重新播放当前歌曲
-    if (playModeRef.current === "loop") {
-      const currentMusic = likedMusic.find((music) => music.bvid === endedBvid);
-      console.log("currentMusic:", currentMusic);
-      if (currentMusic) {
-        console.log("单曲循环，重新播放:", currentMusic.title);
-        setTimeout(() => {
-          handlePlay(currentMusic);
-        }, 500);
-      }
-      return;
-    }
-
-    // 找到当前音乐在播放列表中的索引
-    const currentIndex = likedMusic.findIndex((music) => music.bvid === endedBvid);
-
-    // 随机播放模式
-    if (playModeRef.current === "random") {
-      if (likedMusic.length > 1) {
-        // 随机选择一首不是当前歌曲的音乐
-        let randomIndex;
-        do {
-          randomIndex = Math.floor(Math.random() * likedMusic.length);
-        } while (randomIndex === currentIndex && likedMusic.length > 1);
-
-        const nextMusic = likedMusic[randomIndex];
-        console.log("随机播放下一首:", nextMusic.title);
-        setTimeout(() => {
-          handlePlay(nextMusic);
-        }, 500);
-      }
-      return;
-    }
-
-    // 顺序播放模式
-    if (currentIndex >= 0 && currentIndex < likedMusic.length - 1) {
-      // 如果有下一首歌，自动播放
-      const nextMusic = likedMusic[currentIndex + 1];
-      console.log("自动播放下一首:", nextMusic.title);
-      setTimeout(() => {
-        handlePlay(nextMusic);
-      }, 500); // 延迟500ms播放下一首，避免状态冲突
-    } else {
-      // 如果没有下一首歌，停止播放
-      console.log("播放列表结束，停止播放");
-      setCurrentPlaying(null);
-    }
-  };
-
-  const handlePlay = async (music: LikedMusicType) => {
-    try {
-      const bvid = music.bvid;
-
-      // 更新状态：清除错误信息
-      setPlayingStates((prev) => ({
-        ...prev,
-        [bvid]: { ...prev[bvid], error: undefined },
-      }));
-
-      // 如果当前音乐正在播放，则暂停
-      if (currentPlaying === bvid && howlRef.current) {
-        console.log("当前点击的音乐正在播放");
-        return;
-      }
-
-      // 如果有其他音乐在播放，先停止并重置其状态
-      if (howlRef.current && currentPlaying) {
-        howlRef.current.stop();
-        howlRef.current.unload();
-        howlRef.current = null;
-
-        // 重置前一首音乐的播放状态
-        setPlayingStates((prev) => ({
-          ...prev,
-          [currentPlaying]: {
-            ...prev[currentPlaying],
-            isPlaying: false,
-            isLoading: false,
-          },
-        }));
-      }
-
-      // 设置加载状态
-      setPlayingStates((prev) => ({
-        ...prev,
-        [bvid]: { isPlaying: false, isLoading: true },
-      }));
-      setCurrentPlaying(bvid);
-
-      // 获取视频信息
-      const response = await fetch(`https://api.bilibili.com/x/web-interface/view?bvid=${bvid}`, {
-        credentials: "include",
-      });
-      const { data, code, message } = await response.json();
-      if (code !== 0) {
-        throw new Error(message || "获取视频信息失败");
-      }
-      const { cid } = data;
-
-      // 获取播放地址
-      const response2 = await fetch(
-        `https://api.bilibili.com/x/player/playurl?fnval=16&bvid=${bvid}&cid=${cid}`,
-        { credentials: "include" },
-      );
-      const { data: data2, code: code2, message: message2 } = await response2.json();
-      if (code2 !== 0) {
-        throw new Error(message2 || "获取播放地址失败");
-      }
-
-      const { dash } = data2;
-      if (!dash || !dash.audio || dash.audio.length === 0) {
-        throw new Error("未找到音频流");
-      }
-
-      const url = getAudioUrl(dash.audio[0]);
-
-      // 创建新的Howl实例
-      howlRef.current = new Howl({
-        src: [url],
-        format: ["m4a", "mp3"],
-        html5: true,
-        onload: () => {
-          setPlayingStates((prev) => ({
-            ...prev,
-            [bvid]: { isPlaying: false, isLoading: false },
-          }));
-        },
-        onplay: () => {
-          setPlayingStates((prev) => ({
-            ...prev,
-            [bvid]: { isPlaying: true, isLoading: false },
-          }));
-        },
-        onpause: () => {
-          setPlayingStates((prev) => ({
-            ...prev,
-            [bvid]: { isPlaying: false, isLoading: false },
-          }));
-        },
-        onend: () => {
-          handleMusicEnd(bvid);
-        },
-        onplayerror: (_id: any, error: any) => {
-          console.error("播放错误:", error);
-          setPlayingStates((prev) => ({
-            ...prev,
-            [bvid]: {
-              isPlaying: false,
-              isLoading: false,
-              error: "音频播放失败",
-            },
-          }));
-          setCurrentPlaying(null);
-        },
-        onloaderror: (_id: any, error: any) => {
-          console.error("加载错误:", error);
-          setPlayingStates((prev) => ({
-            ...prev,
-            [bvid]: {
-              isPlaying: false,
-              isLoading: false,
-              error: "音频加载失败",
-            },
-          }));
-          setCurrentPlaying(null);
-        },
-      });
-
-      // 播放音频
-      howlRef.current.play();
-    } catch (error) {
-      console.error("播放失败:", error);
-      setPlayingStates((prev) => ({
-        ...prev,
-        [music.bvid]: {
-          isPlaying: false,
-          isLoading: false,
-          error: error instanceof Error ? error.message : "播放失败",
-        },
-      }));
-      setCurrentPlaying(null);
-    }
-  };
-
-  const handleStop = (bvid: string) => {
-    if (howlRef.current && currentPlaying === bvid) {
-      howlRef.current.stop();
-      howlRef.current.unload();
-      howlRef.current = null;
-    }
-    setPlayingStates((prev) => ({
-      ...prev,
-      [bvid]: { isPlaying: false, isLoading: false },
-    }));
-    setCurrentPlaying(null);
+  const handlePlay = (music: LikedMusicType) => {
+    void play(music, likedMusic, "liked");
   };
 
   const handlePlayPause = () => {
-    if (!currentPlaying) {
-      // 如果没有播放音乐，播放第一首
-      if (likedMusic.length > 0) {
-        handlePlay(likedMusic[0]);
-      }
+    if (!current) {
+      if (likedMusic.length > 0) handlePlay(likedMusic[0]);
       return;
     }
-
-    // 如果有音乐正在播放，切换播放/暂停状态
-    const currentState = playingStates[currentPlaying];
-    if (currentState?.isPlaying) {
-      if (howlRef.current) {
-        howlRef.current.pause();
-      }
-    } else {
-      if (howlRef.current) {
-        howlRef.current.play();
-      }
-    }
-  };
-
-  const handlePrevious = () => {
-    if (!currentPlaying || likedMusic.length === 0) return;
-
-    const currentIndex = likedMusic.findIndex((music) => music.bvid === currentPlaying);
-    if (currentIndex > 0) {
-      handlePlay(likedMusic[currentIndex - 1]);
-    } else {
-      // 如果是第一首，跳到最后一首
-      handlePlay(likedMusic[likedMusic.length - 1]);
-    }
-  };
-
-  const handleNext = () => {
-    if (!currentPlaying || likedMusic.length === 0) return;
-
-    const currentIndex = likedMusic.findIndex((music) => music.bvid === currentPlaying);
-
-    // 随机播放模式：随机选择下一首
-    if (playMode === "random") {
-      if (likedMusic.length > 1) {
-        let randomIndex;
-        do {
-          randomIndex = Math.floor(Math.random() * likedMusic.length);
-        } while (randomIndex === currentIndex && likedMusic.length > 1);
-        handlePlay(likedMusic[randomIndex]);
-      }
-      return;
-    }
-
-    // 顺序播放和单曲循环模式：都按顺序切换到下一首
-    if (currentIndex < likedMusic.length - 1) {
-      handlePlay(likedMusic[currentIndex + 1]);
-    } else {
-      // 如果是最后一首，跳到第一首
-      handlePlay(likedMusic[0]);
-    }
-  };
-
-  const togglePlayMode = () => {
-    setPlayMode((prevMode) => {
-      if (prevMode === "order") {
-        return "loop";
-      } else if (prevMode === "loop") {
-        return "random";
-      } else {
-        return "order";
-      }
-    });
+    togglePlay();
   };
 
   const getPlayModeIcon = () => {
@@ -366,20 +90,6 @@ const LikedMusic = () => {
     loadLikedMusic();
   }, []);
 
-  // 从本地存储加载播放模式
-  useEffect(() => {
-    const loadPlayMode = async () => {
-      const savedMode = await getStorageValue<PlayMode>("music_play_mode", "order");
-      setPlayMode(savedMode);
-    };
-    loadPlayMode();
-  }, []);
-
-  // 当播放模式改变时保存到本地存储
-  useEffect(() => {
-    setStorageValue("music_play_mode", playMode);
-  }, [playMode]);
-
   const handleMusicRemoved = (bvid: string) => {
     setLikedMusic((prev) => prev.filter((music) => music.bvid !== bvid));
   };
@@ -400,11 +110,8 @@ const LikedMusic = () => {
     );
   }
 
-  // 获取当前播放的音乐信息
-  const currentMusic = currentPlaying
-    ? likedMusic.find((music) => music.bvid === currentPlaying)
-    : null;
-  const currentState = currentPlaying ? playingStates[currentPlaying] : null;
+  const currentMusic = current;
+  const currentState = current ? { isPlaying, isLoading } : null;
 
   return (
     <div className="min-h-screen bg-wash/30 dark:bg-night">
@@ -423,8 +130,8 @@ const LikedMusic = () => {
             <div className="flex items-center justify-center gap-2">
               <button
                 className="p-2 text-ink-soft dark:text-night-muted hover:bg-wash dark:hover:bg-night-line/60 rounded-full transition-colors duration-200 disabled:opacity-50"
-                onClick={handlePrevious}
-                disabled={!currentPlaying || likedMusic.length === 0}
+                onClick={previous}
+                disabled={!current || likedMusic.length === 0}
                 title="上一首"
               >
                 <SkipBack size={24} />
@@ -453,8 +160,8 @@ const LikedMusic = () => {
 
               <button
                 className="p-2 text-ink-soft dark:text-night-muted hover:bg-wash dark:hover:bg-night-line/60 rounded-full transition-colors duration-200 disabled:opacity-50"
-                onClick={handleNext}
-                disabled={!currentPlaying || likedMusic.length === 0}
+                onClick={next}
+                disabled={!current || likedMusic.length === 0}
                 title="下一首"
               >
                 <SkipForward size={24} />
@@ -467,7 +174,7 @@ const LikedMusic = () => {
                     ? "hover:bg-wash dark:hover:bg-night-line/60 text-ink-soft dark:text-night-muted"
                     : "bg-brand-soft dark:bg-brand/10 text-brand dark:text-brand hover:bg-pink-200 dark:hover:bg-brand/20"
                 }`}
-                onClick={togglePlayMode}
+                onClick={cyclePlayMode}
                 title={getPlayModeText()}
               >
                 {getPlayModeIcon()}
@@ -520,9 +227,9 @@ const LikedMusic = () => {
                 music={music}
                 onRemoved={() => handleMusicRemoved(music.bvid)}
                 onPlay={() => handlePlay(music)}
-                isPlaying={playingStates[music.bvid]?.isPlaying || false}
-                isLoading={playingStates[music.bvid]?.isLoading || false}
-                playError={playingStates[music.bvid]?.error}
+                isPlaying={current?.bvid === music.bvid && isPlaying}
+                isLoading={current?.bvid === music.bvid && isLoading}
+                playError={playError?.bvid === music.bvid ? playError.message : undefined}
               />
             ))}
           </div>

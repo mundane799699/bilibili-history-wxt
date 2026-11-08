@@ -5,6 +5,7 @@ import { About } from "../../pages/About";
 import { Sidebar } from "../../components/Sidebar";
 import Settings from "../../pages/Settings";
 import ScrollToTopButton from "../../components/ScrollToTopButton";
+import { MiniPlayer } from "../../components/MiniPlayer";
 import toast, { Toaster } from "react-hot-toast";
 import Feedback from "../../pages/Feedback";
 import CloudSync from "../../pages/CloudSync";
@@ -271,6 +272,7 @@ const App = () => {
           </Routes>
         </div>
         <ScrollToTopButton />
+        <MiniPlayer />
       </MainLayout>
     </HashRouter>
   );
