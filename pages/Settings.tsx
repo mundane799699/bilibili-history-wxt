@@ -20,8 +20,8 @@ import { checkStorageHealth, formatStorageSize, StorageHealthReport } from "../u
 
 const Settings = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [isSyncDelete, setIsSyncDelete] = useState(false);
-  const [isSyncDeleteFromBilibili, setIsSyncDeleteFromBilibili] = useState(false);
+  const [isSyncDelete, setIsSyncDelete] = useState(true);
+  const [isSyncDeleteFromBilibili, setIsSyncDeleteFromBilibili] = useState(true);
   const [hiddenMenus, setHiddenMenus] = useState<string[]>([]);
   const [dateSelectionMode, setDateSelectionMode] = useState<"range" | "single">("range");
   const [historyLoadMode, setHistoryLoadMode] = useState<"pagination" | "scroll">("pagination");
@@ -32,7 +32,7 @@ const Settings = () => {
   const [isResetLoading, setIsResetLoading] = useState(false);
   const [resetStatus, setResetStatus] = useState("");
 
-  const [syncInterval, setSyncInterval] = useState<number | string>(1);
+  const [syncInterval, setSyncInterval] = useState<number | string>(30);
   const [storageHealth, setStorageHealth] = useState<StorageHealthReport | null>(null);
   const [isCheckingStorage, setIsCheckingStorage] = useState(false);
   const [storageHealthError, setStorageHealthError] = useState("");
@@ -68,10 +68,10 @@ const Settings = () => {
   useEffect(() => {
     // 加载设置
     const loadSettings = async () => {
-      const syncDelete = await getStorageValue(IS_SYNC_DELETE, false);
-      const syncDeleteFromBilibili = await getStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, false);
+      const syncDelete = await getStorageValue(IS_SYNC_DELETE, true);
+      const syncDeleteFromBilibili = await getStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, true);
       const menus = await getStorageValue<string[]>(HIDDEN_MENUS, []);
-      const storedSyncInterval = await getStorageValue(SYNC_INTERVAL, 1);
+      const storedSyncInterval = await getStorageValue(SYNC_INTERVAL, 30);
       const storedDateMode = await getStorageValue(DATE_SELECTION_MODE, "range");
       const storedHistoryLoadMode = await getStorageValue(HISTORY_LOAD_MODE, "pagination");
       const migrationReport = await getStorageValue<{ skipped?: number }>(
@@ -421,7 +421,7 @@ const Settings = () => {
                   同步删除：B站 -&gt; 插件
                 </h3>
                 <p className="text-xs text-ink-faint dark:text-night-muted mt-1">
-                  B站删记录时同步删除该内容的全部本地观看记录（默认关闭）
+                  B站删记录时同步删除该内容的全部本地观看记录
                 </p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer shrink-0">

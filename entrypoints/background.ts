@@ -1,4 +1,5 @@
 import {
+  BACKUP_REMINDER_LAST_DISMISSED_AT,
   HAS_FULL_SYNC,
   HAS_FULL_FAV_SYNC,
   HISTORY_LAST_SYNC,
@@ -237,38 +238,13 @@ export default defineBackground(() => {
       periodInMinutes: 1,
     });
 
-    // 只在首次安装时打开设置页面并执行初始化同步
+    // 首次安装时打开历史记录页面（与点击插件图标一致）
     if (details.reason === "install") {
-      const url = browser.runtime.getURL("/my-history.html#/welcome");
-      browser.tabs.create({ url });
-
-      // 延迟执行，确保页面加载状态
-      setTimeout(async () => {
-        // 并行执行初始化同步
-        const initHistory = async () => {
-          try {
-            await syncHistory(true);
-          } catch (e) {
-            console.error("History init failed", e);
-          }
-        };
-        const initFav = async () => {
-          try {
-            const task = startFavoriteSync(() => syncFavorites(true));
-            if (!task) return;
-            try {
-              await task;
-              await setStorageValue(HAS_FULL_FAV_SYNC, true);
-            } finally {
-              finishFavoriteSync(task);
-            }
-          } catch (e) {
-            console.error("Fav init failed", e);
-          }
-        };
-        initHistory();
-        initFav();
-      }, 1000);
+      // 首次安装不弹备份提醒，按提醒间隔（7 天）从安装时开始计算
+      await setStorageValue(BACKUP_REMINDER_LAST_DISMISSED_AT, Date.now());
+      browser.tabs.create({
+        url: browser.runtime.getURL("/my-history.html"),
+      });
     }
   });
 
@@ -285,7 +261,7 @@ export default defineBackground(() => {
   browser.alarms.onAlarm.addListener(async (alarm) => {
     if (alarm.name === "syncHistory") {
       // 获取同步间隔
-      const syncInterval = await getStorageValue(SYNC_INTERVAL, 1);
+      const syncInterval = await getStorageValue(SYNC_INTERVAL, 30);
       // 根据最近一次成功同步的时间判断是否需要同步
       const lastSyncTime = await getStorageValue<number>(HISTORY_LAST_SYNC, 0);
       const elapsed = Date.now() - lastSyncTime;
@@ -1034,7 +1010,7 @@ export default defineBackground(() => {
       return;
     }
     try {
-      const syncDeleteFromBilibili = await getStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, false);
+      const syncDeleteFromBilibili = await getStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, true);
       if (!syncDeleteFromBilibili) {
         sendResponse({ success: true, message: "同步删除未开启" });
         return;

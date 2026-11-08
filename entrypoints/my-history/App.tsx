@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { History } from "../../pages/History";
 import { About } from "../../pages/About";
 import { Sidebar } from "../../components/Sidebar";
@@ -14,7 +14,6 @@ import JsonBackup from "../../pages/backup/JsonBackup";
 import SearchMusic from "../../pages/music/SearchMusic";
 import LikedMusic from "../../pages/music/LikedMusic";
 import { Favorites } from "../../pages/Favorites";
-import Welcome from "../../pages/Welcome";
 import AISearch from "../../pages/AISearch";
 import Reward from "../../pages/Reward";
 import { UpdateNoticeModal } from "../../components/UpdateNoticeModal";
@@ -121,9 +120,7 @@ interface MainLayoutProps {
 }
 
 const MainLayout = ({ children }: MainLayoutProps) => {
-  const location = useLocation();
   const navigate = useNavigate();
-  const isWelcome = location.pathname === "/welcome";
   const [isUpdateNoticeOpen, setIsUpdateNoticeOpen] = useState(false);
   const [isUpdateNoticeReady, setIsUpdateNoticeReady] = useState(false);
   const [canEvaluateBackupReminder, setCanEvaluateBackupReminder] = useState(false);
@@ -139,15 +136,6 @@ const MainLayout = ({ children }: MainLayoutProps) => {
   }, []);
 
   useEffect(() => {
-    if (isWelcome) {
-      setIsFirstRunGuideOpen(false);
-      setIsFirstRunGuideReady(false);
-      setIsUpdateNoticeOpen(false);
-      setIsUpdateNoticeReady(false);
-      setCanEvaluateBackupReminder(false);
-      return;
-    }
-
     let isActive = true;
     setIsFirstRunGuideReady(false);
     void getStorageValue(FIRST_RUN_GUIDE_COMPLETED, false)
@@ -166,7 +154,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
     return () => {
       isActive = false;
     };
-  }, [isWelcome]);
+  }, []);
 
   useEffect(() => {
     const handleGuideStorageChange = (
@@ -183,7 +171,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
   }, []);
 
   useEffect(() => {
-    if (isWelcome || !isFirstRunGuideReady || isFirstRunGuideOpen) {
+    if (!isFirstRunGuideReady || isFirstRunGuideOpen) {
       setIsUpdateNoticeReady(false);
       setCanEvaluateBackupReminder(false);
       return;
@@ -196,13 +184,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
     const timerId = window.setTimeout(() => setCanEvaluateBackupReminder(true), 300);
     return () => window.clearTimeout(timerId);
-  }, [
-    isFirstRunGuideOpen,
-    isFirstRunGuideReady,
-    isUpdateNoticeOpen,
-    isUpdateNoticeReady,
-    isWelcome,
-  ]);
+  }, [isFirstRunGuideOpen, isFirstRunGuideReady, isUpdateNoticeOpen, isUpdateNoticeReady]);
 
   const completeFirstRunGuide = useCallback(() => {
     setIsFirstRunGuideOpen(false);
@@ -213,19 +195,17 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
   return (
     <div className="flex h-screen bg-paper text-ink dark:bg-night dark:text-night-text">
-      {!isWelcome && <Sidebar />}
+      <Sidebar />
       {/* 主内容区域 */}
-      <div className={`${!isWelcome ? "ml-52" : ""} w-full transition-all duration-300`}>
-        {children}
-      </div>
-      {!isWelcome && isFirstRunGuideReady && !isFirstRunGuideOpen && (
+      <div className="ml-52 w-full transition-all duration-300">{children}</div>
+      {isFirstRunGuideReady && !isFirstRunGuideOpen && (
         <UpdateNoticeModal
           onOpenChange={handleUpdateNoticeOpenChange}
           onReady={handleUpdateNoticeReady}
         />
       )}
-      {!isWelcome && canEvaluateBackupReminder && <BackupReminderController />}
-      {!isWelcome && isFirstRunGuideReady && (
+      {canEvaluateBackupReminder && <BackupReminderController />}
+      {isFirstRunGuideReady && (
         <FirstRunGuideModal
           open={isFirstRunGuideOpen}
           onComplete={completeFirstRunGuide}
@@ -248,7 +228,6 @@ const App = () => {
       <MainLayout>
         <div>
           <Routes>
-            <Route path="/welcome" element={<Welcome />} />
             <Route path="/" element={<History />} />
             <Route path="/about" element={<About />} />
             <Route path="/settings" element={<Settings />} />
