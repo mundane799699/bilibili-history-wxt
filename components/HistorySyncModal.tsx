@@ -11,7 +11,13 @@ import {
 } from "lucide-react";
 import { HISTORY_LAST_SYNC } from "../utils/constants";
 import { getStorageValue } from "../utils/storage";
-import { HistoryDisplayMode, SyncHistoryRequest, SyncHistoryResponse } from "../utils/types";
+import {
+  HistoryDisplayMode,
+  HistorySyncProgress,
+  HistorySyncProgressMessage,
+  SyncHistoryRequest,
+  SyncHistoryResponse,
+} from "../utils/types";
 
 type SyncPhase = "idle" | "syncing" | "success" | "error";
 
@@ -31,6 +37,84 @@ interface HistorySyncModalProps {
 
 const formatDateTime = (timestamp: number) => new Date(timestamp).toLocaleString();
 
+/**
+ * 增量同步有明确终点（上次同步的水位），按已回溯的时间跨度估算百分比；
+ * 全量同步无法预知总量，返回 null 显示不确定进度条。
+ */
+const estimatePercent = (progress: HistorySyncProgress | null): number | null => {
+  if (!progress || progress.mode !== "incremental" || progress.targetViewAt <= 0) return null;
+  if (progress.oldestViewAt <= 0) return 0;
+  const span = progress.newestViewAt - progress.targetViewAt;
+  if (span <= 0) return 100;
+  const done = (progress.newestViewAt - progress.oldestViewAt) / span;
+  return Math.round(Math.min(1, Math.max(0, done)) * 100);
+};
+
+const SyncProgressPanel = ({
+  isFullSync,
+  progress,
+}: {
+  isFullSync: boolean;
+  progress: HistorySyncProgress | null;
+}) => {
+  const percent = estimatePercent(progress);
+  const hasData = !!progress && progress.pages > 0;
+
+  return (
+    <div
+      role="status"
+      className="mt-5 rounded-lg border border-brand/25 bg-brand-soft p-4 text-brand-strong dark:border-brand/20 dark:bg-brand/10 dark:text-brand"
+    >
+      <div className="flex items-center gap-3">
+        <RefreshCw className="h-5 w-5 shrink-0 animate-spin" />
+        <p className="text-sm font-medium">
+          {isFullSync ? "正在全量同步，请耐心等待..." : "正在同步最新历史记录..."}
+        </p>
+        {percent !== null && (
+          <span className="ml-auto text-sm font-semibold tabular-nums">{percent}%</span>
+        )}
+      </div>
+
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-brand/15 dark:bg-brand/20">
+        {percent !== null ? (
+          <div
+            className="h-full rounded-full bg-brand transition-[width] duration-500 ease-out"
+            style={{ width: `${percent}%` }}
+          />
+        ) : (
+          <div className="h-full w-full animate-pulse rounded-full bg-brand/60" />
+        )}
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+        {[
+          { label: "已拉取", value: progress?.fetchedItems ?? 0, unit: "条" },
+          { label: "新增", value: progress?.newItems ?? 0, unit: "条" },
+          { label: "已扫描", value: progress?.pages ?? 0, unit: "页" },
+        ].map((stat) => (
+          <div key={stat.label} className="rounded-md bg-white/70 px-2 py-2 dark:bg-night-card/60">
+            <div className="text-base font-semibold tabular-nums text-ink dark:text-night-text">
+              {stat.value.toLocaleString()}
+              <span className="ml-0.5 text-xs font-normal text-ink-muted dark:text-night-muted">
+                {stat.unit}
+              </span>
+            </div>
+            <div className="mt-0.5 text-[11px] text-ink-muted dark:text-night-muted">
+              {stat.label}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p className="mt-3 text-xs text-ink-muted dark:text-night-muted">
+        {hasData && progress.oldestViewAt > 0
+          ? `已回溯到 ${formatDateTime(progress.oldestViewAt * 1000)} 的观看记录`
+          : "正在获取第一页数据..."}
+      </p>
+    </div>
+  );
+};
+
 export const HistorySyncModal = ({
   open,
   onClose,
@@ -42,6 +126,9 @@ export const HistorySyncModal = ({
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
   const [isLastSyncLoaded, setIsLastSyncLoaded] = useState(false);
+  const [progress, setProgress] = useState<HistorySyncProgress | null>(null);
+  /** 本次手动同步的发起时间，用于过滤掉之前（或定时任务）残留的进度 */
+  const syncStartedAtRef = useRef(0);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
 
@@ -123,11 +210,29 @@ export const HistorySyncModal = ({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isSyncing, onClose, open]);
 
+  // 同步进行中时监听后台广播的进度
+  useEffect(() => {
+    if (!isSyncing) return;
+
+    const handleMessage = (message: unknown) => {
+      const msg = message as Partial<HistorySyncProgressMessage> | undefined;
+      if (msg?.action !== "historySyncProgress" || !msg.progress) return;
+      // 留 1 秒余量，过滤掉定时任务等其他同步的进度，同时容忍两端时钟的微小先后差
+      if (msg.progress.startedAt >= syncStartedAtRef.current - 1000) setProgress(msg.progress);
+      // 不返回 true：这是单向通知，不需要回复
+    };
+
+    browser.runtime.onMessage.addListener(handleMessage);
+    return () => browser.runtime.onMessage.removeListener(handleMessage);
+  }, [isSyncing]);
+
   const handleClose = () => {
     if (!isSyncing) onClose();
   };
 
   const handleSync = async () => {
+    syncStartedAtRef.current = Date.now();
+    setProgress(null);
     setSyncPhase("syncing");
     setSyncResult(null);
 
@@ -336,15 +441,7 @@ export const HistorySyncModal = ({
         )}
 
         {syncPhase === "syncing" && (
-          <div
-            role="status"
-            className="mt-5 flex items-center gap-3 rounded-lg border border-brand/25 bg-brand-soft p-4 text-brand-strong dark:border-brand/20 dark:bg-brand/10 dark:text-brand"
-          >
-            <RefreshCw className="h-5 w-5 shrink-0 animate-spin" />
-            <p className="text-sm font-medium">
-              {isFullSync ? "正在全量同步，请耐心等待..." : "正在同步最新历史记录..."}
-            </p>
-          </div>
+          <SyncProgressPanel isFullSync={isFullSync} progress={progress} />
         )}
 
         {syncPhase === "success" && syncResult && (

@@ -10,7 +10,13 @@ import {
 } from "@/utils/constants";
 import { deleteHistoryContent, upsertHistorySnapshots } from "@/utils/db";
 import { getStorageValue, setStorageValue } from "@/utils/storage";
-import type { HistoryItem, SyncHistoryRequest, SyncHistoryResponse } from "@/utils/types";
+import type {
+  HistoryItem,
+  HistorySyncProgress,
+  HistorySyncProgressMessage,
+  SyncHistoryRequest,
+  SyncHistoryResponse,
+} from "@/utils/types";
 import { getSessdata, requestBiliApi } from "./shared/bilibiliApi";
 import { MessageHandlerMap, syncModeLabel } from "./shared/types";
 import { getMsUntilDue, sleep } from "./shared/utils";
@@ -72,47 +78,90 @@ const getValidViewTimes = (items: HistoryItem[]): number[] =>
  * 按游标分页拉取历史记录。
  * - 全量：一直翻到服务端 is_end。
  * - 增量：翻到某页最早的记录早于上次的水位（view_at）即停止，页之间有重叠以防漏记。
+ *
+ * 每拉完一页把进度广播给扩展页面（不落 storage），同步弹窗据此实时展示。
  */
-export async function syncHistory(isFullSync: boolean): Promise<void> {
+export async function syncHistory(
+  isFullSync: boolean,
+): Promise<Pick<HistorySyncProgress, "fetchedItems" | "newItems">> {
   const sessdata = await getSessdata();
   const previousWatermark = await getStorageValue<number>(HISTORY_SYNC_WATERMARK_VIEW_AT, 0);
   let newestViewAt = previousWatermark;
   let cursor: HistoryCursor = { max: 0, view_at: 0 };
   console.log(`${syncModeLabel(isFullSync)}同步开始`);
 
-  for (let page = 1; ; page++) {
-    const data = await requestBiliApi<HistoryCursorPage>(
-      `https://api.bilibili.com/x/web-interface/history/cursor?max=${cursor.max}&view_at=${cursor.view_at}&type=all&ps=${PAGE_SIZE}`,
-      { sessdata, label: "获取历史记录失败" },
-    );
-    const list = data.list ?? [];
-    // 只有 is_end 或空列表才代表真正翻完；仅看 list.length 会在 cursor 归零后从头再来，造成死循环
-    if (list.length === 0) break;
-    cursor = data.cursor;
+  const progress: HistorySyncProgress = {
+    status: "syncing",
+    mode: isFullSync ? "full" : "incremental",
+    pages: 0,
+    fetchedItems: 0,
+    newItems: 0,
+    newestViewAt: 0,
+    oldestViewAt: 0,
+    targetViewAt: isFullSync ? 0 : previousWatermark,
+    startedAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+  const reportProgress = async (patch: Partial<HistorySyncProgress> = {}) => {
+    Object.assign(progress, patch, { updatedAt: Date.now() });
+    const message: HistorySyncProgressMessage = {
+      action: "historySyncProgress",
+      progress: { ...progress },
+    };
+    // 没有打开的扩展页面时 sendMessage 会因无人接收而 reject，进度只是展示用，忽略即可
+    await browser.runtime.sendMessage(message).catch(() => {});
+  };
+  await reportProgress();
 
-    const snapshots = list.map(toHistorySnapshot);
-    await upsertHistorySnapshots(snapshots, "bilibili");
+  try {
+    for (let page = 1; ; page++) {
+      const data = await requestBiliApi<HistoryCursorPage>(
+        `https://api.bilibili.com/x/web-interface/history/cursor?max=${cursor.max}&view_at=${cursor.view_at}&type=all&ps=${PAGE_SIZE}`,
+        { sessdata, label: "获取历史记录失败" },
+      );
+      const list = data.list ?? [];
+      // 只有 is_end 或空列表才代表真正翻完；仅看 list.length 会在 cursor 归零后从头再来，造成死循环
+      if (list.length === 0) break;
+      cursor = data.cursor;
 
-    const viewTimes = getValidViewTimes(snapshots);
-    newestViewAt = Math.max(newestViewAt, ...viewTimes);
+      const snapshots = list.map(toHistorySnapshot);
+      const { newEvents } = await upsertHistorySnapshots(snapshots, "bilibili");
 
-    const reachedWatermark =
-      !isFullSync &&
-      previousWatermark > 0 &&
-      viewTimes.length > 0 &&
-      Math.min(...viewTimes) < previousWatermark;
-    if (cursor.is_end || reachedWatermark) break;
+      const viewTimes = getValidViewTimes(snapshots);
+      newestViewAt = Math.max(newestViewAt, ...viewTimes);
 
-    if (!isFullSync && page >= MAX_INCREMENTAL_PAGES) {
-      throw new Error(`增量同步已达到 ${MAX_INCREMENTAL_PAGES} 页保护上限，本轮未推进同步水位`);
+      await reportProgress({
+        pages: page,
+        fetchedItems: progress.fetchedItems + snapshots.length,
+        newItems: progress.newItems + newEvents,
+        newestViewAt: Math.max(progress.newestViewAt, ...viewTimes),
+        oldestViewAt: viewTimes.length > 0 ? Math.min(...viewTimes) : progress.oldestViewAt,
+      });
+
+      const reachedWatermark =
+        !isFullSync &&
+        previousWatermark > 0 &&
+        viewTimes.length > 0 &&
+        Math.min(...viewTimes) < previousWatermark;
+      if (cursor.is_end || reachedWatermark) break;
+
+      if (!isFullSync && page >= MAX_INCREMENTAL_PAGES) {
+        throw new Error(`增量同步已达到 ${MAX_INCREMENTAL_PAGES} 页保护上限，本轮未推进同步水位`);
+      }
+      await sleep(PAGE_DELAY_MS);
     }
-    await sleep(PAGE_DELAY_MS);
+  } catch (error) {
+    await reportProgress({ status: "error" });
+    throw error;
   }
   console.log(`${syncModeLabel(isFullSync)}同步结束`);
 
   if (isFullSync) await setStorageValue(HAS_FULL_SYNC, true);
   if (newestViewAt > 0) await setStorageValue(HISTORY_SYNC_WATERMARK_VIEW_AT, newestViewAt);
   await setStorageValue(HISTORY_LAST_SYNC, Date.now());
+  await reportProgress({ status: "success" });
+
+  return { fetchedItems: progress.fetchedItems, newItems: progress.newItems };
 }
 
 /** 定时任务：距上次成功同步超过用户设置的间隔才执行增量同步 */
@@ -143,8 +192,10 @@ async function handleDeleteHistoryItem(message: { id?: unknown; business?: unkno
 
 export const historyMessageHandlers: MessageHandlerMap = {
   syncHistory: async ({ isFullSync }: SyncHistoryRequest): Promise<SyncHistoryResponse> => {
-    await syncHistory(Boolean(isFullSync));
-    return { success: true, message: `${syncModeLabel(Boolean(isFullSync))}同步成功` };
+    const { fetchedItems, newItems } = await syncHistory(Boolean(isFullSync));
+    const summary =
+      newItems > 0 ? `，共拉取 ${fetchedItems} 条，新增 ${newItems} 条` : "，没有新的观看记录";
+    return { success: true, message: `${syncModeLabel(Boolean(isFullSync))}同步成功${summary}` };
   },
 
   deleteHistoryItem: handleDeleteHistoryItem,

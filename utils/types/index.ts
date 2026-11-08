@@ -118,6 +118,31 @@ export interface SyncHistoryRequest {
 export type SyncHistoryResponse =
   { success: true; message: string } | { success: false; error: string };
 
+/** 历史记录同步的实时进度，只在内存中，后台每同步完一页通过 HistorySyncProgressMessage 广播 */
+export interface HistorySyncProgress {
+  status: "syncing" | "success" | "error";
+  mode: "full" | "incremental";
+  /** 已拉取的页数 */
+  pages: number;
+  /** 已从 B 站拉取的记录条数 */
+  fetchedItems: number;
+  /** 其中本地此前没有的新观看记录数 */
+  newItems: number;
+  /** 本次同步拉到的最新一条记录的观看时间（秒） */
+  newestViewAt: number;
+  /** 已回溯到的最早观看时间（秒），0 表示还没拉到数据 */
+  oldestViewAt: number;
+  /** 增量同步的目标水位（秒）：回溯到这里即结束，可据此估算进度；全量同步为 0 */
+  targetViewAt: number;
+  startedAt: number;
+  updatedAt: number;
+}
+
+export interface HistorySyncProgressMessage {
+  action: "historySyncProgress";
+  progress: HistorySyncProgress;
+}
+
 export type LocalHistoryBackupErrorCode =
   | "NOT_ENABLED"
   | "NO_DIRECTORY"
