@@ -3,6 +3,7 @@
  * 这样用户修改间隔后无需重建 alarm。
  */
 import { LOCAL_HISTORY_BACKUP_ALARM } from "@/utils/constants";
+import { runScheduledCloudUpload } from "./cloudAutoUpload";
 import { runScheduledHistorySync } from "./history";
 import { runScheduledLocalBackup } from "./localBackup";
 import { runScheduledWebDavSync } from "./webdavAutoSync";
@@ -17,6 +18,7 @@ const SCHEDULED_TASKS: Record<string, ScheduledTask> = {
   syncHistory: { label: "历史记录定时同步", run: runScheduledHistorySync },
   syncWebDav: { label: "WebDAV 自动同步", run: runScheduledWebDavSync },
   [LOCAL_HISTORY_BACKUP_ALARM]: { label: "本地自动备份", run: runScheduledLocalBackup },
+  cloudAutoUpload: { label: "云端自动上传", run: runScheduledCloudUpload },
 };
 
 const ALARM_PERIOD_MINUTES = 1;

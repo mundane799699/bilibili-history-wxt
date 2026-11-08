@@ -1,16 +1,18 @@
-import {
-  getUnUploadedHistory,
-  markHistoryAsUploaded,
-  markAllHistoryAsUnuploaded,
-} from "@/utils/db";
-import { uploadBatchHistory } from "@/services/history";
+import { markAllHistoryAsUnuploaded } from "@/utils/db";
+import { isQuotaMessage, uploadPendingHistory } from "@/utils/cloudUpload";
+import { CLOUD_AUTO_UPLOAD_ENABLED } from "@/utils/constants";
+import { getStorageValue, setStorageValue } from "@/utils/storage";
 import { toast } from "react-hot-toast";
 import { useEffect, useState } from "react";
 import { useUserStore } from "@/utils/store";
 import { LoginModal } from "@/components/LoginModal";
 import { UserInfo } from "@/components/UserInfo";
 import { SubscribePromo } from "@/components/SubscribePromo";
-import { getMembershipStatus, type MembershipStatus } from "@/services/membership";
+import {
+  getMembershipStatus,
+  isMembershipValid,
+  type MembershipStatus,
+} from "@/services/membership";
 import { Card, CardTitle, PageHeader, Button } from "@/components/ui/Primitives";
 import {
   CheckCircle2,
@@ -22,14 +24,22 @@ import {
   UploadCloud,
   XCircle,
 } from "lucide-react";
-const FREE_LIMIT_MESSAGE = "免费用户最多可以上传500条历史记录";
-const EXPIRED_MESSAGE = "您的会员已过期，无法上传更多记录";
 
 const CloudSync = () => {
   const { userInfo } = useUserStore();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [membership, setMembership] = useState<MembershipStatus | null>(null);
   const isMember = Boolean(membership?.active);
+  const [autoUploadEnabled, setAutoUploadEnabled] = useState(true);
+
+  useEffect(() => {
+    getStorageValue(CLOUD_AUTO_UPLOAD_ENABLED, true).then(setAutoUploadEnabled);
+  }, []);
+
+  const handleAutoUploadToggle = async (enabled: boolean) => {
+    setAutoUploadEnabled(enabled);
+    await setStorageValue(CLOUD_AUTO_UPLOAD_ENABLED, enabled);
+  };
 
   // 登录状态变化（例如在官网登录后切回插件）时重新拉取会员信息
   useEffect(() => {
@@ -61,64 +71,21 @@ const CloudSync = () => {
     }
 
     try {
-      console.log("开始上传数据到云端");
-      // 从indexeddb中获取uploaded不为true的数据
-      const unUploadedData = await getUnUploadedHistory();
-      console.log("获取到未上传的数据:", unUploadedData.length, "条");
-
-      if (unUploadedData.length === 0) {
-        console.log("没有需要上传的数据");
-        toast.success("没有需要上传的数据");
-        return;
-      }
-
-      // 初始化弹窗信息
-      setUploadInfo({
-        isUploading: true,
-        totalCount: unUploadedData.length,
-        isOpen: true,
-        successCount: 0,
-        failedCount: 0,
-        message: "",
-      });
-      const batchSize = 100;
-      // 分批上传
-      for (let i = 0; i < unUploadedData.length; i += batchSize) {
-        const batch = unUploadedData.slice(i, i + batchSize);
-        // 上传该批次数据
-        const result = (await uploadBatchHistory(batch)) as any;
-        const { message, success } = result;
-        if (success) {
-          // 上传成功，标记为已上传
-          await markHistoryAsUploaded(batch);
-          setUploadInfo((prev) => ({
-            ...prev,
-            successCount: prev.successCount + batch.length,
-          }));
-        } else {
-          if (message === FREE_LIMIT_MESSAGE || message === EXPIRED_MESSAGE) {
-            setUploadInfo((prev) => ({
-              ...prev,
-              failedCount: prev.totalCount - prev.successCount,
-              message: message,
-            }));
-            // 达到免费用户上传上限，不再上传，直接跳出循环
-            break;
-          } else {
-            setUploadInfo((prev) => ({
-              ...prev,
-              failedCount: prev.failedCount + batch.length,
-            }));
-          }
-        }
-      }
+      const result = await uploadPendingHistory((progress) =>
+        setUploadInfo({
+          isUploading: true,
+          isOpen: true,
+          totalCount: progress.totalCount,
+          successCount: progress.successCount,
+          failedCount: progress.failedCount,
+          message: progress.stopMessage,
+        }),
+      );
+      if (result.totalCount === 0) toast.success("没有需要上传的数据");
     } catch (error) {
       console.error("上传数据失败:", error);
     } finally {
-      setUploadInfo((prev) => ({
-        ...prev,
-        isUploading: false,
-      }));
+      setUploadInfo((prev) => ({ ...prev, isUploading: false }));
     }
   };
 
@@ -157,6 +124,40 @@ const CloudSync = () => {
       />
 
       <UserInfo membership={membership} />
+
+      <Card className="mt-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-[14px] font-semibold text-ink dark:text-night-text">
+              自动上传到云端
+            </p>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-ink-muted dark:text-night-muted">
+              开启后每小时在后台自动上传新的历史记录，仅对有效期内的会员生效。
+              {membership && !isMembershipValid(membership) && autoUploadEnabled && (
+                <span className="text-brand-strong dark:text-brand">
+                  当前不是会员，暂不会自动上传。
+                </span>
+              )}
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={autoUploadEnabled}
+            aria-label="自动上传历史记录到云端"
+            onClick={() => handleAutoUploadToggle(!autoUploadEnabled)}
+            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 dark:focus-visible:ring-offset-neutral-900 ${
+              autoUploadEnabled ? "bg-brand" : "bg-ink-faint/40 dark:bg-night-line"
+            }`}
+          >
+            <span
+              className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                autoUploadEnabled ? "translate-x-[22px]" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+        </div>
+      </Card>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         <Card className="flex flex-col">
@@ -233,6 +234,10 @@ const CloudSync = () => {
           <li className="flex gap-2">
             <span className="mt-[7px] h-1 w-1 flex-shrink-0 rounded-full bg-ink-faint" />
             上传成功后记录会被标记为已上传，重复点击不会重复上传。
+          </li>
+          <li className="flex gap-2">
+            <span className="mt-[7px] h-1 w-1 flex-shrink-0 rounded-full bg-ink-faint" />
+            会员开启「自动上传到云端」后，插件每小时会在后台自动上传一次，无需手动操作。
           </li>
         </ul>
       </Card>
@@ -315,14 +320,12 @@ const CloudSync = () => {
                 </div>
               )}
 
-              {(uploadInfo.message === FREE_LIMIT_MESSAGE ||
-                uploadInfo.message === EXPIRED_MESSAGE) &&
-                !uploadInfo.isUploading && (
-                  <Button className="mt-5 w-full" onClick={handleUpgrade}>
-                    <Sparkles className="h-4 w-4" />
-                    升级会员，解锁不限量上传
-                  </Button>
-                )}
+              {isQuotaMessage(uploadInfo.message) && !uploadInfo.isUploading && (
+                <Button className="mt-5 w-full" onClick={handleUpgrade}>
+                  <Sparkles className="h-4 w-4" />
+                  升级会员，解锁不限量上传
+                </Button>
+              )}
             </div>
 
             {!uploadInfo.isUploading && (

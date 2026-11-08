@@ -56,6 +56,11 @@ export const DEFAULT_LOCAL_HISTORY_BACKUP_INTERVAL_HOURS = 24;
 export const DEFAULT_LOCAL_HISTORY_BACKUP_RETENTION_COUNT = 30;
 
 // WebDAV 同步相关
+// 云同步：会员自动上传历史记录
+export const CLOUD_AUTO_UPLOAD_ENABLED = "cloudAutoUploadEnabled"; // 默认 true，仅有效会员生效
+export const CLOUD_AUTO_UPLOAD_LAST_CHECK = "cloudAutoUploadLastCheck"; // 上次后台检查时间戳，用于控制每小时一次
+export const CLOUD_AUTO_UPLOAD_INTERVAL_MINUTES = 60;
+
 export const WEBDAV_CONFIG = "webdavConfig";
 export const WEBDAV_LAST_SYNC = "webdavLastSync";
 export const WEBDAV_AUTO_SYNC_ENABLED = "webdavAutoSyncEnabled";

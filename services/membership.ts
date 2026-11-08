@@ -17,6 +17,14 @@ const INACTIVE: MembershipStatus = {
   status: null,
 };
 
+/** 有效会员：后端判定为 active，且在有效期内（expiresAt 为空表示永久会员） */
+export const isMembershipValid = (membership: MembershipStatus | null | undefined): boolean => {
+  if (!membership?.loggedIn || !membership.active) return false;
+  if (!membership.expiresAt) return true;
+  const expiresAt = new Date(membership.expiresAt).getTime();
+  return Number.isFinite(expiresAt) && expiresAt > Date.now();
+};
+
 /**
  * 读取当前登录用户的会员状态。
  * 接口不可用或未登录时统一返回「非会员」，保证订阅引导可以正常展示。
