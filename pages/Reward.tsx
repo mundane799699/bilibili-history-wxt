@@ -1,5 +1,19 @@
 // Fake data for now; update this list on each release
 const REWARD_LIST: { name: string; amount: number; date: string; message?: string }[] = [
+  {
+    name: "江城子",
+    amount: 10,
+    date: "2026-10-11",
+    message: "感谢你的插件。(我之前也有给运营打赏过5块钱哦😉)",
+  },
+  { name: "佚名", amount: 5, date: "2026-10-05", message: "牛逼" },
+  { name: "佚名", amount: 30, date: "2026-10-01", message: "感谢您的分享" },
+  {
+    name: "佚名",
+    amount: 10,
+    date: "2026-09-15",
+    message: "解决了b站历史记录功能做得一坨💩的问题",
+  },
   { name: "佚名", amount: 10, date: "2026-09-12", message: "感谢你，帮大忙了" },
   { name: "2233_", amount: 3, date: "2026-09-09", message: "感谢作者" },
   { name: "椭圆兔", amount: 20, date: "2026-09-08", message: "处理速度快" },
