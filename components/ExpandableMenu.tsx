@@ -12,9 +12,14 @@ export interface ExpandableMenuProps {
     to: string;
   }[];
   tourId?: string;
+  /** 侧边栏折叠为图标栏时只显示图标，名称与子菜单改为悬停浮层 */
+  collapsed?: boolean;
 }
 
-const ExpandableMenu = ({
+const ExpandableMenu = (props: ExpandableMenuProps) =>
+  props.collapsed ? <CollapsedMenu {...props} /> : <ExpandedMenu {...props} />;
+
+const ExpandedMenu = ({
   title,
   icon,
   to,
@@ -103,6 +108,87 @@ const ExpandableMenu = ({
             );
           })}
         </ul>
+      )}
+    </div>
+  );
+};
+
+/**
+ * 折叠态菜单项：只显示图标。悬停时在右侧弹出浮层——普通项显示名称，带子菜单的项显示子菜单列表。
+ * 侧边栏的 nav 是 overflow-y-auto，绝对定位会被裁掉，所以浮层用 fixed 定位并按按钮位置计算 top。
+ */
+const CollapsedMenu = ({ title, icon, to, subMenus, tourId }: ExpandableMenuProps) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [flyoutTop, setFlyoutTop] = useState<number | null>(null);
+  const hasSubMenus = !!subMenus?.length;
+  const isActive = hasSubMenus
+    ? !!subMenus?.some((item) => item.to === location.pathname)
+    : location.pathname === to;
+
+  const showFlyout = (event: React.MouseEvent<HTMLElement> | React.FocusEvent<HTMLElement>) => {
+    setFlyoutTop(event.currentTarget.getBoundingClientRect().top);
+  };
+  const hideFlyout = () => setFlyoutTop(null);
+
+  return (
+    // 浮层是该 div 的 DOM 子节点，鼠标从按钮移入浮层不会触发 mouseleave
+    <div onMouseEnter={showFlyout} onMouseLeave={hideFlyout}>
+      <button
+        type="button"
+        data-tour={tourId}
+        aria-label={title}
+        onFocus={showFlyout}
+        onBlur={hideFlyout}
+        onClick={() => {
+          // 带子菜单的项点击时进入第一个子页面
+          const target = hasSubMenus ? subMenus![0].to : to;
+          if (target) navigate(target);
+        }}
+        className={`mx-auto flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
+          isActive
+            ? "bg-brand text-white shadow-sm shadow-brand/30"
+            : "text-ink-muted hover:bg-wash hover:text-ink-soft dark:text-night-muted dark:hover:bg-night-line/60 dark:hover:text-night-text"
+        }`}
+      >
+        {icon}
+      </button>
+
+      {flyoutTop !== null && (
+        // 左侧 pl-2 是透明"桥"，让鼠标能从按钮平滑移入浮层
+        <div
+          className={`fixed left-14 z-50 pl-2 ${hasSubMenus ? "" : "pointer-events-none"}`}
+          style={{ top: flyoutTop }}
+        >
+          {hasSubMenus ? (
+            <div className="min-w-36 rounded-xl border border-line bg-white p-1.5 shadow-lift dark:border-night-line dark:bg-night-card">
+              <p className="px-2.5 pb-1 pt-1 text-[11px] font-medium text-ink-faint dark:text-night-muted">
+                {title}
+              </p>
+              {subMenus!.map((item) => {
+                const active = location.pathname === item.to;
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    onClick={hideFlyout}
+                    className={`flex h-8 items-center rounded-lg px-2.5 text-[12.5px] transition-colors ${
+                      active
+                        ? "bg-brand font-medium text-white"
+                        : "text-ink-soft hover:bg-wash dark:text-night-muted dark:hover:bg-night-line/60 dark:hover:text-night-text"
+                    }`}
+                  >
+                    {item.title}
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="mt-1 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-[12px] font-medium text-white shadow-lift dark:bg-night-line dark:text-night-text">
+              {title}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

@@ -25,6 +25,7 @@ import { startVideoBackupWorker } from "../../utils/videoBackupWorker";
 import {
   BACKUP_REMINDER_LAST_DISMISSED_AT,
   FIRST_RUN_GUIDE_COMPLETED,
+  SIDEBAR_COLLAPSED,
 } from "../../utils/constants";
 import { getStorageValue, setStorageValue } from "../../utils/storage";
 import { exportHistoryToJSON } from "../../utils/export";
@@ -115,12 +116,30 @@ const BackupReminderController = () => {
   );
 };
 
+/** 侧边栏折叠状态，持久化到 storage，下次打开保持上次的选择 */
+const useSidebarCollapsed = () => {
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    void getStorageValue(SIDEBAR_COLLAPSED, false).then(setCollapsed);
+  }, []);
+
+  const toggleCollapsed = useCallback(() => {
+    const next = !collapsed;
+    setCollapsed(next);
+    void setStorageValue(SIDEBAR_COLLAPSED, next);
+  }, [collapsed]);
+
+  return [collapsed, toggleCollapsed] as const;
+};
+
 interface MainLayoutProps {
   children: React.ReactNode;
 }
 
 const MainLayout = ({ children }: MainLayoutProps) => {
   const navigate = useNavigate();
+  const [sidebarCollapsed, toggleSidebarCollapsed] = useSidebarCollapsed();
   const [isUpdateNoticeOpen, setIsUpdateNoticeOpen] = useState(false);
   const [isUpdateNoticeReady, setIsUpdateNoticeReady] = useState(false);
   const [canEvaluateBackupReminder, setCanEvaluateBackupReminder] = useState(false);
@@ -195,9 +214,13 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
   return (
     <div className="flex h-screen bg-paper text-ink dark:bg-night dark:text-night-text">
-      <Sidebar />
-      {/* 主内容区域 */}
-      <div className="ml-52 w-full transition-all duration-300">{children}</div>
+      <Sidebar collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebarCollapsed} />
+      {/* 主内容区域：左边距与侧边栏宽度同步过渡 */}
+      <div
+        className={`w-full transition-[margin] duration-200 ease-out ${sidebarCollapsed ? "ml-14" : "ml-52"}`}
+      >
+        {children}
+      </div>
       {isFirstRunGuideReady && !isFirstRunGuideOpen && (
         <UpdateNoticeModal
           onOpenChange={handleUpdateNoticeOpenChange}

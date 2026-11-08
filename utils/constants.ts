@@ -17,6 +17,7 @@ export const FAVORITE_FOLDER_SYNC_PROGRESS = "favoriteFolderSyncProgress";
 export const ALL_FAVORITE_FOLDERS_SYNC_PROGRESS = "allFavoriteFoldersSyncProgress";
 
 export const HIDDEN_MENUS = "hiddenMenus"; // Array of hidden titles
+export const SIDEBAR_COLLAPSED = "sidebarCollapsed"; // 侧边栏是否折叠为图标栏
 export const DATE_SELECTION_MODE = "date_selection_mode";
 export const GRID_COLUMNS = "gridColumns";
 // history page load mode: "pagination" | "scroll", default "pagination"
@@ -55,12 +56,12 @@ export const LOCAL_HISTORY_BACKUP_NEEDS_PERMISSION = "localHistoryBackupNeedsPer
 export const DEFAULT_LOCAL_HISTORY_BACKUP_INTERVAL_HOURS = 24;
 export const DEFAULT_LOCAL_HISTORY_BACKUP_RETENTION_COUNT = 30;
 
-// WebDAV 同步相关
 // 云同步：会员自动上传历史记录
 export const CLOUD_AUTO_UPLOAD_ENABLED = "cloudAutoUploadEnabled"; // 默认 true，仅有效会员生效
 export const CLOUD_AUTO_UPLOAD_LAST_CHECK = "cloudAutoUploadLastCheck"; // 上次后台检查时间戳，用于控制每小时一次
 export const CLOUD_AUTO_UPLOAD_INTERVAL_MINUTES = 60;
 
+// WebDAV 同步相关
 export const WEBDAV_CONFIG = "webdavConfig";
 export const WEBDAV_LAST_SYNC = "webdavLastSync";
 export const WEBDAV_AUTO_SYNC_ENABLED = "webdavAutoSyncEnabled";

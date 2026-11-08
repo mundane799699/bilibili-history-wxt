@@ -1,4 +1,4 @@
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
   CloudIcon,
@@ -15,6 +15,8 @@ import {
   Heart,
   LibraryBig,
   CloudUpload,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import ExpandableMenu from "./ExpandableMenu";
 import { SubscribePromo } from "./SubscribePromo";
@@ -133,7 +135,70 @@ const menuList = [
   },
 ];
 
-export const Sidebar = () => {
+interface SidebarProps {
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+}
+
+/** 品牌 Logo：渐变底 + 顶部高光 */
+const BrandLogo = () => (
+  <span className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-[9px] bg-gradient-to-br from-[#ff9ab8] via-brand to-brand-strong shadow-[0_6px_14px_-6px_rgba(240,90,132,0.75)] ring-1 ring-inset ring-white/25">
+    <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 to-transparent" />
+    <span className="relative text-[15px] font-bold leading-none text-white drop-shadow-sm">B</span>
+  </span>
+);
+
+/**
+ * 头部：
+ * - 展开态：Logo + 名称（点击回历史记录）+ 右侧折叠按钮；
+ * - 折叠态：只有 Logo，悬停时变成"展开"图标，点击展开。
+ */
+const SidebarHeader = ({ collapsed, onToggleCollapsed }: SidebarProps) => {
+  if (collapsed) {
+    return (
+      <div className="flex h-14 items-center justify-center border-b border-line dark:border-night-line">
+        <button
+          type="button"
+          onClick={onToggleCollapsed}
+          title="展开侧边栏"
+          aria-label="展开侧边栏"
+          className="group relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-wash dark:hover:bg-night-line/60"
+        >
+          <span className="transition-opacity duration-150 group-hover:opacity-0">
+            <BrandLogo />
+          </span>
+          <PanelLeftOpen className="absolute h-4 w-4 text-ink-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100 dark:text-night-muted" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-14 items-center gap-1 border-b border-line px-2.5 dark:border-night-line">
+      <Link
+        to="/"
+        title="返回历史记录"
+        className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-1 py-1 transition-opacity hover:opacity-80"
+      >
+        <BrandLogo />
+        <span className="truncate text-[14px] font-semibold tracking-[-0.01em] text-ink dark:text-night-text">
+          无限历史记录
+        </span>
+      </Link>
+      <button
+        type="button"
+        onClick={onToggleCollapsed}
+        title="收起侧边栏"
+        aria-label="收起侧边栏"
+        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-wash hover:text-ink-soft dark:text-night-muted dark:hover:bg-night-line/60 dark:hover:text-night-text"
+      >
+        <PanelLeftClose className="h-4 w-4" />
+      </button>
+    </div>
+  );
+};
+
+export const Sidebar = ({ collapsed, onToggleCollapsed }: SidebarProps) => {
   const location = useLocation();
 
   const [version, setVersion] = useState<string>(UPDATE_HISTORY[0]?.version || "");
@@ -212,29 +277,34 @@ export const Sidebar = () => {
   const isDark = themeMode === "dark";
 
   return (
-    <aside className="fixed top-0 left-0 z-40 flex h-full w-52 flex-col border-r border-line bg-paper dark:border-night-line dark:bg-night-card">
-      {/* 品牌区 */}
-      <div className="flex h-14 items-center gap-2.5 border-b border-line px-4 dark:border-night-line">
-        <img src="/icon/32.png" alt="" className="h-6 w-6 rounded-md" />
-        <span className="text-[13.5px] font-semibold tracking-[-0.01em] text-ink dark:text-night-text">
-          无限历史记录
-        </span>
-      </div>
+    <aside
+      className={`fixed left-0 top-0 z-40 flex h-full flex-col border-r border-line bg-paper transition-[width] duration-200 ease-out dark:border-night-line dark:bg-night-card ${
+        collapsed ? "w-14" : "w-52"
+      }`}
+    >
+      <SidebarHeader collapsed={collapsed} onToggleCollapsed={onToggleCollapsed} />
 
-      <nav className="flex-1 overflow-y-auto px-2.5 py-3">
-        {["浏览数据", "同步与备份", "更多"].map((group) => {
+      <nav className={`flex-1 overflow-y-auto py-3 ${collapsed ? "px-2" : "px-2.5"}`}>
+        {["浏览数据", "同步与备份", "更多"].map((group, groupIndex) => {
           const items = menuList.filter(
             (item) => item.group === group && !hiddenMenus.includes(item.title),
           );
           if (!items.length) return null;
           return (
             <div key={group} className="mb-3 last:mb-0">
-              <p className="px-2.5 pb-1.5 text-[11px] font-medium tracking-[0.08em] text-ink-faint dark:text-night-muted">
-                {group}
-              </p>
+              {collapsed ? (
+                // 折叠态没有空间放分组名，用一条短分隔线区分分组
+                groupIndex > 0 && (
+                  <div className="mx-auto mb-3 h-px w-6 bg-line dark:bg-night-line" />
+                )
+              ) : (
+                <p className="px-2.5 pb-1.5 text-[11px] font-medium tracking-[0.08em] text-ink-faint dark:text-night-muted">
+                  {group}
+                </p>
+              )}
               <div className="space-y-0.5">
                 {items.map((item) => (
-                  <ExpandableMenu key={item.title} {...item} />
+                  <ExpandableMenu key={item.title} {...item} collapsed={collapsed} />
                 ))}
               </div>
             </div>
@@ -242,12 +312,20 @@ export const Sidebar = () => {
         })}
       </nav>
 
-      {showSubscribePromo && <SubscribePromo variant="sidebar" onDismiss={dismissSubscribePromo} />}
+      {showSubscribePromo && !collapsed && (
+        <SubscribePromo variant="sidebar" onDismiss={dismissSubscribePromo} />
+      )}
 
-      <div className="flex items-center justify-between border-t border-line px-3 py-2.5 dark:border-night-line">
-        <p className="text-[12px] tabular-nums text-ink-faint dark:text-night-muted">
-          {version ? `v${version}` : ""}
-        </p>
+      <div
+        className={`flex items-center border-t border-line py-2.5 dark:border-night-line ${
+          collapsed ? "justify-center px-2" : "justify-between px-3"
+        }`}
+      >
+        {!collapsed && (
+          <p className="text-[12px] tabular-nums text-ink-faint dark:text-night-muted">
+            {version ? `v${version}` : ""}
+          </p>
+        )}
         <button
           type="button"
           onClick={handleToggleTheme}
