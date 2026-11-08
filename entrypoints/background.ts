@@ -16,6 +16,8 @@ import {
   ALL_FAVORITE_FOLDERS_SYNC_PROGRESS,
   HISTORY_SYNC_WATERMARK_VIEW_AT,
 } from "../utils/constants";
+import { enqueueVideoBackup } from "../utils/videoBackupQueue";
+import { getBaiduUserInfo, BAIDU_LOGIN_URL } from "../utils/baiduPan";
 import {
   deleteHistoryContent,
   saveFavFolders,
@@ -1062,6 +1064,62 @@ export default defineBackground(() => {
     }
   };
 
+  const VIDEO_BACKUP_PAGE = "/my-history.html#/video-backup";
+
+  /**
+   * 视频备份在插件页面里执行；没有打开的插件页面时在后台新开一个（不抢焦点），
+   * active=true 时切换到备份页。
+   */
+  const openVideoBackupPage = async (active: boolean) => {
+    const pageOrigin = browser.runtime.getURL("/my-history.html");
+    const tabs = await browser.tabs.query({});
+    const existing = tabs.find((tab) => tab.url?.startsWith(pageOrigin));
+    if (existing?.id !== undefined) {
+      if (active) {
+        await browser.tabs.update(existing.id, {
+          active: true,
+          url: browser.runtime.getURL(VIDEO_BACKUP_PAGE),
+        });
+        if (existing.windowId !== undefined) {
+          await browser.windows.update(existing.windowId, { focused: true });
+        }
+      }
+      return;
+    }
+    await browser.tabs.create({ url: browser.runtime.getURL(VIDEO_BACKUP_PAGE), active });
+  };
+
+  const handleEnqueueVideoBackup = async (
+    message: { bvid?: string; page?: number; title?: string },
+    sendResponse: (response: unknown) => void,
+  ) => {
+    try {
+      const bvid = String(message.bvid ?? "");
+      if (!/^BV[0-9A-Za-z]{10}$/.test(bvid)) throw new Error("无法识别当前视频的 BV 号");
+      const page = Math.max(1, Number(message.page) || 1);
+
+      try {
+        const user = await getBaiduUserInfo();
+        if (!user) {
+          sendResponse({ success: false, needLogin: true, error: "请先登录百度网盘" });
+          return;
+        }
+      } catch (error) {
+        // 登录检查失败（网络等）不阻塞入队，执行时会再次检查
+        console.warn("检查百度网盘登录状态失败:", error);
+      }
+
+      const result = await enqueueVideoBackup({ bvid, page, title: message.title });
+      await openVideoBackupPage(false);
+      sendResponse({ success: true, status: result.status });
+    } catch (error) {
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : "加入备份队列失败",
+      });
+    }
+  };
+
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "syncHistory") {
       handleSyncHistory(message as SyncHistoryRequest, sendResponse);
@@ -1101,6 +1159,16 @@ export default defineBackground(() => {
     } else if (message.action === "runLocalHistoryBackup") {
       handleRunLocalHistoryBackup(message as LocalHistoryBackupRequest, sendResponse);
       return true;
+    } else if (message.action === "enqueueVideoBackup") {
+      handleEnqueueVideoBackup(message, sendResponse);
+      return true;
+    } else if (message.action === "openVideoBackupPage") {
+      void openVideoBackupPage(true).then(() => sendResponse({ success: true }));
+      return true;
+    } else if (message.action === "openBaiduLogin") {
+      void browser.tabs.create({ url: BAIDU_LOGIN_URL });
+      sendResponse({ success: true });
+      return false;
     }
   });
 

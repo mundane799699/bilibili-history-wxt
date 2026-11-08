@@ -21,6 +21,8 @@ import { UpdateNoticeModal } from "../../components/UpdateNoticeModal";
 import { DataBackupReminderModal } from "../../components/DataBackupReminderModal";
 import { FirstRunGuideModal } from "../../components/FirstRunGuideModal";
 import SubscribedCollections from "../../pages/SubscribedCollections";
+import VideoBackup from "../../pages/VideoBackup";
+import { startVideoBackupWorker } from "../../utils/videoBackupWorker";
 import {
   BACKUP_REMINDER_LAST_DISMISSED_AT,
   FIRST_RUN_GUIDE_COMPLETED,
@@ -235,6 +237,11 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 };
 
 const App = () => {
+  useEffect(() => {
+    // 视频备份队列由插件页面执行，任意一个插件页面打开即可处理（多标签页间用 Web Lock 互斥）
+    startVideoBackupWorker();
+  }, []);
+
   return (
     <HashRouter>
       <Toaster position="top-center" />
@@ -257,6 +264,7 @@ const App = () => {
             <Route path="/ai-search" element={<AISearch />} />
             <Route path="/music/search" element={<SearchMusic />} />
             <Route path="/music/liked" element={<LikedMusic />} />
+            <Route path="/video-backup" element={<VideoBackup />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>

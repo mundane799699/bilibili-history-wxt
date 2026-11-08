@@ -110,6 +110,16 @@ export const MUSIC_VOLUME_BEFORE_MUTE = "musicVolumeBeforeMute";
  */
 export const SUBSCRIBE_PROMO_DISMISSED_FOR = "subscribePromoDismissedFor";
 
+// 视频备份到百度网盘：任务队列（VideoBackupTask[]）
+export const VIDEO_BACKUP_TASKS = "videoBackupTasks";
+// 百度网盘中的备份目录，默认 DEFAULT_VIDEO_BACKUP_DIR
+export const VIDEO_BACKUP_DIR = "videoBackupDir";
+export const DEFAULT_VIDEO_BACKUP_DIR = "/B站视频备份";
+// 视频编码偏好："avc" | "hevc" | "av1"，默认 avc（兼容性最好）
+export const VIDEO_BACKUP_CODEC = "videoBackupCodec";
+// 视频页是否显示「备份该视频」按钮，默认 true
+export const VIDEO_BACKUP_BUTTON_ENABLED = "videoBackupButtonEnabled";
+
 export const UPDATE_HISTORY = [
   {
     date: "2026-10-29",

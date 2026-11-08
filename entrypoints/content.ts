@@ -1,8 +1,13 @@
+import { setupVideoBackupButton } from "../utils/videoBackupButton";
+
 export default defineContentScript({
   matches: ["*://*.bilibili.com/*"],
   runAt: "document_start",
   async main() {
     console.log("hello content");
+
+    // 视频页「备份该视频」按钮（上传到百度网盘）
+    setupVideoBackupButton();
 
     // 监听来自injected script的window消息
     window.addEventListener("message", (event) => {

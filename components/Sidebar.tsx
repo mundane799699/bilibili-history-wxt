@@ -14,6 +14,7 @@ import {
   Moon,
   Heart,
   LibraryBig,
+  CloudUpload,
 } from "lucide-react";
 import ExpandableMenu from "./ExpandableMenu";
 import { SubscribePromo } from "./SubscribePromo";
@@ -91,6 +92,12 @@ const menuList = [
     group: "同步与备份",
     icon: <CloudIcon className={iconClass} />,
     to: "/cloud-sync",
+  },
+  {
+    title: "视频备份",
+    group: "同步与备份",
+    icon: <CloudUpload className={iconClass} />,
+    to: "/video-backup",
   },
   {
     title: "数据备份",
