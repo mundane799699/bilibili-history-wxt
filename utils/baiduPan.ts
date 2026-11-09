@@ -216,10 +216,15 @@ export const normalizePanPath = (path: string) => {
   return cleaned.length > 1 ? cleaned.replace(/\/$/, "") : "/";
 };
 
-/** 文件名中去掉网盘不允许的字符 */
+/**
+ * 文件名中去掉网盘不允许的字符。
+ * 百度网盘不接受 emoji 等 4 字节 UTF-8 字符（返回 errno -7「文件或目录名不合法」），
+ * 因此一并去掉 BMP 之外的字符、emoji 及其变体选择符 / 零宽连接符。
+ */
 export const sanitizePanFileName = (name: string, maxLength = 120) => {
   const cleaned = name
-    .replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_")
+    .replace(/[\u{10000}-\u{10FFFF}]|\p{Extended_Pictographic}|[​-‏︀-️]/gu, "")
+    .replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g, "_")
     .replace(/\s+/g, " ")
     .trim()
     .replace(/^\.+/, "");
