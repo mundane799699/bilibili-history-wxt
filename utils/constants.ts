@@ -130,6 +130,11 @@ export const VIDEO_BACKUP_BUTTON_ENABLED = "videoBackupButtonEnabled";
 
 export const UPDATE_HISTORY = [
   {
+    date: "2026-11-09",
+    version: "2.3.1",
+    changes: ["修复视频标题含 emoji 时备份到百度网盘失败（提示“文件或目录名不合法”）的问题"],
+  },
+  {
     date: "2026-11-08",
     version: "2.3.0",
     changes: [
