@@ -130,6 +130,14 @@ export const VIDEO_BACKUP_BUTTON_ENABLED = "videoBackupButtonEnabled";
 
 export const UPDATE_HISTORY = [
   {
+    date: "2026-11-10",
+    version: "2.3.2",
+    changes: [
+      "修复视频页链接为 av 号时（如使用 bv2av 等脚本）不显示“备份该视频”按钮的问题",
+      "稍后再看、收藏夹“播放全部”的连播页也支持备份当前视频",
+    ],
+  },
+  {
     date: "2026-11-09",
     version: "2.3.1",
     changes: ["修复视频标题含 emoji 时备份到百度网盘失败（提示“文件或目录名不合法”）的问题"],
