@@ -3,12 +3,12 @@
  * 实际下载/上传在插件页面里执行（见 utils/videoBackupWorker.ts），后台只负责入队和拉起页面。
  */
 import { BAIDU_LOGIN_URL, getBaiduUserInfo } from "@/utils/baiduPan";
+import { normalizeAid, normalizeBvid } from "@/utils/biliVideoUrl";
 import { enqueueVideoBackup } from "@/utils/videoBackupQueue";
 import type { MessageHandlerMap } from "./shared/types";
 
 const MAIN_PAGE = "/my-history.html";
 const VIDEO_BACKUP_PAGE = "/my-history.html#/video-backup";
-const BVID_PATTERN = /^BV[0-9A-Za-z]{10}$/;
 
 /**
  * 确保有一个插件页面在运行备份队列：已有页面则复用，否则在后台新开（不抢焦点）。
@@ -45,9 +45,37 @@ async function isBaiduLoggedOut(): Promise<boolean> {
   );
 }
 
-async function handleEnqueueVideoBackup(message: { bvid?: string; page?: number; title?: string }) {
-  const bvid = String(message.bvid ?? "");
-  if (!BVID_PATTERN.test(bvid)) return { success: false, error: "无法识别当前视频的 BV 号" };
+/** av 号换 BV 号：走官方接口而不是本地算法，同时能校验稿件存在 */
+async function resolveBvidByAid(aid: number): Promise<string> {
+  const response = await fetch(`https://api.bilibili.com/x/web-interface/view?aid=${aid}`, {
+    credentials: "include",
+    signal: AbortSignal.timeout(15000),
+  });
+  const json = await response.json();
+  const bvid = normalizeBvid(json?.data?.bvid);
+  if (json?.code !== 0 || !bvid) {
+    throw new Error(json?.message || `获取视频信息失败（code=${json?.code}）`);
+  }
+  return bvid;
+}
+
+async function handleEnqueueVideoBackup(message: {
+  bvid?: string;
+  aid?: number | string;
+  page?: number;
+  title?: string;
+}) {
+  let bvid = normalizeBvid(message.bvid);
+  if (!bvid) {
+    const aid = normalizeAid(message.aid);
+    if (!aid) return { success: false, error: "无法识别当前视频的 BV 号或 av 号" };
+    try {
+      bvid = await resolveBvidByAid(aid);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      return { success: false, error: `av${aid} 转换 BV 号失败：${reason}` };
+    }
+  }
   if (await isBaiduLoggedOut()) {
     return { success: false, needLogin: true, error: "请先登录百度网盘" };
   }

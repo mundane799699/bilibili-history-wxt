@@ -1,11 +1,12 @@
 /**
- * 在 B 站视频页（www.bilibili.com/video/BV...）注入「备份该视频」按钮。
+ * 在 B 站视频页（/video/BV…、/video/av…、/list/…?bvid=…）注入「备份该视频」按钮。
  *
  * 重要：按钮绝不能插进 B 站的 DOM 树。视频页是 SSR + Vue 激活（hydration），
  * 往 Vue 管理的节点里插入外来元素会导致激活失败，整页的懒加载图片、推荐列表、
  * 弹幕列表等都会停在灰色占位状态。因此按钮挂在 <body> 末尾（Vue 根节点 #app 之外），
  * 用绝对定位"贴"到播放器下方工具栏右侧；找不到工具栏时退化为右下角悬浮按钮。
  */
+import { biliVideoTargetKey, parseBiliVideoUrl } from "./biliVideoUrl";
 import { VIDEO_BACKUP_BUTTON_ENABLED } from "./constants";
 
 const BUTTON_ID = "bhx-video-backup-btn";
@@ -18,12 +19,7 @@ const BRAND_COLOR_STRONG = "#f05a84";
 
 const CLOUD_ICON = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 13v8"/><path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="m8 17 4-4 4 4"/></svg>`;
 
-const parseVideoLocation = () => {
-  const match = location.pathname.match(/^\/video\/(BV[0-9A-Za-z]{10})/);
-  if (!match) return null;
-  const page = Number(new URLSearchParams(location.search).get("p") ?? "1");
-  return { bvid: match[1], page: Number.isFinite(page) && page > 0 ? page : 1 };
-};
+const parseVideoLocation = () => parseBiliVideoUrl(location.href);
 
 const currentTitle = () => {
   const el = document.querySelector<HTMLElement>("h1.video-title, .video-info-title h1");
@@ -86,6 +82,7 @@ const handleClick = async (button: HTMLElement) => {
     const response = await browser.runtime.sendMessage({
       action: "enqueueVideoBackup",
       bvid: target.bvid,
+      aid: target.aid,
       page: target.page,
       title: currentTitle(),
     });
@@ -183,17 +180,20 @@ export function setupVideoBackupButton() {
 
   let enabled = true;
   let startedAt = Date.now();
-  let lastPath = location.pathname;
+  let lastKey = "";
   let button: HTMLElement | null = null;
 
   const update = () => {
-    if (!enabled || !parseVideoLocation()) {
+    const target = enabled ? parseVideoLocation() : null;
+    if (!target) {
       button?.remove();
       button = null;
       return;
     }
-    if (location.pathname !== lastPath) {
-      lastPath = location.pathname;
+    // 切换到另一个视频（含播放列表页切换、分 P）时重新计时
+    const key = biliVideoTargetKey(target);
+    if (key !== lastKey) {
+      lastKey = key;
       startedAt = Date.now();
     }
 
