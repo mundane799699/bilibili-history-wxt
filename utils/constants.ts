@@ -130,6 +130,14 @@ export const VIDEO_BACKUP_BUTTON_ENABLED = "videoBackupButtonEnabled";
 
 export const UPDATE_HISTORY = [
   {
+    date: "2026-11-11",
+    version: "2.3.3",
+    changes: [
+      "修复小屏幕或高缩放比例下版本更新弹窗过高、关闭按钮被挤出屏幕导致无法关闭的问题",
+      "版本更新弹窗只会弹出一次，刷新页面后不再重复出现；支持按 Esc 或点击空白处关闭",
+    ],
+  },
+  {
     date: "2026-11-10",
     version: "2.3.2",
     changes: [
