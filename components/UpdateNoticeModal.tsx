@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { LAST_SEEN_UPDATE_VERSION, UPDATE_HISTORY } from "../utils/constants";
 import { getStorageValue, setStorageValue } from "../utils/storage";
@@ -29,6 +29,12 @@ export const UpdateNoticeModal = ({ onOpenChange, onReady }: UpdateNoticeModalPr
         const shouldOpen = lastSeenVersion !== latestUpdate.version;
         setIsOpen(shouldOpen);
         onOpenChange?.(shouldOpen);
+        // 弹出即标记为已读：即使用户没能点到关闭按钮，刷新页面后也不会再弹
+        if (shouldOpen) {
+          setStorageValue(LAST_SEEN_UPDATE_VERSION, latestUpdate.version).catch((error) => {
+            console.error("保存版本更新状态失败:", error);
+          });
+        }
       })
       .catch((error) => {
         if (!isActive) return;
@@ -46,26 +52,35 @@ export const UpdateNoticeModal = ({ onOpenChange, onReady }: UpdateNoticeModalPr
     };
   }, [onOpenChange, onReady]);
 
-  const handleClose = async () => {
-    try {
-      if (latestUpdate) {
-        await setStorageValue(LAST_SEEN_UPDATE_VERSION, latestUpdate.version);
-      }
-    } catch (error) {
-      console.error("保存版本更新状态失败:", error);
-    } finally {
-      setIsOpen(false);
-      onOpenChange?.(false);
-    }
-  };
+  // 已读状态在弹出时就已写入，这里只负责关闭
+  const handleClose = useCallback(() => {
+    setIsOpen(false);
+    onOpenChange?.(false);
+  }, [onOpenChange]);
+
+  // 兜底：内容在小屏下被挤出视口时，仍可用 Esc 关闭
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") handleClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, handleClose]);
 
   if (!isOpen || !latestUpdate) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md rounded-xl border border-transparent bg-white p-6 shadow-xl dark:border-night-line dark:bg-night-card">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) handleClose();
+      }}
+    >
+      {/* 限制最大高度，列表区域内部滚动，保证关闭按钮始终可见 */}
+      <div className="relative flex max-h-full w-full max-w-md flex-col rounded-xl border border-transparent bg-white p-6 shadow-xl dark:border-night-line dark:bg-night-card">
         <button
           type="button"
           onClick={handleClose}
@@ -75,7 +90,7 @@ export const UpdateNoticeModal = ({ onOpenChange, onReady }: UpdateNoticeModalPr
           <X className="h-4 w-4" />
         </button>
 
-        <div className="pr-10">
+        <div className="flex-shrink-0 pr-10">
           <p className="mb-2 text-sm font-medium text-brand dark:text-brand-strong">版本更新</p>
           <h2 className="text-xl font-bold text-ink dark:text-night-text">
             v{latestUpdate.version}
@@ -83,7 +98,7 @@ export const UpdateNoticeModal = ({ onOpenChange, onReady }: UpdateNoticeModalPr
           <p className="mt-1 text-sm text-ink-muted dark:text-night-muted">{latestUpdate.date}</p>
         </div>
 
-        <div className="mt-5 rounded-lg bg-wash p-4 dark:bg-night-line/70">
+        <div className="mt-5 min-h-0 overflow-y-auto rounded-lg bg-wash p-4 dark:bg-night-line/70">
           <ul className="space-y-2">
             {latestUpdate.changes.map((change) => (
               <li
@@ -100,7 +115,7 @@ export const UpdateNoticeModal = ({ onOpenChange, onReady }: UpdateNoticeModalPr
         <button
           type="button"
           onClick={handleClose}
-          className="mt-6 w-full rounded-lg bg-brand dark:bg-brand-strong px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-strong"
+          className="mt-6 w-full flex-shrink-0 rounded-lg bg-brand dark:bg-brand-strong px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-strong"
         >
           我知道了
         </button>
