@@ -142,3 +142,8 @@ pnpm dev:firefox      # Firefox
 <div align="center">
   <sub>如果这个项目对你有帮助，欢迎点一个 ⭐ Star 支持作者持续更新</sub>
 </div>
+
+
+## 友链
+
+- [LINUX DO 社区](https://linux.do/)
